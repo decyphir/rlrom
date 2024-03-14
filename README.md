@@ -5,7 +5,7 @@ The first motivation is testing/monitoring RL models.
 
 ## Install
 
-Those are needed for building some for building python modules: 
+Those are needed for building some of the required python modules: 
 - CMake
 - swig 
 
