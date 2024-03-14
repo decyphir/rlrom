@@ -1,0 +1,16 @@
+gymnasium 
+stable-baselines3 
+sb3-contrib
+huggingface_hub 
+rl-zoo3 
+huggingface_sb3 
+shimmy 
+pygame
+plotly 
+nbformat
+ffmpeg
+moviepy
+gradio
+stlrom
+gymnasium[box2d]
+gym
