@@ -2,37 +2,107 @@ import gymnasium as gym
 from gymnasium.utils.save_video import save_video
 from gymnasium.spaces.utils import flatten_space
 import numpy as np
+import pandas as pd
+import stlrom
+import rlrom.envs as envs
+import rlrom.utils as utils
 
 class RLModelTester:
     
-    def __init__(self, env_name=None, model=None, render_mode=None):
-        self.env = None
+    def __init__(self, env_name=None, model=None):
+        self.reset()
         self.env_name = env_name
         self.model = model
-        self.render_mode = render_mode
-        self.set_signals_names_from_env()
         self.real_time_step=1 # if available, duration of a simulation time step
+        
+    def reset(self):
+        self.env = None
+        self.model = None
+        self.runs = {}
+        self.evals = {}
+        self.trace = None
+        self.stl_driver = stlrom.STLDriver()
 
-    def create_env(self):
+    def create_env(self, render_mode=None):
             
         if self.env_name is None:
             return "No environment found"
         else:
-            if self.render_mode == 'video':
+            if render_mode == 'video':
                 self.env = gym.make(self.env_name, render_mode="rgb_array")
                 self.record_video = True
             else:
-                self.env = gym.make(self.env_name, render_mode=self.render_mode)
-        self.set_signals_names_from_env()
-        
-    def test_random(self, seed=1, num_steps=100): 
-        if self.env is None:
-            self.create_env()
+                self.env = gym.make(self.env_name, render_mode=render_mode)
+        self.signals_names = envs.cfg_envs[self.env_name]['signals_names']
+        self.real_time_step = envs.cfg_envs[self.env_name]['real_time_step']
+                
 
-        self.trace= []
+## Manage models
+
+    def find_hf_models(self):
+        _,models=  utils.find_models(self.env_name)
+        
+        if len(models) == 0:
+            self.models_list = None
+        else:
+            self.models_list = []
+            count = 0
+            for model in models:
+                for model_type in envs.supported_models:
+                    if model_type in model:
+                        self.models_list.append(model)
+                        count += 1
+        print("Found ", count, " models for ", self.env_name)  
+        return self.models_list
+
+    def load_hf_model(self, model_id):
+        if self.env_name is None:
+            return "No environment found"
+        else:
+            if self.model is not None:
+                self.model = None
+            self.model = utils.load_model(self.env_name, model_id)
+            if self.model is not None:
+                print("Model loaded")
+            else:
+                print("Model not loaded")
+            return self.model
+
+## Test methods
+    def add_eval(self, eval_name, model, seed, value):
+        # if evals is not defined, create it as a dictionary
+        if not hasattr(self, 'evals'):
+            self.evals = {}
+        
+        # if self.evals[eval_name] is not a dataframe, create it
+        
+        if self.evals.get(eval_name) is None:
+            # create a dataframe with columns seed, model
+            self.evals[eval_name] = pd.DataFrame(columns=['seed', model])
+        else: # add column for model if not present
+            if model not in self.evals[eval_name].columns:
+                self.evals[eval_name][model] = np.nan
+        # add value to the dataframe
+        self.evals[eval_name].loc[seed, model] = value        
+                
+        
+    def test_seed(self, seed=1, num_steps=100, render_mode=None, lazy=True):         
+        
+        # checks if run already exists        
+        if not hasattr(self, 'runs'):
+            self.runs = {}
+                
+        if lazy and (self.model, seed) in self.runs:            
+            return self.evals['total_reward'].loc[seed,self.model]
+        
+        if self.env is None or render_mode is not None:
+            self.create_env(render_mode=render_mode)
+
+        trace= []
         obs, info = self.env.reset(seed=seed)
         time_step = 0
         total_reward = 0
+        
         try:
             for _ in range(num_steps):
                 
@@ -41,7 +111,7 @@ class RLModelTester:
                 else:
                     action = self.env.action_space.sample()
                 next_obs, reward, terminated, truncated, info = self.env.step(action)
-                self.trace.append([time_step, obs, action, next_obs, reward, terminated, truncated, info])
+                trace.append([time_step, obs, action, next_obs, reward, terminated, truncated, info])
                 if terminated or truncated:
                     break  
                 time_step += self.real_time_step
@@ -50,10 +120,29 @@ class RLModelTester:
 
         except Exception as e:
             print("Env crashed with: ", e)   
+        
         self.env.close()
+        self.runs[self.model, seed] = trace        
+        self.add_eval('total_reward', self.model, seed, total_reward) 
+        self.trace = trace
+
         return total_reward
 
-
+## STL monitoring
+    def monitor_trace(self, trace=None, phi=None):
+        # reset the stl driver
+        self.stl_driver.data =[]
+        if trace is None:
+            trace = self.trace
+        if phi is None:
+            return None
+        
+        for trace_state in trace:
+            self.stl_driver.add_sample(self.get_sample(trace_state))
+            
+        robs = self.stl_driver.get_online_rob(phi)
+        return robs
+        
 ## Helper functions
     def get_video_filename(self):
         
@@ -66,8 +155,10 @@ class RLModelTester:
         return filename + '.mp4'
 
 ## Signal stuff
+    def get_sample(self,trace_state):
+        # returns a sample for stlrom from a trace state 
+        # of the form (time, obs, action, next_obs, reward) 
 
-    def get_signal_state(self,trace_state):
         time = np.array([trace_state[0]])
         action = trace_state[2].flatten()
         obs = trace_state[1].flatten()
@@ -76,15 +167,8 @@ class RLModelTester:
         ss = np.concatenate((time, action, obs, reward))
         return ss
 
-    def get_signal(self, signal_name):
-        if signal_name == 'reward':
-            return [self.get_signal_state(trace_state)[-1] for trace_state in self.trace]    
     
-        signal_index = self.signals_names.index(signal_name)
-        return [self.get_signal_state(trace_state)[signal_index+1] for trace_state in self.trace]    
-    
-    def get_df_signals(self, df_signals=None):
-        import pandas as pd
+    def get_dataframe_from_trace(self, df_signals=None):
         if df_signals is None:
             df_signals = pd.DataFrame()
         
@@ -96,34 +180,15 @@ class RLModelTester:
         return df_signals
 
     def get_time(self):
-        return [self.get_signal_state(trace_state)[0] for trace_state in self.trace]   
+        return [self.get_sample(trace_state)[0] for trace_state in self.trace]   
+
+    def get_signal(self, signal_name):
+        if signal_name == 'reward':
+            return [self.get_sample(trace_state)[-1] for trace_state in self.trace]    
     
-    def set_signals_names_from_env(self):
-
-        if self.env_name == 'Pendulum-v1':
-            self.signals_names = [ "torque", "cos_theta",  "sin_theta","theta_dot","reward"]
-            self.real_time_step = .05
-        elif self.env_name == 'CartPole-v1':
-            self.signals_names = [ "push","cart_pos", "cart_speed", "pole_angle", "pole_speed", "reward"]
-            self.real_time_step = .05
-        elif self.env_name == 'MountainCar-v0':
-            self.signals_names = [ "push","car_pos", "car_speed", "reward"]            
-        elif self.env_name == 'Acrobot-v1':
-            self.signals_names = [ "torque", "cos_theta1",  "sin_theta1", "cos_theta2",  "sin_theta2", "theta_dot1", "theta_dot2", "reward"]
-            self.real_time_step = .05
-        elif self.env_name == 'LunarLander-v2':
-            self.signals_names = [ "fire", "x", "y", "x_dot", "y_dot", "angle", "angle_dot", "reward"]
-        elif self.env_name == 'BipedalWalker-v3':
-            self.signals_names = [ "x", "u", "reward"]
-        elif self.env_name == 'BipedalWalkerHardcore-v3':
-            self.signals_names = [ "x", "u", "reward"]
-        elif self.env_name == 'CarRacing-v2':
-            self.signals_names = [ "x", "u", "reward"]
-        elif self.env_name == 'LunarLanderContinuous-v2':
-            self.signals_names = [ "fire", "x", "y", "x_dot", "y_dot", "angle", "angle_dot", "reward"]
-        elif self.env_name == 'MountainCarContinuous-v0':
-            self.signals_names = [ "push","car_pos", "car_speed", "reward"]
-
+        signal_index = self.signals_names.index(signal_name)
+        return [self.get_sample(trace_state)[signal_index+1] for trace_state in self.trace]    
+    
     def get_signal_string(self):
         return 'signal '+ ', '.join(self.signals_names)
 

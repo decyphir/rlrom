@@ -14,7 +14,7 @@ import stlrom
 # gui state should be the tester
 tester = testers.RLModelTester()
 df_signals = pd.DataFrame(dtype=float)
-df_robs = pd.DataFrame(dtype=float)
+df_robs = pd.DataFrame()
 stl_driver = stlrom.STLDriver()
 
 # function for run button
@@ -22,21 +22,22 @@ def run(env_name, repo_id, num_steps, seed, render_mode):
     
     if render_mode:
         render_mode = "human"
+        lazy = False
     else:
         render_mode = None
+        lazy = True
     
     try:
-        
-        model = hf.load_model(env_name, repo_id)
-        if model is not None:
-            tester = testers.RLModelTester(env_name, model, render_mode)   
-        else:
-            tester = testers.RLModelTester(env_name, None,  render_mode)
-
-        tot_reward = tester.test_random(seed, num_steps)
+        model = hf.load_model(env_name, repo_id)    
+        if tester.env_name != env_name:
+            tester.reset()
+            tester.env_name = env_name        
+        tester.model = model            
+                
+        tot_reward = tester.test_seed(seed, num_steps, render_mode=render_mode, lazy=lazy)
         print('tot_reward:', tot_reward)
         # write signal in df_signals        
-        tester.get_df_signals(df_signals)
+        tester.get_dataframe_from_trace(df_signals)
         print(df_signals.head(5))
         status = "Test completed for " + env_name + " with model " + repo_id + " and reward: " + str(tot_reward)
     except Exception as e:
@@ -49,13 +50,15 @@ def update_models(env_name):
     try: 
         tester.env_name = env_name
         tester.create_env()
+        
+        # remove all columns in df_signals
+        df_signals.drop(df_signals.columns, axis=1, inplace=True)
         _,models_ids = hf.find_models(env_name)
        
         # add "None" at the beginning of the list of models 
         models_ids = ["None"] + models_ids
         
         status = "Found " + str(len(models_ids)) + " models for " + env_name
-
         specs = tester.get_signal_string()
         specs = specs + """ 
         mu_r := reward[t]>0
@@ -82,10 +85,12 @@ def update_plot(signals_plot_string):
     
     signals_layout = hf.get_layout_from_string(signals_plot_string)
     print(signals_layout)
-    row_heights = [200 for _ in signals_layout]
+    row_heights = [300 for _ in signals_layout]
+    print(row_heights)
     fig = make_subplots(rows=len(signals_layout),row_heights=row_heights, cols=1,shared_xaxes=True, vertical_spacing=0.02)
     fig.update_layout()
     status = "Plot all good."            
+    
     for i, signal_list in enumerate(signals_layout):
         for signal in signal_list:
             if signal in df_signals.columns:
@@ -125,6 +130,7 @@ def eval_stl(specs):
     except Exception as e:
         status = "Error: " + str(e)
     return status
+
 
 # create the layout
 with gr.Blocks() as web_gui:
