@@ -286,7 +286,7 @@ class RLModelTester:
                 try: 
                     if signal in self.signals_names:
                         df_sig = self.get_dataframe_from_trace(signal)
-                        f.marker(df_sig["time"], df_sig[signal])
+                        f.scatter(df_sig["time"], df_sig[signal], legend_label=signal)
                         f.line(df_sig["time"], df_sig[signal], legend_label=signal, color=colors.__next__())
                     # else if signal is of the form rho(phi)
                     elif signal.startswith('rho(') or signal.startswith('rob('):
@@ -299,7 +299,7 @@ class RLModelTester:
                         f.step(df_rob["time"], df_rob["sat"], legend_label=signal, color=colors.__next__())
                     else: # try implicit rho(signal), i.e., signal is a formula name
                         df_rob = self.monitor_trace(signal)
-                        f.step(df_rob["time"], df_rob["sat"], legend_label=signal, color=colors.__next__())
+                        f.step(df_rob["time"], df_rob["rho"], legend_label=signal, color=colors.__next__())
                 except:
                      status = "Warning: error getting values for " + signal
             
