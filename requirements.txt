@@ -14,3 +14,4 @@ gradio
 stlrom
 gymnasium[box2d]
 gym
+bokeh

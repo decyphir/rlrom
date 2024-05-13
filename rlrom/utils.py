@@ -5,6 +5,7 @@ from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
 import re
 
+
 def load_ppo_model(env_name, repo_id, filename=None):
     if filename is None:
         filename = ModelName('ppo', env_name)+'.zip'
@@ -101,23 +102,31 @@ def find_models(env_name):
     return models, [model.modelId for model in models]
 
 
-def get_layout_from_string(signals):
+def get_layout_from_string(signals_layout):
+    out = []
     # split signals string wrt linebreaks first
-    signals = signals.split('\n')
+    signals_rows = signals_layout.splitlines()
 
-    # then split wrt commas 
-    signals = [signal.split(',') for signal in signals]
+    # then strip and split wrt commas
+    for line in signals_rows:        
+        if line.strip() == '':
+            continue
+        else:
+            out_row = re.findall(r'\b[A-Za-z_][A-Za-z0-9_]*\b(?:\([^)]*\))?', line)            
+            out.append(out_row)        
 
-    # then strip 
-    signals = [[s.strip() for s in signal] for signal in signals]
+    return out            
 
-    # remove lists with only one empty string element
-    signals = [signal for signal in signals if signal != ['']]
+def parse_signal_spec(signal):
+    # extract sig_name and args from signal_name(args)
+    signal = signal.split('(')
+    sig_name = signal[0]
+    if len(signal) == 1:
+        args = []
+    else:
+        args = [arg.strip() for arg in signal[1][:-1].split(',')]
+    return sig_name, args
 
-    # remove empty strings from lists
-    signals = [[s for s in signal if s != ''] for signal in signals]
-
-    return signals
 
 def get_formulas(specs):
     # regular expression matching id variable in the specs at the beginning of a line followed by :=
@@ -128,3 +137,16 @@ def get_formulas(specs):
     formulas = re.findall(regex, specs, re.MULTILINE)
     return formulas
 
+def parse_integer_set_spec(str):
+    sp_str = str.split(',')
+    idx_out = []
+    for s in sp_str:
+        s = s.strip()
+        if s.isdigit():
+            idx_out.append(int(s))
+        else:
+            [l, h] = s.split(':')
+            if l.isdigit() and h.isdigit():
+                range_idx = [ idx for idx in range(int(l),int(h)+1) ]
+                idx_out = idx_out+range_idx
+    return idx_out                
