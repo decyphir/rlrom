@@ -23,7 +23,6 @@ def load_a2c_model(env_name, repo_id, filename=None):
         filename = ModelName('a2c', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
     model = A2C.load(checkpoint, print_system_info=True)
-    #model = A2C.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     return model
 
 def load_sac_model(env_name, repo_id, filename=None):
@@ -31,7 +30,6 @@ def load_sac_model(env_name, repo_id, filename=None):
         filename = ModelName('sac', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
     model = SAC.load(checkpoint, print_system_info=True)
-    #model = SAC.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     return model
 
 def load_td3_model(env_name, repo_id, filename=None):
@@ -39,7 +37,6 @@ def load_td3_model(env_name, repo_id, filename=None):
         filename = ModelName('td3', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
     model = TD3.load(checkpoint, print_system_info=True)
-    #model = TD3.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     return model
 
 def load_dqn_model(env_name, repo_id, filename=None):
@@ -47,7 +44,6 @@ def load_dqn_model(env_name, repo_id, filename=None):
         filename = ModelName('dqn', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
     model = DQN.load(checkpoint, print_system_info=True)
-    #model = DQN.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     return model
 
 def load_qrdqn_model(env_name, repo_id, filename=None):
@@ -55,14 +51,12 @@ def load_qrdqn_model(env_name, repo_id, filename=None):
         filename = ModelName('dqn', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
     model = QRDQN.load(checkpoint, print_system_info=True)
-    #model = DQN.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     return model
 
 def load_ddpg_model(env_name, repo_id, filename=None):
     if filename is None:
         filename = ModelName('ddpg', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    #model = DDPG.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     model = DDPG.load(checkpoint, print_system_info=True)
     return model
 
@@ -70,11 +64,86 @@ def load_trpo_model(env_name, repo_id, filename=None):
     if filename is None:
         filename = ModelName('trpo', env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    #model = TRPO.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     model = TRPO.load(checkpoint, print_system_info=True)
     return model
 
-def load_model(env_name, repo_id, filename=None):
+def load_model(env_name, repo_id=None, filename=None):
+
+    # checks if filename point to a valid file
+    if filename is not None:
+        try:
+            with open(filename, 'r') as f:
+                pass
+            
+            # try loading with PPO, A2C, SAC, TD3, DQN, QRDQN, DDPG, TRPO
+            try:
+                model= PPO.load(filename)
+                print("loading PPO model succeeded")
+                return model
+            except:
+                print("loading PPO model failed")
+                pass
+
+            try:
+                model= A2C.load(filename)
+                print("loading A2C model succeeded")
+                return model
+            except:
+                print("loading A2C model failed")
+                pass
+
+            try:
+                model= SAC.load(filename)
+                print("loading SAC model succeeded")
+                return model
+            except:
+                print("loading SAC model failed")                
+                pass
+
+            try:
+                model= TD3.load(filename)
+                print("loading TD3 model succeeded")
+                return model                                
+            except:
+                print("loading TD3 model failed")
+                pass
+
+            try:                
+                model= DQN.load(filename)
+                print("loading DQN model succeeded")
+                return model
+            except:
+                print("loading DQN model failed")
+                pass    
+
+            try:
+                model= QRDQN.load(filename)
+                print("loading QRDQN model succeeded")
+                return model
+            except:
+                print("loading QRDQN model failed")
+                pass
+
+            try:
+                model= DDPG.load(filename)
+                print("loading DDPG model succeeded")
+                return model                    
+            except:
+                print("loading DDPG model failed")
+                pass
+
+            try:
+                model= TRPO.load(filename)
+                print("loading TRPO model succeeded")
+                return model
+            except:
+                print("loading TRPO model failed")
+                pass            
+
+        except FileNotFoundError:
+            return None
+
+
     if 'ppo' in repo_id:
         return load_ppo_model(env_name, repo_id, filename=filename)
     elif 'a2c' in repo_id:

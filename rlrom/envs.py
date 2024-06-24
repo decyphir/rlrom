@@ -14,8 +14,24 @@ supported_models = ['ppo', 'a2c', 'sac', 'td3', 'dqn', 'qrdqn', 'ddpg', 'trpo']
 
 cfg_envs = {}
 
+pendul_specs = """signal torque, cos_theta, sin_theta, theta_dot, reward 
+sin_theta_small := abs(sin_theta[t]) < .2
+cos_theta_high  := cos_theta[t] > .8 
+up_right := sin_theta_small and cos_theta_high
+
+goal_stable := alw_[0,1] up_right
+phi_goal := ev_[0,4] goal_stable
+"""
+
+pendul_plot = """torque
+goal_stable
+reward
+"""
+
 cfg_envs['Pendulum-v1'] = {'env_name': 'Pendulum-v1',
-                'signals_names': [ "torque", "cos_theta",  "sin_theta","theta_dot","reward"],
+                'signals_names': [ "torque", "cos_theta",  "sin_theta","theta_dot","reward"],                
+                'specs': pendul_specs,
+                'plots': pendul_plot,
                 'real_time_step': .05}
 
 cfg_envs['CartPole-v1'] = {'env_name': 'CartPole-v1',
@@ -57,7 +73,24 @@ cfg_envs['MountainCarContinuous-v0'] = {'env_name': 'MountainCarContinuous-v0',
                                 'signals_names': [ "push","car_pos", "car_speed", "reward"],
                                 'real_time_step': 1.}
 
+# highway-env
+
+highway_specs = """signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy, car1_presence, car1_x, car1_y, car1_vx, car1_vy, car2_presence, car2_x, car2_y, car2_vx, car2_vy, reward
+ego_slow := ego_vx[t] < 21
+ego_fast:= ego_vx[t] > 29
+"""
+highway_plots = """_tr(0)
+ego_vx
+sat(ego_slow)
+sat(ego_fast)"""
+
 cfg_envs['highway-v0'] = {'env_name': 'highway-v0',
-                'signals_names': ["x","u", "reward"],
+                'signals_names': ["action",
+                                  "ego_presence","ego_x", "ego_y", "ego_vx", "ego_vy",
+                                  "car1_presence","car1_x", "car1_y", "car1_vx", "car1_vy",
+                                  "car2_presence","car2_x", "car2_y", "car2_vx", "car2_vy",
+                                  "reward"],
+                'specs': highway_specs,
+                'plots': highway_plots,
                 'real_time_step': 1.}
 

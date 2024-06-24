@@ -7,8 +7,9 @@ import stlrom
 import rlrom.envs as envs
 import rlrom.utils as utils
 
+from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
-from bokeh.plotting import figure
+from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
@@ -25,9 +26,9 @@ class RLModelTester:
         self.model = None
         self.real_time_step=1 # if available, duration of a simulation time step
         self.model_id = 'RandomAgent'
-        self.runs = {}
+        self.runs = []
         self.evals = None
-        self.trace = None
+        self.trace_idx = None
         self.specs = None
         self.stl_driver = stlrom.STLDriver()
 
@@ -38,11 +39,24 @@ class RLModelTester:
         else:
             if render_mode == 'video':
                 self.env = gym.make(self.env_name, render_mode="rgb_array")
-                self.record_video = True
+                self.record_video = True        
             else:
                 self.env = gym.make(self.env_name, render_mode=render_mode)
-        self.signals_names = envs.cfg_envs[self.env_name]['signals_names']
-        self.real_time_step = envs.cfg_envs[self.env_name]['real_time_step']
+                self.signals_names = envs.cfg_envs[self.env_name]['signals_names']
+                self.real_time_step = envs.cfg_envs[self.env_name]['real_time_step']
+                
+
+    def configure_env(self, cfg):
+        if cfg is None:
+            if self.env_name== 'highway-v0':
+                cfg = {
+                    "manual_control":True,
+                    "duration": 1000
+                }
+
+        if self.env is not None:
+            self.env.configure(cfg)
+
                 
 ## Manage models
 
@@ -78,46 +92,36 @@ class RLModelTester:
             return self.model
 
     ## Test methods
-    def add_eval(self,model_name, eval_name, seed, value):
-        print('current evals: ', self.evals)
-        print("Adding eval ", eval_name, " for seed ", seed, " with value ", value)
-
-        if self.evals is None:
-            self.evals = pd.DataFrame(columns=['seed', 'model_name', eval_name])
-
-        # checks if we have a record with seed and model_name already
+    def add_eval(self,trace_idx, eval_name, value):
         
-        record_idx = (self.evals["seed"]==seed) & (self.evals["model_name"]==model_name)
+        if self.evals is None:
+            return
+        # checks if we have a record with seed and model_name already        
+        record_idx = self.evals["trace_idx"]==trace_idx 
         if record_idx.any():
             self.evals.loc[record_idx, eval_name] = value
         else:
-            new_record = pd.DataFrame({'seed': [seed], 'model_name': [model_name], eval_name: [value]})
-            if self.evals is None:
-                self.evals = new_record
-            else:
-                self.evals = pd.concat([ self.evals,  new_record ])
+            return
 
     def test_seed(self, seed=1, num_steps=100, render_mode=None, lazy=True):         
-        print("Testing seed ", seed, " with model ", self.model_id, " for ", num_steps, " steps", " lazy: ", lazy)
-        # checks if run already exists                
-        if not hasattr(self, 'runs'):
-            self.runs = {}
-
-        print("current evals: ", self.evals)
-        if lazy and (self.model_id, seed) in self.runs:            
-            print("Found previous run for seed ", seed, " and model ", self.model_id)
-            try:
-                r_seed = self.evals[self.evals["seed"]==seed]
-                r_eval = r_seed[r_seed["model_name"]==self.model_id]
-                r = r_eval['total_reward']
-            except:
-                print("Error with seed ", seed, " and model ", self.model_id, " result not found")
-                r = np.nan()
-            return r
-
+        print("Testing seed ", seed, " with model ", self.model_id, " for ", num_steps, " steps", " lazy: ", lazy)                
+        #print("current evals: ", self.evals)
+        
+        if self.evals is not None:            
+            record_idx = (self.evals["seed"]==seed) & (self.evals["model_name"]==self.model_id)
+            
+            if record_idx.any():
+                if lazy:            
+                    print('Lazy, done already run.')
+                    record = self.evals[record_idx]
+                    self.trace_idx= record['trace_idx'][0]
+                    total_reward = record['total_reward'][0]
+                    return total_reward            
+        
         if self.env is None or render_mode is not None:
             self.create_env(render_mode=render_mode)
 
+        # Compute the trace
         trace= []
         obs, info = self.env.reset(seed=seed)
         time_step = 0
@@ -142,10 +146,25 @@ class RLModelTester:
             print("Env crashed with: ", e)   
 
         self.env.close()
-        self.runs[self.model_id, seed] = trace        
-        self.add_eval(eval_name='total_reward',model_name=self.model_id, seed=seed, value=total_reward) 
-        self.trace = trace
+        
+        # record the trace and init evals                
+        
+        if self.runs is None:        
+            trace_idx=0
+            self.runs=[trace]
+        else:
+            trace_idx= len(self.runs)
+            self.runs += [trace]
 
+        self.runs[trace_idx] = trace        
+        self.trace_idx = trace_idx
+        new_record = pd.DataFrame({'trace_idx':trace_idx, 'env_name':self.env_name,'model_name': [self.model_id],'seed': [seed], 'total_reward': [total_reward]})
+
+        if self.evals is None:
+            self.evals = new_record
+        else:
+            self.evals = pd.concat([self.evals, new_record])
+        
         return total_reward
 
     ## STL monitoring
@@ -154,15 +173,23 @@ class RLModelTester:
 
     def monitor_trace(self, phi=None):
         # reset the stl driver data
-        if phi is None or self.trace is None or self.specs is None:
+        if phi is None or self.trace_idx is None or self.specs is None:
             return None
         else:
+            
+            saved_idx =self.trace_idx
+
+            # checks if a trace_idx is specified
+            if phi.endswith(')'):
+                self.trace_idx = int(phi.split('(')[1][:-1]) # TODO checks int !             
+                phi = phi.split('(')[0]
+
             self.stl_driver = stlrom.STLDriver()
             self.stl_driver.parse_string(self.specs)
 
             # load data in the driver
-            time = np.array([trace_state[0] for trace_state in self.trace])
-            for trace_state in self.trace:
+            time = np.array([trace_state[0] for trace_state in self.runs[self.trace_idx]])
+            for trace_state in self.runs[self.trace_idx]:
                 self.stl_driver.add_sample(self.get_sample(trace_state))
 
             # compute the robustness at each time step
@@ -182,26 +209,25 @@ class RLModelTester:
                 else:
                     df_rob = pd.concat([df_rob, new_record])
 
-        return df_rob
+            self.trace_idx = saved_idx
+            return df_rob
 
     def eval_spec(self, phi=None):
         if phi is None:
             return
-        
-        trace_saved = self.trace
-        for r in self.runs:
+
+        idx = 0        
+        for r in self.runs:                    
             self.stl_driver = stlrom.STLDriver()
             self.stl_driver.parse_string(self.specs)
-            model_id = r[0]
-            seed = r[1]
-            self.trace = self.runs[r]
-            time = np.array([trace_state[0] for trace_state in self.trace])
-            for trace_state in self.trace:
+            trace = self.runs[idx]
+            time = np.array([trace_state[0] for trace_state in trace])
+            for trace_state in trace:
                 self.stl_driver.add_sample(self.get_sample(trace_state))
             rob = self.stl_driver.get_online_rob(phi, time[0])
-            print("Robustness for ", r, " is ", rob[0])
-            self.add_eval(model_name=model_id, eval_name=phi, seed=seed, value=rob[0])
-        self.trace = trace_saved
+            print("Robustness for ", idx, " is ", rob[0])            
+            self.add_eval(trace_idx=idx, eval_name=phi, value=rob[0])
+            idx= idx +1
         
 
     ## Helper functions
@@ -243,20 +269,31 @@ class RLModelTester:
         return df_signals
 
     def get_time(self):
-        return [self.get_sample(trace_state)[0] for trace_state in self.trace]   
+        return [self.get_sample(trace_state)[0] for trace_state in self.runs[self.trace_idx]]   
 
     def get_signal(self, signal_name):
-        if signal_name == 'reward':
-            return [self.get_sample(trace_state)[-1] for trace_state in self.trace]    
+        saved_idx =self.trace_idx
+            
+        # checks if a trace_idx is specified
+        if signal_name.endswith(')'):            
+            self.trace_idx = int(signal_name.split('(')[1][:-1]) # TODO checks int !             
+            signal_name = signal_name.split('(')[0]
 
-        signal_index = self.signals_names.index(signal_name)
-        return [self.get_sample(trace_state)[signal_index+1] for trace_state in self.trace]    
+        if signal_name == 'reward':
+            out =[self.get_sample(trace_state)[-1] for trace_state in self.runs[self.trace_idx]]    
+        else:
+            signal_index = self.signals_names.index(signal_name)
+            out = [self.get_sample(trace_state)[signal_index+1] for trace_state in self.runs[self.trace_idx]]    
+          # restore idx if needed
+        
+        self.trace_idx = saved_idx
+        return out
 
     def get_signal_string(self):
         return 'signal '+ ', '.join(self.signals_names)
 
-    def set_current_trace(self, seed):
-        self.trace = self.runs[self.model_id, seed]
+    def set_current_trace(self, trace_idx):
+        self.trace_idx = trace_idx
 
     ## Info 
 
@@ -271,39 +308,49 @@ class RLModelTester:
 
     def get_fig(self, signals_layout):
         lay = utils.get_layout_from_string(signals_layout)
-        status = "Plot ok."            
+        status = "Plot ok. Hit reset on top right if not visible."            
 
-        f= figure(height=200)
-        figs = [[f]]
+        #f= figure(height=200)
+        figs = []
         colors = itertools.cycle(palette)    
 
         for signal_list in enumerate(lay):
-
-            if signal_list[0]>0:   # second figure, create and append to figs
-                f = figure(height=200, x_range=figs[0][0].x_range)
-                figs.append([f])
+            f=None
             for signal in signal_list[1]:                
-                try: 
-                    if signal in self.signals_names:
-                        df_sig = self.get_dataframe_from_trace(signal)
-                        f.scatter(df_sig["time"], df_sig[signal], legend_label=signal)
-                        f.line(df_sig["time"], df_sig[signal], legend_label=signal, color=colors.__next__())
-                    # else if signal is of the form rho(phi)
-                    elif signal.startswith('rho(') or signal.startswith('rob('):
-                        phi = signal.split('(')[1][:-1]
-                        df_rob = self.monitor_trace(phi)
-                        f.step(df_rob["time"], df_rob["rho"], legend_label=signal, color=colors.__next__())
-                    elif signal.startswith('sat('):
-                        phi = signal.split('(')[1][:-1]
-                        df_rob = self.monitor_trace(phi)
-                        f.step(df_rob["time"], df_rob["sat"], legend_label=signal, color=colors.__next__())
-                    else: # try implicit rho(signal), i.e., signal is a formula name
-                        df_rob = self.monitor_trace(signal)
-                        f.step(df_rob["time"], df_rob["rho"], legend_label=signal, color=colors.__next__())
-                except:
-                     status = "Warning: error getting values for " + signal
-            
-
-        fig = gridplot(figs, sizing_mode='stretch_width')
+                #try: 
+                    color=colors.__next__()                    
+                    tr_idx = self.trace_idx
+                    print(signal.strip())
+                    if signal.strip().startswith("set_trace_idx(") or signal.strip().startswith("_tr("):            
+                        tr_idx = int(signal.split('(')[1][:-1])                         
+                        self.set_current_trace(tr_idx)                        
+                    else: 
+                        if f is None:
+                            if figs == []:
+                                f = figure(height=200)
+                            else:
+                                f = figure(height=200, x_range=figs[0][0].x_range)
+                            figs.append([f])
+                        if signal in self.signals_names or signal.split('(')[0] in self.signals_names:                        
+                            df_sig = self.get_dataframe_from_trace(signal)
+                            f.scatter(df_sig["time"], df_sig[signal], legend_label=signal+', trace_idx='+str(tr_idx), color=color)
+                            f.line(df_sig["time"], df_sig[signal], legend_label=signal+', trace_idx='+str(tr_idx), color=color)
+                        # else if signal is of the form rho(phi)
+                        elif signal.startswith('rho(') or signal.startswith('rob('):
+                            phi = signal.split('(')[1][:-1]
+                            df_rob = self.monitor_trace(phi)
+                            f.step(df_rob["time"], df_rob["rho"], legend_label=signal+', trace_idx='+str(tr_idx), color=color)
+                        elif signal.startswith('sat('):
+                            phi = signal.split('(')[1][:-1]
+                            df_rob = self.monitor_trace(phi)
+                            f.step(df_rob["time"], df_rob["sat"], legend_label=signal+', trace_idx='+str(tr_idx), color=color)
+                        else: # try implicit rho(signal), i.e., signal is a formula name
+                            df_rob = self.monitor_trace(signal)
+                            f.step(df_rob["time"], df_rob["rho"], legend_label=signal+', trace_idx='+str(tr_idx), color=color)
+                #except:
+                #     status = "Warning: error getting values for " + signal
+        fig = gridplot(figs, sizing_mode='stretch_width')        
+        
         return fig, status
                 
+    

@@ -6,7 +6,6 @@ rl-zoo3
 huggingface_sb3 
 shimmy 
 pygame
-plotly 
 nbformat
 ffmpeg
 moviepy
@@ -15,3 +14,5 @@ stlrom
 gymnasium[box2d]
 gym
 bokeh
+highway-env
+simglucose

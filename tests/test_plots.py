@@ -1,9 +1,9 @@
 from context import *
 
-lay= """
-torque,
- cos_theta reward
-reward
+from bokeh.plotting import show
+
+lay1= """
+torque
 """
 
 env  = "Pendulum-v1"
@@ -20,9 +20,9 @@ def test_plot():
     T.load_hf_model(model)
     T.test_seed(5)
     
-    fig, status = T.get_fig(lay)
+    fig, status = T.get_fig(lay1)
     print(status)
-    fig.show()
+    show(fig)
 
     
 if __name__ == '__main__':

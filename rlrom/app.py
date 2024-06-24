@@ -9,140 +9,209 @@ import rlrom.utils as hf
 
 import stlrom
 
+
 # gui state should be the tester
 tester = testers.RLModelTester()
-df_signals = pd.DataFrame(dtype=float)
-df_robs = pd.DataFrame()
-stl_driver = stlrom.STLDriver()
+reset_confirm = False
+local_models_list = []
 
-# function for run button
-def run(env_name, repo_id, num_steps, seed_list_str, render_mode):
-    print('Entering run')
-    print(tester.evals)
-    
-    if render_mode:
-        render_mode = "human"
-        lazy = False
-    else:
-        render_mode = None
-        lazy = True
-    
-    try:
-        model = hf.load_model(env_name, repo_id)    
-        if tester.env_name != env_name:
-            tester.reset()
-            tester.env_name = env_name        
-        tester.model = model
-        tester.model_id = repo_id # shouldn't be necessary but            
-        seed_list = hf.parse_integer_set_spec(seed_list_str)
-        for seed in seed_list:
-            tot_reward = tester.test_seed(seed, num_steps, render_mode=render_mode, lazy=lazy)
-            print('seed:', seed, ' tot_reward:', tot_reward)
-        # write signal in df_signals        
-        tester.get_dataframe_from_trace(df_signals)
-        #print(df_signals.head(5))
-        status = "Test completed for " + env_name + " with model " + repo_id
-        print(tester.evals.head(5))        
-        return status, tester.evals
+default_specs = """
+positive_reward := reward[t]>0
+phi_ev_pos_rew := ev_[0, 100] positive_reward"""
 
-    except Exception as e:
-        status = "Error: " + str(e)
-        return status, None
-    
-# add listener to env_dropdown
-def update_models(env_name):
-    try: 
-        tester.env_name = env_name
-        tester.create_env()
-        
-        # remove all columns in df_signals
-        df_signals.drop(df_signals.columns, axis=1, inplace=True)
-        _,models_ids = hf.find_models(env_name)
-       
-        # add "None" at the beginning of the list of models 
-        models_ids = ["None"] + models_ids
-        
-        status = "Found " + str(len(models_ids)) + " models for " + env_name
-        specs = tester.get_signal_string()
-        specs = specs + """ 
-        mu_r := reward[t]>0
-        phi_alw := alw_[0, 100] mu_r
-        phi_ev := ev_[0, 100] mu_r 
-        """
-        
-        plot_prompt = ', '.join(tester.signals_names)
-        plot_prompt += """
-        rho(mu_r), sat(mu_r), 
-        rho(phi_alw),sat(phi_alw)
-        rho(phi_ev), sat(phi_ev)
-        """
-        return [gr.Dropdown(
-            choices=models_ids, value="None"), 
-            specs,
-            plot_prompt,
-            status,
-           ]    
-    
-    except Exception as e:
-        status = "Error: " + str(e)
-        return [gr.Dropdown(
-            choices=["None"], value="None"), "","","",status] 
-            
-def update_plot(specs, signals_plot_string):
-    tester.specs = specs
-    fig, status = tester.get_fig(signals_plot_string)
-    return fig, status
+# default plots: first select trace idx 0, then plot reward and phi
+default_plots = """_tr(0)
+positive_reward, sat(positive_reward)
+phi_ev_pos_rew, sat(phi_ev_pos_rew)"""
 
-def eval_stl(specs, df_evals):
-    try:
-        stl_driver = stlrom.STLDriver()
-        stl_driver.parse_string(specs)
-        for idx in range(len(df_signals)):
-            sample = df_signals.iloc[idx].values
-            stl_driver.add_sample(sample)
-        # list of formulas
-        tester.specs = specs
-        formulas = hf.get_formulas(specs)
-
-        for f in formulas:
-            if f.startswith('phi'):
-                tester.eval_spec(f)
-        status = "STL evaluation completed"
-        df_evals = tester.evals
-    except Exception as e:
-        status = "Error: " + str(e)
-    return status, df_evals
-
+cfg_envs = rlrom.cfg_envs # load default environment configurations
 
 # create the layout
 with gr.Blocks(fill_height=True) as web_gui:
-    with gr.Row():
-        with gr.Column(scale=2) as env_col:
-            env_dropdown = gr.Dropdown(rlrom.supported_envs, label="Environment")
-            models_dropdown = gr.Dropdown([], label="Model")
+    with gr.Tabs():
+        with gr.Tab(label="Environment and Model Testing"):
+        #with gr.Column as env_col:
+            with gr.Row():
+                dropdown_env = gr.Dropdown(rlrom.supported_envs, label="Environment")
+                dropdown_source = gr.Dropdown(['Random','Manual (Random if not available)', 'Local', 'Hugging Face'], label="Model Source", scale=0.5)
+            
+            button_upload = gr.UploadButton("Upload a model file", file_count="single") 
+            dropdown_models = gr.Dropdown([], label="Model")
+                
             with gr.Row():
                 num_steps = gr.Number(value=100, label="Number of Steps")
-                seed_list = gr.Textbox(value=1, label="Seed(s)")
-                render_mode = gr.Checkbox(label="Human Render Mode")
-            run_button = gr.Button("Run")                    
-        
-        with gr.Column(scale=2) as txt_col:
-            specs = gr.Textbox(label="STL Requirement(s)",lines=5, interactive=True)
-            plot_prompt = gr.Textbox(label="Plot layout",lines=2, interactive=True)            
+                seed_list = gr.Textbox(value=0, label="Seed(s)")
+                with gr.Column():
+                    check_box_render = gr.Checkbox(label="Human Render Mode")            
+                    check_box_lazy = gr.Checkbox(label="Lazy (don't recompute seed)")            
+                
             with gr.Row():
-                button_eval = gr.Button("Eval STL Requirement(s)")                   
+                button_run = gr.Button("Run")
+                button_reset = gr.Button("Reset")
+                                
+        
+        with gr.Tab(label="Analysis"):
+        #with gr.Column(scale=2) as txt_col:
+            specs = gr.Textbox(label="Specifications",lines=10, interactive=True)
+            plot_prompt = gr.Textbox(label="Plot layout",lines=5, interactive=True)            
+            with gr.Row():
+                button_eval = gr.Button("Eval Specifications")                   
                 button_plot = gr.Button("Update Plot")
     with gr.Tabs():
-        with gr.Tab(label="Evaluation"):
-            table_evals = gr.DataFrame(row_count= (8, 'dynamic'))
+        with gr.Tab(label="Evaluations"):
+            table_evals = gr.DataFrame(row_count= (8, 'dynamic'), interactive= False)
         with gr.Tab(label="Plot"):
             with gr.Group():
                 fig = gr.Plot(scale=1000)
     
     status = gr.Textbox(label="Status", interactive=False)    
+
+    # Defines all callbacks             
+    def update_plot(specs, signals_plot_string):
+        tester.specs = specs
+        fig, status = tester.get_fig(signals_plot_string)    
+        return fig, status
+
+    def eval_stl(specs, df_evals):
+        try:
+
+            # list of formulas
+            tester.specs = specs
+            formulas = hf.get_formulas(specs)
+
+            for f in formulas:
+                if f.startswith('phi'):
+                    tester.eval_spec(f)
+            status = "STL evaluation completed"
+            df_evals = tester.evals
+        except Exception as e:
+            status = "Error: " + str(e)
+        return status, df_evals
+
+    def callback_reset_evals():
+        global reset_confirm
+        global tester    
+        if reset_confirm is False:
+            reset_confirm = True    
+            gr.Warning('This will remove all evaluations done so far. Click again I dare you.')
+            return 'Go on, click again.', tester.evals
+        else:
+            reset_confirm = False    
+            gr.Warning('You have been warned. All is lost.')
+            tester =  testers.RLModelTester()
+            return 'Good as new', tester.evals
+
+
+    def callback_source(env_name, source_type):  
+        models_list  = [ 'None']
+        status = "No models found for " + env_name
+
+        try:
+            if source_type == 'Local' and len(local_models_list) > 0:
+                models_list += local_models_list               
+                status = "Found " + str(len(local_models_list)) + " local models for " + env_name
+            elif source_type == 'Hugging Face':
+                _,hf_models = hf.find_models(env_name)       
+                models_list += hf_models
+                status = "Found " + str(len(hf_models)) + " models for " + env_name
+            elif source_type == 'Manual (Random if not available)':
+                status = "Manual mode selection. Random model will be selected if not available"
+
+            dropdown=   gr.Dropdown(choices=models_list, value="None")
+
+        except Exception as e:
+            status = "Error: " + str(e)
+            dropdown = gr.Dropdown(choices=["None"], value="None")
+
+        return [status, dropdown]
+
+
+
+    def callback_env(env_name):
+        try:         
+
+            tester.env_name = env_name
+            tester.create_env()        
+            cfg = cfg_envs[env_name]
+
+            if 'specs' in cfg:
+                specs = cfg['specs']
+            else:
+                specs = tester.get_signal_string()
+                specs = specs + default_specs
+
+            if 'plots' in cfg:
+                plot_prompt = cfg['plots']
+            else:
+                plot_prompt = ', '.join(tester.signals_names)
+                plot_prompt += default_plots
+
+            status = "Environment " + env_name + " loaded"        
+            return [
+                specs,
+                plot_prompt,
+                status,
+               ]    
+
+        except Exception as e:
+            status = "Error: " + str(e)
+            return [gr.Dropdown(
+                choices=["None"], value="None"), "","","",status] 
+
+    def callback_upload(file):
+        global local_models_list
+        local_models_list += [file.name]
+        status = "Added " + file.name
+        dropdown_models = gr.Dropdown(choices=local_models_list, value=file.name)
+
+        return  status,dropdown_models
+
+    # function for run button
+    def run(env_name,model_src, model_name, num_steps, seed_list_str, render_mode, lazy_mode):
+        print('Entering run')
+        print(tester.evals)
         
+        if render_mode: # force non lazy if human rendering
+            render_mode = "human"
+            lazy = False
+        else:
+            render_mode = None
+            lazy = lazy_mode
+        
+        try:
+            # update environment if necessary
+            if tester.env_name != env_name:
+                tester.reset()
+                tester.env_name = env_name        
+    
+            model = None
+            if model_src == 'Local':
+                model = hf.load_model(env_name=env_name, filename= model_name)    
+            elif model_src == 'Hugging Face':
+                model = hf.load_model(env_name=env_name, repo_id=model_name)
+    
+            tester.model = model
+            tester.model_id = model_name # shouldn't be necessary but            
+            seed_list = hf.parse_integer_set_spec(seed_list_str)
+    
+            for seed in seed_list:
+                tot_reward = tester.test_seed(seed, num_steps, render_mode=render_mode, lazy=lazy_mode)
+                print('seed:', seed, ' tot_reward:', tot_reward)
+    
+            status = "Test completed for " + env_name + " with model " + model_name
+            print(tester.evals.head(5))        
+            return status, tester.evals
+    
+        except Exception as e:
+            status = "Error: " + str(e)
+            return status, None
+
+
     # callbacks    
-    run_button.click(fn=run, inputs=[env_dropdown, models_dropdown, num_steps, seed_list, render_mode], outputs=[status, table_evals])
-    env_dropdown.change(update_models, env_dropdown, [models_dropdown, specs, plot_prompt, status])
+    button_run.click(fn=run, inputs=[dropdown_env, dropdown_source, dropdown_models, num_steps, seed_list, check_box_render, check_box_lazy], outputs=[status, table_evals])
+    button_upload.upload(callback_upload, button_upload, [status, dropdown_models])
+    dropdown_source.change(callback_source, [dropdown_env, dropdown_source], [status, dropdown_models])  
+    dropdown_env.change(callback_env, dropdown_env, [specs, plot_prompt, status])    
     button_plot.click(update_plot, [specs,plot_prompt], [fig, status])    
     button_eval.click(eval_stl, [specs, table_evals], [status, table_evals])
+    button_reset.click(callback_reset_evals, [], [status,table_evals])
