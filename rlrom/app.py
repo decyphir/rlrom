@@ -101,9 +101,8 @@ with gr.Blocks(fill_height=True) as web_gui:
             tester =  testers.RLModelTester()
             return 'Good as new', tester.evals
 
-
     def callback_source(env_name, source_type):  
-        models_list  = [ 'None']
+        models_list  = ['None']
         status = "No models found for " + env_name
 
         try:
@@ -124,8 +123,6 @@ with gr.Blocks(fill_height=True) as web_gui:
             dropdown = gr.Dropdown(choices=["None"], value="None")
 
         return [status, dropdown]
-
-
 
     def callback_env(env_name):
         try:         
@@ -187,6 +184,8 @@ with gr.Blocks(fill_height=True) as web_gui:
             model = None
             if model_src == 'Local':
                 model = hf.load_model(env_name=env_name, filename= model_name)    
+            elif model_src == 'Manual (Random if not available)':
+                model_name = 'Manual'    
             elif model_src == 'Hugging Face':
                 model = hf.load_model(env_name=env_name, repo_id=model_name)
     

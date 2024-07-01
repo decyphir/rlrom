@@ -47,14 +47,23 @@ class RLModelTester:
                 
 
     def configure_env(self, cfg):
+        print("Configuring env with ", cfg)
         if cfg is None:
             if self.env_name== 'highway-v0':
-                cfg = {
+                print("Highway env, default configuration")                
+                if self.model_id == 'Manual':
+                    print("Manual control")
+                    cfg = {
                     "manual_control":True,
                     "duration": 1000
-                }
-
-        if self.env is not None:
+                    }
+                else:
+                    cfg = {
+                    "manual_control":False,
+                    "duration": 1000
+                    }
+                self.env.configure(cfg)
+        elif self.env is not None:
             self.env.configure(cfg)
 
                 
@@ -103,10 +112,11 @@ class RLModelTester:
         else:
             return
 
-    def test_seed(self, seed=1, num_steps=100, render_mode=None, lazy=True):         
+    def test_seed(self, seed=0, num_steps=100, render_mode=None, lazy=True):         
         print("Testing seed ", seed, " with model ", self.model_id, " for ", num_steps, " steps", " lazy: ", lazy)                
         #print("current evals: ", self.evals)
         
+        # check if we have already run this seed with this model
         if self.evals is not None:            
             record_idx = (self.evals["seed"]==seed) & (self.evals["model_name"]==self.model_id)
             
@@ -118,12 +128,15 @@ class RLModelTester:
                     total_reward = record['total_reward'][0]
                     return total_reward            
         
+        # configure env and model TODO: this is gonna need to be one function per env
         if self.env is None or render_mode is not None:
             self.create_env(render_mode=render_mode)
 
-        # Compute the trace
-        trace= []
         obs, info = self.env.reset(seed=seed)
+        self.configure_env(cfg=None)
+
+        # Compute the trace      
+        trace= []
         time_step = 0
         total_reward = 0
 
