@@ -42,7 +42,7 @@ class RLModelTester:
                 self.record_video = True        
             else:
                 self.env = gym.make(self.env_name, render_mode=render_mode)
-                self.signals_names = envs.cfg_envs[self.env_name]['signals_names']
+                self.signals_names = envs.cfg_envs[self.env_name]['action_names']+envs.cfg_envs[self.env_name]['obs_names']+['reward']
                 self.real_time_step = envs.cfg_envs[self.env_name]['real_time_step']
                 
 

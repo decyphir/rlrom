@@ -20,7 +20,8 @@ positive_reward := reward[t]>0
 phi_ev_pos_rew := ev_[0, 100] positive_reward"""
 
 # default plots: first select trace idx 0, then plot reward and phi
-default_plots = """_tr(0)
+default_plots = """
+_tr(0)
 positive_reward, sat(positive_reward)
 phi_ev_pos_rew, sat(phi_ev_pos_rew)"""
 
@@ -32,8 +33,9 @@ with gr.Blocks(fill_height=True) as web_gui:
         with gr.Tab(label="Environment and Model Testing"):
         #with gr.Column as env_col:
             with gr.Row():
-                dropdown_env = gr.Dropdown(rlrom.supported_envs, label="Environment")
-                dropdown_source = gr.Dropdown(['Random','Manual (Random if not available)', 'Local', 'Hugging Face'], label="Model Source", scale=0.5)
+                dropdown_env = gr.Dropdown(rlrom.supported_envs, label="Environment", scale=2)
+                dropdown_source = gr.Dropdown(['Random','Manual (Random if not available)', 'Local', 'Hugging Face'], 
+                                              label="Model Source")
             
             button_upload = gr.UploadButton("Upload a model file", file_count="single") 
             dropdown_models = gr.Dropdown([], label="Model")
@@ -42,8 +44,8 @@ with gr.Blocks(fill_height=True) as web_gui:
                 num_steps = gr.Number(value=100, label="Number of Steps")
                 seed_list = gr.Textbox(value=0, label="Seed(s)")
                 with gr.Column():
-                    check_box_render = gr.Checkbox(label="Human Render Mode")            
-                    check_box_lazy = gr.Checkbox(label="Lazy (don't recompute seed)")            
+                    checkbox_render = gr.Checkbox(label="Human Render Mode")            
+                    checkbox_lazy = gr.Checkbox(label="Lazy (don't recompute seed)")            
                 
             with gr.Row():
                 button_run = gr.Button("Run")
@@ -51,7 +53,6 @@ with gr.Blocks(fill_height=True) as web_gui:
                                 
         
         with gr.Tab(label="Analysis"):
-        #with gr.Column(scale=2) as txt_col:
             specs = gr.Textbox(label="Specifications",lines=10, interactive=True)
             plot_prompt = gr.Textbox(label="Plot layout",lines=5, interactive=True)            
             with gr.Row():
@@ -207,7 +208,7 @@ with gr.Blocks(fill_height=True) as web_gui:
 
 
     # callbacks    
-    button_run.click(fn=run, inputs=[dropdown_env, dropdown_source, dropdown_models, num_steps, seed_list, check_box_render, check_box_lazy], outputs=[status, table_evals])
+    button_run.click(fn=run, inputs=[dropdown_env, dropdown_source, dropdown_models, num_steps, seed_list, checkbox_render, checkbox_lazy], outputs=[status, table_evals])
     button_upload.upload(callback_upload, button_upload, [status, dropdown_models])
     dropdown_source.change(callback_source, [dropdown_env, dropdown_source], [status, dropdown_models])  
     dropdown_env.change(callback_env, dropdown_env, [specs, plot_prompt, status])    
