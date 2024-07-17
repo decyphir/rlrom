@@ -10,6 +10,7 @@ nbformat
 ffmpeg
 moviepy
 gradio
+gradio_client
 stlrom
 gymnasium[box2d]
 gym

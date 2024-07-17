@@ -29,48 +29,55 @@ reward
 """
 
 cfg_envs['Pendulum-v1'] = {'env_name': 'Pendulum-v1',
-                'signals_names': [ "torque", "cos_theta",  "sin_theta","theta_dot","reward"],                
+                'action_names': ['torque'],
+                'obs_names': ["cos_theta",  "sin_theta","theta_dot","reward"],                
                 'specs': pendul_specs,
                 'plots': pendul_plot,
                 'real_time_step': .05}
 
 cfg_envs['CartPole-v1'] = {'env_name': 'CartPole-v1',
-                'signals_names': [ "push","cart_pos", "cart_speed", "pole_angle", "pole_speed", "reward"],
+                           'action_names': ['push'],
+                'obs_names': [ "cart_pos", "cart_speed", "pole_angle", "pole_speed"],
                 'real_time_step': .05}
                                            
 cfg_envs['MountainCar-v0'] = {'env_name': 'MountainCar-v0',
-                     'signals_names': [ "push","car_pos", "car_speed", "reward"],
+                     'action_names': ['push'],
+                     'obs_names': [ "car_pos", "car_speed"],
                      'real_time_step': 1}
 
 cfg_envs['Acrobot-v1'] = {'env_name': 'Acrobot-v1',
-                'signals_names': [ "torque", "cos_theta1",  "sin_theta1", "cos_theta2",  "sin_theta2", "theta_dot1", "theta_dot2", "reward"],
+                'action_names': ['torque'],
+                'obs_names': ["cos_theta1",  "sin_theta1", "cos_theta2",  "sin_theta2", "theta_dot1", "theta_dot2"],
                 'real_time_step': .05}
 
-
 cfg_envs['LunarLander-v2'] = {'env_name': 'LunarLander-v2',
-                    'signals_names': [ "fire", "x", "y", "x_dot", "y_dot", "angle", "angle_dot", "reward"],
+                    'action_names': ['fire'],
+                    'obs_names': ["x", "y", "x_dot", "y_dot", "angle", "angle_dot"],
                     'real_time_step': .05}
 
 cfg_envs['BipedalWalker-v3'] = {'env_name': 'BipedalWalker-v3',
-                        'signals_names': [ "x", "u", "reward"],
+                        'action_names': ['hip_torque', 'knee_torque'],
+                        'obs_names': [ "x"],
                         'real_time_step': 1.}
 
-
 cfg_envs['BipedalWalkerHardcore-v3'] = {'env_name': 'BipedalWalkerHardcore-v3',
-                                'signals_names': [ "x", "u", "reward"],
+                                'action_names': ['hip_torque', 'knee_torque'],
+                                'obs_names': [ "x", "u"],
                                 'real_time_step': 1.}
 
 cfg_envs['CarRacing-v2'] = {'env_name': 'CarRacing-v2',
-                    'signals_names': [ "x", "u", "reward"],
+                    'action_names': ['steer', 'gas', 'brake'],
+                    'obs_names': [ "x"],
                     'real_time_step': 1.}
 
 cfg_envs['LunarLanderContinuous-v2'] = {'env_name': 'LunarLanderContinuous-v2',
-                                'signals_names': [ "fire", "x", "y", "x_dot", "y_dot", "angle", "angle_dot", "reward"],
+                                'action_names': ['fire'],
+                                'obs_names': ["x", "y", "x_dot", "y_dot", "angle", "angle_dot"],
                                 'real_time_step': 1.}
 
-
 cfg_envs['MountainCarContinuous-v0'] = {'env_name': 'MountainCarContinuous-v0',
-                                'signals_names': [ "push","car_pos", "car_speed", "reward"],
+                                'action_names': ['push'],
+                                'obs_names': ["car_pos", "car_speed"],
                                 'real_time_step': 1.}
 
 # highway-env
@@ -85,11 +92,11 @@ sat(ego_slow)
 sat(ego_fast)"""
 
 cfg_envs['highway-v0'] = {'env_name': 'highway-v0',
-                'signals_names': ["action",
-                                  "ego_presence","ego_x", "ego_y", "ego_vx", "ego_vy",
+                'action_names': ['action'],
+                'obs_names': ["ego_presence","ego_x", "ego_y", "ego_vx", "ego_vy",
                                   "car1_presence","car1_x", "car1_y", "car1_vx", "car1_vy",
-                                  "car2_presence","car2_x", "car2_y", "car2_vx", "car2_vy",
-                                  "reward"],
+                                  "car2_presence","car2_x", "car2_y", "car2_vx", "car2_vy"
+                                  ],
                 'specs': highway_specs,
                 'plots': highway_plots,
                 'real_time_step': 1.}
