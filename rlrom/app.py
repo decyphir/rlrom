@@ -58,6 +58,9 @@ with gr.Blocks(fill_height=True) as web_gui:
             with gr.Row():
                 button_eval = gr.Button("Eval Specifications")                   
                 button_plot = gr.Button("Update Plot")
+    
+    textbox_status = gr.Textbox(label="Status", interactive=False)    
+
     with gr.Tabs():
         with gr.Tab(label="Evaluations"):
             dataframe_evals = gr.DataFrame(row_count= (8, 'dynamic'), interactive= False)
@@ -65,8 +68,7 @@ with gr.Blocks(fill_height=True) as web_gui:
             with gr.Group():
                 fig = gr.Plot()
     
-    textbox_status = gr.Textbox(label="Status", interactive=False)    
-
+    
     # Defines all callbacks             
     def update_plot(specs, signals_plot_string):
         tester.specs = specs
@@ -94,11 +96,11 @@ with gr.Blocks(fill_height=True) as web_gui:
         global tester    
         if reset_confirm is False:
             reset_confirm = True    
-            gr.Warning('This will remove all evaluations done so far. Click again I dare you.')
-            return 'Go on, click again.', tester.evals
+            gr.Warning('This will remove all evaluations done so far. Are you sure ?')
+            return 'Click again to confirm.', tester.evals
         else:
             reset_confirm = False    
-            gr.Warning('You have been warned. All is lost.')
+            gr.Warning('Data reset. Please refresh the page to start again.')
             tester =  testers.RLModelTester()
             return 'Good as new', tester.evals
 

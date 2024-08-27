@@ -35,9 +35,33 @@ cfg_envs['Pendulum-v1'] = {'env_name': 'Pendulum-v1',
                 'plots': pendul_plot,
                 'real_time_step': .05}
 
+
+cart_specs = """signal push, cart_pos, cart_speed, pole_angle, pole_speed, reward
+
+cart_went_right:= cart_pos[t]>.5
+cart_went_left := cart_pos[t]<-.5
+cart_went_far := cart_went_right or cart_went_left
+
+pole_went_right := pole_angle[t] > 1
+pole_went_left := pole_angle[t] <-1
+pole_went_far := pole_went_right or pole_went_left
+
+phi_ev_right := ev_[0,25] (cart_went_right)
+phi_ev_left := ev_[0,25] (cart_went_left)
+
+phi_stable_pos := alw_[0,25]  (not cart_went_far)
+phi_stable_pole := alw_[0,25] (not pole_went_far)
+"""
+
+cart_plot = """cart_pos
+pole_angle
+"""
+
 cfg_envs['CartPole-v1'] = {'env_name': 'CartPole-v1',
                            'action_names': ['push'],
                 'obs_names': [ "cart_pos", "cart_speed", "pole_angle", "pole_speed"],
+                'specs': cart_specs,
+                'plots': cart_plot,
                 'real_time_step': .05}
                                            
 cfg_envs['MountainCar-v0'] = {'env_name': 'MountainCar-v0',
