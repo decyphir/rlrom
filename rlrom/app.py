@@ -47,18 +47,17 @@ with gr.Blocks(fill_height=True) as web_gui:
                     checkbox_render = gr.Checkbox(label="Human Render Mode")            
                     checkbox_lazy = gr.Checkbox(label="Lazy (don't recompute seed)")            
                 
-            with gr.Row():
-                button_run = gr.Button("Run")
-                button_reset = gr.Button("Reset")
-                                
-        
-        with gr.Tab(label="Analysis"):
+                                    
+        with gr.Tab(label="Specifications and Plotting"):
             textbox_specs = gr.Textbox(label="Specifications",lines=10, interactive=True)
             textbox_plot_prompt = gr.Textbox(label="Plot layout",lines=5, interactive=True)            
-            with gr.Row():
-                button_eval = gr.Button("Eval Specifications")                   
-                button_plot = gr.Button("Update Plot")
     
+    with gr.Row():
+            button_run = gr.Button("Run")
+            button_reset = gr.Button("Reset")
+            button_eval = gr.Button("Eval Specifications")                   
+            button_plot = gr.Button("Update Plot")
+        
     textbox_status = gr.Textbox(label="Status", interactive=False)    
 
     with gr.Tabs():
@@ -184,19 +183,20 @@ with gr.Blocks(fill_height=True) as web_gui:
                 tester.reset()
                 tester.env_name = env_name        
     
-            model = None
-            if model_src == 'Local':
-                model = hf.load_model(env_name=env_name, filename= model_name)    
-            elif model_src == 'Manual (Random if not available)':
-                model_name = 'Manual'    
-            elif model_src == 'Hugging Face':
-                model = hf.load_model(env_name=env_name, repo_id=model_name)
     
-            tester.model = model
-            tester.model_id = model_name # shouldn't be necessary but            
             seed_list = hf.parse_integer_set_spec(seed_list_str)
     
             for seed in seed_list:
+                model = None
+                if model_src == 'Local':
+                    model = hf.load_model(env_name=env_name, filename= model_name)    
+                elif model_src == 'Manual (Random if not available)':
+                    model_name = 'Manual'    
+                elif model_src == 'Hugging Face':
+                    model = hf.load_model(env_name=env_name, repo_id=model_name)
+                tester.model = model
+                tester.model_id = model_name # shouldn't be necessary but            
+    
                 tot_reward = tester.test_seed(seed, num_steps, render_mode=render_mode, lazy=lazy_mode)
                 print('seed:', seed, ' tot_reward:', tot_reward)
     

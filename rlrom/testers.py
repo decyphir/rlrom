@@ -128,9 +128,7 @@ class RLModelTester:
                     return total_reward            
         
         # configure env and model TODO: this is gonna need to be one function per env
-        if self.env is None or render_mode is not None:
-            self.create_env(render_mode=render_mode)
-
+        self.create_env(render_mode=render_mode)
         obs, info = self.env.reset(seed=seed)
         self.configure_env(cfg=None)
 
