@@ -31,7 +31,7 @@ cfg_envs = rlrom.cfg_envs # load default environment configurations
 def update_plot(specs, signals_plot_string):
     tester.specs = specs
     fig, status = tester.get_fig(signals_plot_string)    
-    return fig, status
+    return status, fig
 
 def eval_stl(specs, df_evals):
     try:
@@ -211,6 +211,6 @@ with gr.Blocks(fill_height=True) as web_gui:
     button_upload.upload(callback_upload, button_upload, [textbox_status, dropdown_models])
     dropdown_source.change(callback_source, [dropdown_env, dropdown_source], [textbox_status, dropdown_models])  
     dropdown_env.change(callback_env, dropdown_env, [textbox_specs, textbox_plot_prompt, textbox_status])    
-    button_plot.click(update_plot, [textbox_specs,textbox_plot_prompt], [fig, textbox_status])    
+    button_plot.click(update_plot, [textbox_specs,textbox_plot_prompt], [textbox_status, fig])    
     button_eval.click(eval_stl, [textbox_specs, dataframe_evals], [textbox_status, dataframe_evals])
     button_reset.click(callback_reset_evals, [], [textbox_status,dataframe_evals])

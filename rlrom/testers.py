@@ -178,13 +178,17 @@ class RLModelTester:
 
     def add_trace(self, trace):
         if self.runs is None:
-            trace_idx=0
+            trace_idx = 0
+            self.trace_idx=0
             self.runs = [trace]
+            self.df_signals = [self.get_dataframe_from_trace()]
         else:
             self.runs += [trace]
+            df = self.get_dataframe_from_trace()
             trace_idx= len(self.runs)-1
-        return trace_idx
+            df = self.get_dataframe_from_trace(trace_idx)
 
+        return trace_idx
 
     def monitor_trace(self, phi=None):
         # reset the stl driver data
@@ -244,7 +248,6 @@ class RLModelTester:
             self.add_eval(trace_idx=idx, eval_name=phi, value=rob[0])
             idx= idx +1
         
-
     ## Helper functions
     def get_video_filename(self):
 
@@ -262,46 +265,52 @@ class RLModelTester:
         # of the form (time, obs, action, next_obs, reward) 
 
         time = np.array([trace_state[0]])
-        action = trace_state[2].flatten()
-        obs = trace_state[1].flatten()
+        try:
+            action = trace_state[2].flatten()
+        except:
+            action = trace_state[2]
+        try:    
+            obs = trace_state[1].flatten()
+        except:
+            obs = trace_state[1]
+
         reward = np.array([trace_state[4]])
 
         ss = np.concatenate((time, action, obs, reward))
         return ss
 
-    def get_dataframe_from_trace(self, signals_names=None):
-        
+    def get_dataframe_from_trace(self, trace_idx=None, signals_names=None):
+
+        if trace_idx is None:
+            trace_idx = self.trace_idx
+
         if signals_names is None:
             signals_names = self.signals_names
         elif type(signals_names) is str:
             signals_names = [signals_names]
                 
         df_signals = pd.DataFrame()
-        df_signals['time'] = self.get_time()
+        df_signals['time'] = self.get_time(trace_idx)
         for signal in signals_names:
-            df_signals[signal]= self.get_signal(signal)
+            df_signals[signal]= self.get_signal(trace_idx, signal)
         
         return df_signals
 
-    def get_time(self):
-        return [self.get_sample(trace_state)[0] for trace_state in self.runs[self.trace_idx]]   
+    def get_time(self, trace_idx=None):
+        if trace_idx is None:
+            trace_idx = self.trace_idx
+        return [self.get_sample(trace_state)[0] for trace_state in self.runs[trace_idx]]   
 
-    def get_signal(self, signal_name):
-        saved_idx =self.trace_idx
+    def get_signal(self, trace_idx=None, signal_name=''):
+        if trace_idx is None:
+            trace_idx = self.trace_idx
             
-        # checks if a trace_idx is specified
-        if signal_name.endswith(')'):            
-            self.trace_idx = int(signal_name.split('(')[1][:-1]) # TODO checks int !             
-            signal_name = signal_name.split('(')[0]
-
         if signal_name == 'reward':
-            out =[self.get_sample(trace_state)[-1] for trace_state in self.runs[self.trace_idx]]    
+            out =[self.get_sample(trace_state)[-1] for trace_state in self.runs[trace_idx]]    
         else:
             signal_index = self.signals_names.index(signal_name)
-            out = [self.get_sample(trace_state)[signal_index+1] for trace_state in self.runs[self.trace_idx]]    
-          # restore idx if needed
-        
-        self.trace_idx = saved_idx
+            out = [self.get_sample(trace_state)[signal_index+1] for trace_state in self.runs[trace_idx]]    
+ 
         return out
 
     def get_signal_string(self):
