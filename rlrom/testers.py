@@ -128,10 +128,11 @@ class RLModelTester:
                     return total_reward            
         
         # configure env and model TODO: this is gonna need to be one function per env
-        if self.env is None or render_mode is not None:
-            self.create_env(render_mode=render_mode)
+        #if self.env is None or render_mode is not None:
+        self.create_env(render_mode=render_mode)
 
         obs, info = self.env.reset(seed=seed)
+        print("seed", seed, " obs: ", obs, " info: ", info)
         self.configure_env(cfg=None)
 
         # Compute the trace      
@@ -161,14 +162,8 @@ class RLModelTester:
         
         # record the trace and init evals                
         
-        if self.runs is None:        
-            trace_idx=0
-            self.runs=[trace]
-        else:
-            trace_idx= len(self.runs)
-            self.runs += [trace]
-
-        self.runs[trace_idx] = trace        
+        trace_idx = self.add_trace(trace)
+               
         self.trace_idx = trace_idx
         new_record = pd.DataFrame({'trace_idx':trace_idx, 'env_name':self.env_name,'model_name': [self.model_id],'seed': [seed], 'total_reward': [total_reward]})
 
@@ -182,6 +177,16 @@ class RLModelTester:
     ## STL monitoring
     # For now we make a non optimal use of the stlrom library
     # whereas we create a new driver each time. 
+
+    def add_trace(self, trace):
+        if self.runs is None:
+            trace_idx=0
+            self.runs = [trace]
+        else:
+            self.runs += [trace]
+            trace_idx= len(self.runs)
+        return trace_idx
+
 
     def monitor_trace(self, phi=None):
         # reset the stl driver data

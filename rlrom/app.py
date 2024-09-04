@@ -27,6 +27,27 @@ phi_ev_pos_rew, sat(phi_ev_pos_rew)"""
 
 cfg_envs = rlrom.cfg_envs # load default environment configurations
 
+
+def update_plot(specs, signals_plot_string):
+    tester.specs = specs
+    fig, status = tester.get_fig(signals_plot_string)    
+    return fig, status
+
+def eval_stl(specs, df_evals):
+    try:
+        # list of formulas
+        tester.specs = specs
+        formulas = hf.get_formulas(specs)
+        for f in formulas:
+            if f.startswith('phi'):
+                tester.eval_spec(f)
+        status = "STL evaluation completed"
+        df_evals = tester.evals
+    except Exception as e:
+        status = "Error: " + str(e)
+    return status, df_evals
+
+
 # create the layout
 with gr.Blocks(fill_height=True) as web_gui:
     with gr.Tabs():
@@ -46,19 +67,16 @@ with gr.Blocks(fill_height=True) as web_gui:
                 with gr.Column():
                     checkbox_render = gr.Checkbox(label="Human Render Mode")            
                     checkbox_lazy = gr.Checkbox(label="Lazy (don't recompute seed)")            
-                
-            with gr.Row():
-                button_run = gr.Button("Run")
-                button_reset = gr.Button("Reset")
-                                
-        
-        with gr.Tab(label="Analysis"):
+        with gr.Tab(label="Specifications and Plotting"):
             textbox_specs = gr.Textbox(label="Specifications",lines=10, interactive=True)
             textbox_plot_prompt = gr.Textbox(label="Plot layout",lines=5, interactive=True)            
-            with gr.Row():
-                button_eval = gr.Button("Eval Specifications")                   
-                button_plot = gr.Button("Update Plot")
-    
+
+    with gr.Row():
+            button_run = gr.Button("Run")
+            button_eval = gr.Button("Eval Specs")                   
+            button_plot = gr.Button("Update Plot")
+            button_reset = gr.Button("Reset")
+                
     textbox_status = gr.Textbox(label="Status", interactive=False)    
 
     with gr.Tabs():
@@ -70,27 +88,7 @@ with gr.Blocks(fill_height=True) as web_gui:
     
     
     # Defines all callbacks             
-    def update_plot(specs, signals_plot_string):
-        tester.specs = specs
-        fig, status = tester.get_fig(signals_plot_string)    
-        return fig, status
-
-    def eval_stl(specs, df_evals):
-        try:
-
-            # list of formulas
-            tester.specs = specs
-            formulas = hf.get_formulas(specs)
-
-            for f in formulas:
-                if f.startswith('phi'):
-                    tester.eval_spec(f)
-            status = "STL evaluation completed"
-            df_evals = tester.evals
-        except Exception as e:
-            status = "Error: " + str(e)
-        return status, df_evals
-
+    
     def callback_reset_evals():
         global reset_confirm
         global tester    
@@ -184,24 +182,27 @@ with gr.Blocks(fill_height=True) as web_gui:
                 tester.reset()
                 tester.env_name = env_name        
     
-            model = None
-            if model_src == 'Local':
-                model = hf.load_model(env_name=env_name, filename= model_name)    
-            elif model_src == 'Manual (Random if not available)':
-                model_name = 'Manual'    
-            elif model_src == 'Hugging Face':
-                model = hf.load_model(env_name=env_name, repo_id=model_name)
-    
-            tester.model = model
             tester.model_id = model_name # shouldn't be necessary but            
+            
+            # read test cases 
             seed_list = hf.parse_integer_set_spec(seed_list_str)
     
+            # runs the tests
             for seed in seed_list:
+                model = None
+                if model_src == 'Local':
+                    model = hf.load_model(env_name=env_name, filename= model_name)    
+                elif model_src == 'Manual (Random if not available)':
+                    model_name = 'Manual'    
+                elif model_src == 'Hugging Face':
+                    model = hf.load_model(env_name=env_name, repo_id=model_name)
+            
+                tester.model = model
+
                 tot_reward = tester.test_seed(seed, num_steps, render_mode=render_mode, lazy=lazy_mode)
                 print('seed:', seed, ' tot_reward:', tot_reward)
     
             status = "Test completed for " + env_name + " with model " + model_name
-            print(tester.evals.head(5))        
             return status, tester.evals
     
         except Exception as e:
