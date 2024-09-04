@@ -11,7 +11,7 @@ Those are needed for building some of the required python modules:
 
 Then run the following:
 ```
-pip install -r requirements.txt
+pip install --upgrade -r requirements.txt 
 ``` 
 
 ## Running 
