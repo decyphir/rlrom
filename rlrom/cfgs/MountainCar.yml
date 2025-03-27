@@ -1,0 +1,7 @@
+env_name: "MountainCar-v0"
+action_names:
+  - push: "action[0]"
+obs_names:
+  - car_pos: "obs[0]"
+  - car_speed: "obs[1]"
+real_time_step: 1

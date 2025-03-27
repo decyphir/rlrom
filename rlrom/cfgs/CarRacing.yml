@@ -1,0 +1,8 @@
+env_name: "CarRacing-v2"
+action_names:
+  - steer: "action[0]"
+  - gas: "action[1]"
+  - brake: "action[2]"
+obs_names:
+  - x: "obs[0]"
+real_time_step: 1.0

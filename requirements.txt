@@ -19,4 +19,4 @@ gymnasium[box2d]
 gym
 bokeh
 highway-env
-simglucose
+#simglucose

@@ -1,0 +1,11 @@
+env_name: "Acrobot-v1"
+action_names:
+  - torque: "action[0]"
+obs_names:
+  - cos_theta1: "obs[0]"
+  - sin_theta1: "obs[1]"
+  - cos_theta2: "obs[2]"
+  - sin_theta2: "obs[3]"
+  - theta_dot1: "obs[4]"
+  - theta_dot2: "obs[5]"
+real_time_step: 0.05

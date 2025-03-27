@@ -1,0 +1,20 @@
+env_name: "Pendulum-v1"
+action_names:
+  - torque: "action[0]"
+obs_names:
+  - cos_theta: "obs[0]"
+  - sin_theta: "obs[1]"
+  - theta_dot: "obs[2]"
+specs: |
+  signal torque, cos_theta, sin_theta, theta_dot, reward 
+  sin_theta_small := abs(sin_theta[t]) < .2
+  cos_theta_high  := cos_theta[t] > .8 
+  up_right := sin_theta_small and cos_theta_high
+
+  goal_stable := alw_[0,1] up_right
+  phi_goal := ev_[0,4] goal_stable
+plots: |
+  torque
+  goal_stable
+  reward
+real_time_step: 0.05

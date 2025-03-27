@@ -1,0 +1,7 @@
+env_name: "BipedalWalkerHardcore-v3"
+action_names:
+  - hip_torque: "action[0]"
+  - knee_torque: "action[1]"
+obs_names:
+  - x: "obs[0]"
+real_time_step: 1.0
