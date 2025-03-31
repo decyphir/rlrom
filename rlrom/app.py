@@ -51,10 +51,10 @@ def eval_stl(specs, df_evals):
 # create the layout
 with gr.Blocks(fill_height=True) as web_gui:
     with gr.Tabs():
-        with gr.Tab(label="Environment and Model Testing"):
+        with gr.Tab(label="Configuration and Model Testing"):
         #with gr.Column as env_col:
             with gr.Row():
-                dropdown_env = gr.Dropdown(rlrom.supported_envs, label="Environment", scale=2)
+                dropdown_cfg = gr.Dropdown(['']+rlrom.supported_envs, label="Configuration", scale=2)
                 dropdown_source = gr.Dropdown(['Random','Manual (Random if not available)', 'Local', 'Hugging Face'], 
                                               label="Model Source")
             
@@ -124,13 +124,12 @@ with gr.Blocks(fill_height=True) as web_gui:
 
         return [status, dropdown]
 
-    def callback_env(env_name):
+    def callback_env(cfg_name):
+        global tester
         try:         
-
-            tester.env_name = env_name
-            tester.create_env()        
-            cfg = cfg_envs[env_name]
-
+            cfg = cfg_envs[cfg_name]
+            tester = rlrom.RLModelTester(cfg)
+            
             if 'specs' in cfg:
                 specs = cfg['specs']
             else:
@@ -143,7 +142,7 @@ with gr.Blocks(fill_height=True) as web_gui:
                 plot_prompt = ', '.join(tester.signals_names)
                 plot_prompt += default_plots
 
-            status = "Environment " + env_name + " loaded"        
+            status = "Configuration " + cfg + " loaded"        
             return [
                 specs,
                 plot_prompt,
@@ -207,10 +206,10 @@ with gr.Blocks(fill_height=True) as web_gui:
 
 
     # callbacks    
-    button_run.click(fn=run, inputs=[dropdown_env, dropdown_source, dropdown_models, num_steps, seed_list, checkbox_render, checkbox_lazy], outputs=[textbox_status, dataframe_evals])
+    button_run.click(fn=run, inputs=[dropdown_cfg, dropdown_source, dropdown_models, num_steps, seed_list, checkbox_render, checkbox_lazy], outputs=[textbox_status, dataframe_evals])
     button_upload.upload(callback_upload, button_upload, [textbox_status, dropdown_models])
-    dropdown_source.change(callback_source, [dropdown_env, dropdown_source], [textbox_status, dropdown_models])  
-    dropdown_env.change(callback_env, dropdown_env, [textbox_specs, textbox_plot_prompt, textbox_status])    
+    dropdown_source.change(callback_source, [dropdown_cfg, dropdown_source], [textbox_status, dropdown_models])  
+    dropdown_cfg.change(callback_env, dropdown_cfg, [textbox_specs, textbox_plot_prompt, textbox_status])    
     button_plot.click(update_plot, [textbox_specs,textbox_plot_prompt], [textbox_status, fig])    
     button_eval.click(eval_stl, [textbox_specs, dataframe_evals], [textbox_status, dataframe_evals])
     button_reset.click(callback_reset_evals, [], [textbox_status,dataframe_evals])

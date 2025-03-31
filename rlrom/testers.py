@@ -16,10 +16,11 @@ import itertools
 
 class RLModelTester:
     
-    def __init__(self, env_name=None, model=None):
+    def __init__(self, env_name=None, model=None, cfg={}):
         self.reset()
         self.env_name = env_name
         self.model = model
+        self.cfg = cfg
                 
     def reset(self):
         self.env = None
@@ -174,7 +175,7 @@ class RLModelTester:
 
     ## STL monitoring
     # For now we make a non optimal use of the stlrom library
-    # whereas we create a new driver each time. 
+    # wherein we create a new driver each time. 
 
     def add_trace(self, trace):
         if self.runs is None:

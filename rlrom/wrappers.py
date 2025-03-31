@@ -10,12 +10,12 @@ class STLWrapper(gym.Wrapper):
     def __init__(self,env,stl_driver,formulas=[], horizon=[],signals_map={}, terminal_formulas=[]):
         gym.Wrapper.__init__(self, env)
         self.env = env
-        self.timestep = 0
-        
+        self.real_time_step = 1
+        self.time_step = 0        
         self.stl_driver = stl_driver                        
         self.formulas = formulas
-
         self.horizon=horizon
+
         if horizon==[]:
             self.horizon=[0]*len(self.formulas)
         
@@ -44,6 +44,11 @@ class STLWrapper(gym.Wrapper):
                 for o in signals_map['obs_names']:
                     o_name,o_ref = next(iter(o.items()))
                     self.signals_map[o_name]=o_ref
+            if 'aux_sig_names' in signals_map:
+                for o in signals_map['aux_sig_names']:
+                    o_name,o_ref = next(iter(o.items()))
+                    self.signals_map[o_name]=o_ref
+
             self.signals_map['reward'] = 'reward'
         else: # assumes all is fine (TODO? catch bad signals_map here)    
             self.signals_map=signals_map
@@ -72,7 +77,7 @@ class STLWrapper(gym.Wrapper):
         idx_formula = 0
         rob = [0]*len(self.formulas)
         for f in self.formulas:
-           t0_f = max(0, self.timestep-self.horizon[idx_formula])
+           t0_f = max(0, self.time_step-self.horizon[idx_formula])
            robs_f = self.stl_driver.get_online_rob(f, t0_f)
            rob[idx_formula] = robs_f[0] # forget about low and high rob for now     
         
@@ -85,7 +90,7 @@ class STLWrapper(gym.Wrapper):
                print('Terminal Formula ', f, ' is true, episode is done.') 
 
         # update current time
-        self.timestep += 1
+        self.time_step += 1
         self.prev_obs = obs
         
         # return obs with added robustness
@@ -95,10 +100,9 @@ class STLWrapper(gym.Wrapper):
         if terminated: self.env.reset()
         return new_obs, new_reward, terminated, truncated, info
 
-    
     def get_sample(self,obs,action,reward):        
         s = np.zeros(len(self.signals_map)+1)
-        s[0] = self.timestep
+        s[0] = self.time_step*self.real_time_step
         i_sig = 0
         for key, value in self.signals_map.items():
             i_sig = i_sig+1
@@ -106,7 +110,7 @@ class STLWrapper(gym.Wrapper):
         return s
 
     def reset(self, **kwargs):
-        self.timestep = 0
+        self.time_step = 0
         obs0, info = self.env.reset(**kwargs)
         self.prev_obs = obs0
         
@@ -128,7 +132,6 @@ class STLWrapper(gym.Wrapper):
     def seed(self, seed):
         return self.env.reset(seed=seed)
     
-
     def plot_signal(self, signal, fig=None,label=None,  color=None, online=False, horizon=0, linestyle='-'):
     # signal should be part of the "signal" declaration or a valid formula id 
      

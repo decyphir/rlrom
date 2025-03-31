@@ -7,7 +7,9 @@ supported_models = ['ppo', 'a2c', 'sac', 'td3', 'dqn', 'qrdqn', 'ddpg', 'trpo']
 
 cfg_envs = {}
 
-dir_cfgs = '../rlrom/cfgs/'
+current_dir = os.path.dirname(os.path.abspath(__file__))
+dir_cfgs = os.path.join(current_dir, '../rlrom/cfgs/')
+
 list=  os.listdir(dir_cfgs)
 cfg_envs = {}
 for c in list:
