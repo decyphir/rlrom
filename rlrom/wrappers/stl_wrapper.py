@@ -68,6 +68,9 @@ class STLWrapper(gym.Wrapper):
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
         
+        # store wrapped obs
+        self.wrapped_obs = obs
+
         # collect the sample for monitoring 
         s = self.get_sample(self.prev_obs, action, reward) 
         
@@ -91,12 +94,13 @@ class STLWrapper(gym.Wrapper):
 
         # update current time
         self.time_step += 1
-        self.prev_obs = obs
+        
         
         # return obs with added robustness
         new_obs = np.append(obs, rob)
         new_reward = reward                 
-        
+        self.prev_obs = new_obs
+
         if terminated: self.env.reset()
         return new_obs, new_reward, terminated, truncated, info
 
@@ -112,11 +116,11 @@ class STLWrapper(gym.Wrapper):
     def reset(self, **kwargs):
         self.time_step = 0
         obs0, info = self.env.reset(**kwargs)
-        self.prev_obs = obs0
+        self.wrapped_obs = obs0
         
         robs0 = self.reset_monitor(obs0)
         obs = np.append(obs0, robs0)
-        #obs = np.concatenate((obs0, robs0))
+        self.prev_obs = obs
         return obs, info
 
     def reset_monitor(self, obs0):        
@@ -219,7 +223,6 @@ class STLWrapper(gym.Wrapper):
             rob[step] = monitor.eval_rob(t0)
             step= step+1
         return rob
-
 
 
 

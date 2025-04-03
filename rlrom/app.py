@@ -151,8 +151,8 @@ with gr.Blocks(fill_height=True) as web_gui:
 
         except Exception as e:
             status = "Error: " + str(e)
-            return [gr.Dropdown(
-                choices=["None"], value="None"), "","","",status] 
+            return ['','',status]
+            #return [gr.Dropdown(choices=["None"], value="None"), "","","",status] 
 
     def callback_upload(file):
         global local_models_list
