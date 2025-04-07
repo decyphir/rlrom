@@ -1,8 +1,9 @@
 env_name: "highway-v0"
 action_names:
-  - action: "action[0]"
+  - action: "action"
 obs_names:
   - ego_presence: "obs[0]"
+  - ego_x: "obs[1]"
   - ego_y: "obs[2]"
   - ego_vx: "obs[3]"
   - ego_vy: "obs[4]"

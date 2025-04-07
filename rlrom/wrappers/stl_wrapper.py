@@ -3,7 +3,10 @@ from gymnasium import spaces
 import numpy as np
 import stlrom
 import matplotlib.pyplot as plt
-
+from bokeh.models.annotations import Title
+from bokeh.layouts import gridplot
+from bokeh.plotting import figure, show
+from bokeh.palettes import Dark2_5 as palette
 
 class STLWrapper(gym.Wrapper):
     
@@ -110,6 +113,7 @@ class STLWrapper(gym.Wrapper):
         i_sig = 0
         for key, value in self.signals_map.items():
             i_sig = i_sig+1
+            #print(key, value)
             s[i_sig] = eval(value) 
         return s
 
@@ -165,17 +169,17 @@ class STLWrapper(gym.Wrapper):
                raise ValueError(f"Name '{signal}' not in signals_map nor in parsed formulas")
 
         if fig is None:
-            fig = plt.figure(figsize=(15, 5)).gca()
+             fig = figure(height=200)
 
         fig.set_xlabel('Time')
         fig.grid(True)
 
-        fig.plot(time, sig_values)
+        fig.step(time, sig_values)
         if color is None:
-            l, = fig.plot(time, sig_values, label=label,linestyle=linestyle)
+            l, = fig.step(time, sig_values, label=label,linestyle=linestyle)
             color = l.get_color()
         else:
-            l = fig.plot(time, sig_values, color=color,linestyle=linestyle)
+            l = fig.step(time, sig_values, color=color,linestyle=linestyle)
         
         if label is not None:
             l.set_label(label)

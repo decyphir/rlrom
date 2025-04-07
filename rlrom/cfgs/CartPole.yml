@@ -1,6 +1,6 @@
 env_name: "CartPole-v1"
 action_names:
-  - push: "action[0]"
+  - push: "action"
 obs_names:
   - cart_pos: "obs[0]"
   - cart_speed: "obs[1]"

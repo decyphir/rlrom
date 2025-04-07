@@ -1,6 +1,6 @@
 env_name: "LunarLander-v2"
 action_names:
-  - fire: ""
+  - fire: "action"
 obs_names:
   - x: "obs[0]"
   - y: "obs[1]"

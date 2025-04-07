@@ -1,6 +1,6 @@
 env_name: "MountainCarContinuous-v0"
 action_names:
-  - push: "action[0]"
+  - push: "action"
 obs_names:
   - car_pos: "obs[0]"
   - car_speed: "obs[1]"
