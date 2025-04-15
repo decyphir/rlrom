@@ -88,12 +88,15 @@ class STLWrapper(gym.Wrapper):
            rob[idx_formula] = robs_f[0] # forget about low and high rob for now     
         
         for f in self.terminal_formulas:
-            #print('checking terminal formula:', f)
             t0_f = 0
             robs_f = self.stl_driver.get_online_rob(f, t0_f)
-            if robs_f[1]>0:
-               terminated = True
-               print('Terminal Formula ', f, ' is true, episode is done.') 
+            
+            #if self.time_step >20 and self.time_step % 5 == 0:
+            #    print('t,rob:',self.time_step,robs_f[1])
+
+            if robs_f[1] > 0:
+                print('Episode terminated because of formula', f)
+                terminated = True
 
         # update current time
         self.time_step += 1
