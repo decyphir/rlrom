@@ -154,13 +154,9 @@ class STLWrapper(gym.Wrapper):
         if signal in self.signals_map:
             signal_index = list(self.signals_map.keys()).index(signal)+1        
             sig_values = [s[signal_index] for s in self.stl_driver.data]
-            if label is None:
-                label=signal
         elif signal in self.formulas:
             sig_values = self.get_rob(signal, online=online,horizon=horizon)
             signal_index = self.formulas.index(signal)+len(self.signals_map)        
-            if label is None:
-                label=signal
         elif isinstance(signal, np.ndarray) and signal.shape == (len(self.get_time()),):
             sig_values = signal
         elif isinstance(signal, stlrom.Signal):
@@ -184,8 +180,10 @@ class STLWrapper(gym.Wrapper):
         else:
             l = fig.step(time, sig_values, color=color,linestyle=linestyle)
         
-        if label is not None:
-            l.set_label(label)
+        if label is None:
+            label=signal
+            
+        l.set_label(label)
         fig.legend()
 
         return fig
