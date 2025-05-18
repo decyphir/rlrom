@@ -4,7 +4,26 @@ from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
 import re
+import yaml
+import os
 
+# load cfg recursively 
+def load_cfg(file_path, verbose=1):
+    def recursive_load(cfg):
+        for key, value in cfg.items():
+            if key.startswith('cfg_') and isinstance(value, str) and value.endswith('.yml'):
+                if verbose>=1:
+                    print('loading field [', key, '] from file [', value, ']')
+                if os.path.exists(value):
+                    with open(value, 'r') as f:                        
+                        cfg[key] = recursive_load(yaml.safe_load(f))
+                else:
+                    cfg[key] = value
+                    print('WARNING: file', value,'not found!')
+        return cfg
+
+    with open(file_path, 'r') as f:
+        return recursive_load(yaml.safe_load(f))
 
 def load_ppo_model(env_name, repo_id, filename=None):
     if filename is None:

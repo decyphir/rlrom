@@ -1,0 +1,4 @@
+stl_mode: None
+model_path: ./models
+model_name: ppo_hw_van_high_col.zip
+cfg_hw_env: cfg_hwfagefz.yml

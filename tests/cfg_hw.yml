@@ -1,0 +1,22 @@
+observation:
+  type: Kinematics
+action:
+  type: DiscreteMetaAction
+lanes_count: 4
+vehicles_count: 50
+controlled_vehicles: 1
+initial_lane_id: null
+duration: 100
+ego_spacing: 2
+vehicles_density: 1
+collision_reward: -2.
+right_lane_reward: 0.
+high_speed_reward: 1.0
+lane_change_reward: 0
+reward_speed_range:
+- 20
+- 30
+
+# this is some comment haha
+normalize_reward: true
+offroad_terminal: false
