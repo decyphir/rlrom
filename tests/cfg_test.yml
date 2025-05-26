@@ -1,0 +1,5 @@
+plots: |
+  _tr(0)
+  ego_vx
+  sat(ego_slow)
+  sat(ego_fast)

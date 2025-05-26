@@ -8,7 +8,7 @@ import yaml
 import os
 
 # load cfg recursively 
-def load_cfg(file_path, verbose=1):
+def load_cfg(cfg, verbose=1):
     def recursive_load(cfg):
         for key, value in cfg.items():
             if key.startswith('cfg_') and isinstance(value, str) and value.endswith('.yml'):
@@ -22,9 +22,30 @@ def load_cfg(file_path, verbose=1):
                     print('WARNING: file', value,'not found!')
         return cfg
 
-    with open(file_path, 'r') as f:
-        return recursive_load(yaml.safe_load(f))
+    if isinstance(cfg, str) and os.path.exists(cfg):
+        with open(cfg, 'r') as f:
+            cfg= yaml.safe_load(f)
+    elif not isinstance(cfg, dict): 
+        raise TypeError(f"Expected file name or dict.")
+    
+    return recursive_load(cfg)
 
+
+def get_model_fullpath(cfg):
+    # returns absolute path for model, as well as for yaml config (may not exist yet)
+    model_path = cfg['cfg_train'].get('model_path', './models')
+    model_name = cfg['cfg_train'].get('model_name', 'ppo_model')
+    full_path = os.path.join(model_path, model_name+'.zip')
+
+    if not os.path.exists(full_path):
+        print(f"WARNING: Path does not exist: {full_path}")
+    else:
+        full_path= os.path.abspath(full_path)
+    
+    return full_path, full_path.replace('.zip', '.yml')
+
+
+        
 def load_ppo_model(env_name, repo_id, filename=None):
     if filename is None:
         filename = ModelName('ppo', env_name)+'.zip'
