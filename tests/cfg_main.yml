@@ -1,4 +1,4 @@
-stl_mode: None
-model_path: ./models
-model_name: ppo_hw_van_high_col.zip
-cfg_hw_env: cfg_hwfagefz.yml
+exp_type: vanilla
+cfg_env: cfg_env.yml
+cfg_train: cfg_train.yml
+cfg_specs: cfg_specs.yml

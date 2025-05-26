@@ -68,7 +68,6 @@ class RLModelTester:
 
                 
 ## Manage models
-
     def find_hf_models(self):
         _,models=  utils.find_models(self.env_name)
         

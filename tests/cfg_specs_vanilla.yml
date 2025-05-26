@@ -40,9 +40,4 @@ specs: |
   ego_fast:= ego_vx[t] > v_fast
   ego_slow_too_long := ev_[0, 1000] (alw_[0,20] (ego_slow))
   
-plots: |
-  _tr(0)
-  ego_vx
-  sat(ego_slow)
-  sat(ego_fast)
 real_time_step: 1.0
