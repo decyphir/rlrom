@@ -6,6 +6,7 @@ from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepo
 import re
 import yaml
 import os
+import numpy as np
 
 # load cfg recursively 
 def load_cfg(cfg, verbose=1):
@@ -29,6 +30,52 @@ def load_cfg(cfg, verbose=1):
         raise TypeError(f"Expected file name or dict.")
     
     return recursive_load(cfg)
+
+def get_episodes_from_rollout(buffer):
+# Takes a rollout buffer as produced by PPO and returns a list of complete episodes     
+    episodes = []
+    for env_idx in range(buffer.n_envs):
+        env_dones = buffer.episode_starts[:, env_idx] # dones flags for each steps
+
+        sz = np.shape(buffer.observations)        
+        if sz[0]==buffer.buffer_size:
+            env_obs = buffer.observations[:, env_idx]  # All steps for this env
+        else:
+            start_idx_env = env_idx*buffer.buffer_size 
+            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
+            env_obs = buffer.observations[start_idx_env:end_idx_env]  # All steps for this env
+        
+        sz = np.shape(buffer.actions)        
+        if sz[0]==buffer.buffer_size:            
+            env_actions = buffer.actions[:, env_idx]  # All actions for this env            
+        else:
+            start_idx_env = env_idx*buffer.buffer_size 
+            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
+            env_actions = buffer.actions[start_idx_env:end_idx_env]  # All actions for this env
+
+        sz = np.shape(buffer.rewards)        
+        if sz[0]==buffer.buffer_size:            
+            env_rewards = buffer.rewards[:, env_idx]  # All rewards for this env            
+        else:
+            start_idx_env = env_idx*buffer.buffer_size 
+            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
+            env_rewards = buffer.rewards[start_idx_env:end_idx_env]  # All actions for this env
+            
+        
+        # Split into episodes based on done flags
+        episode_start = 0                
+        for step in range(len(env_dones)):
+            episode = dict()
+            if env_dones[step] and step > 0:  # found episode boundary
+                episode['obs'] = env_obs[episode_start:step]                
+                episode['actions'] = env_actions[episode_start:step]                
+                episode['rewards'] = env_rewards[episode_start:step]                
+                episode['dones'] = env_dones[episode_start:step]                
+                episodes.append(episode)
+                episode_start = step                        
+        # note we only want complete episodes, so we drop the last observations for each batch, if they don't end with a done
+
+    return episodes
 
 
 def get_model_fullpath(cfg):
@@ -210,22 +257,6 @@ def find_models(env_name):
     models = list(models_iter)
     return models, [model.modelId for model in models]
 
-
-def get_layout_from_string(signals_layout):
-    out = []
-    # split signals string wrt linebreaks first
-    signals_rows = signals_layout.splitlines()
-
-    # then strip and split wrt commas
-    for line in signals_rows:        
-        if line.strip() == '':
-            continue
-        else:
-            out_row = re.findall(r'\b[A-Za-z_][A-Za-z0-9_]*\b(?:\([^)]*\))?', line)            
-            out.append(out_row)        
-
-    return out            
-
 def parse_signal_spec(signal):
     # extract sig_name and args from signal_name(args)
     signal = signal.split('(')
@@ -259,3 +290,9 @@ def parse_integer_set_spec(str):
                 range_idx = [ idx for idx in range(int(l),int(h)+1) ]
                 idx_out = idx_out+range_idx
     return idx_out                
+
+def get_symmetric_max(sig):
+    npsig= np.array(sig)
+    max_pos = npsig.max()
+    min_neg = -npsig.min()
+    return max(max_pos,min_neg)

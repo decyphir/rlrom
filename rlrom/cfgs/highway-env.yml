@@ -35,11 +35,12 @@ specs: |
          car3_presence, car3_x, car3_y, car3_vx, car3_vy, 
          car4_presence, car4_x, car4_y, car4_vx, car4_vy, 
          reward
-  param v_slow=.3, v_fast=.35
+  param v_slow=22, v_fast=28
   ego_slow := ego_vx[t] < v_slow
   ego_fast:= ego_vx[t] > v_fast
   ego_slow_too_long := ev_[0, 1000] (alw_[0,20] (ego_slow))
-  
+  car1_close := car1_x[t] < .1
+
 plots: |
   _tr(0)
   ego_vx

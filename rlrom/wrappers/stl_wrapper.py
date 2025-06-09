@@ -111,6 +111,7 @@ class STLWrapper(gym.Wrapper):
         return new_obs, new_reward, terminated, truncated, info
 
     def get_sample(self,obs,action,reward):        
+        # get a sample for stl driver, converts obs, action,reward into (t, signals_values)
         s = np.zeros(len(self.signals_map)+1)
         s[0] = self.time_step*self.real_time_step
         i_sig = 0
@@ -143,29 +144,30 @@ class STLWrapper(gym.Wrapper):
     def seed(self, seed):
         return self.env.reset(seed=seed)
     
-    def plot_signal(self, signal, fig=None,label=None,  color=None, online=False, horizon=0, linestyle='-'):
+    def plot_signal(self, signal, fig=None,label=None,  color=None, online=False, horizon=0, linestyle='-', booleanize=False):
     # signal should be part of the "signal" declaration or a valid formula id 
      
         if self.stl_driver.data == []:
             raise ValueError("No data to plot.")
                  
         time = self.get_time()
-
-        if signal in self.signals_map:
-            signal_index = list(self.signals_map.keys()).index(signal)+1        
-            sig_values = [s[signal_index] for s in self.stl_driver.data]
-        elif signal in self.formulas:
-            sig_values = self.get_rob(signal, online=online,horizon=horizon)
-            signal_index = self.formulas.index(signal)+len(self.signals_map)        
-        elif isinstance(signal, np.ndarray) and signal.shape == (len(self.get_time()),):
-            sig_values = signal
-        elif isinstance(signal, stlrom.Signal):
-            pass
-        else:
-            try:
+        sig_values = self.get_sig(signal)
+        if sig_values is None:
+            if signal in self.formulas:
                 sig_values = self.get_rob(signal, online=online,horizon=horizon)
-            except Exception as e:
-               raise ValueError(f"Name '{signal}' not in signals_map nor in parsed formulas")
+                signal_index = self.formulas.index(signal)+len(self.signals_map)        
+            elif isinstance(signal, np.ndarray) and signal.shape == (len(self.get_time()),):
+                sig_values = signal
+            elif isinstance(signal, stlrom.Signal):
+                pass
+            else:
+                try:
+                    sig_values = self.get_rob(signal, online=online,horizon=horizon)
+                except Exception as e:
+                    raise ValueError(f"Name '{signal}' not in signals_map nor in parsed formulas")
+
+        if booleanize:
+            sig_values = (sig_values >0).astype(int)
 
         if fig is None:
              fig = figure(height=200)
@@ -194,6 +196,43 @@ class STLWrapper(gym.Wrapper):
         
         return [s[0] for s in self.stl_driver.data]
         
+    def get_sig(self, sig_name):
+        sig = None
+        if sig_name in self.signals_map:
+            signal_index = list(self.signals_map.keys()).index(sig_name)+1        
+            sig = [s[signal_index] for s in self.stl_driver.data]
+        return sig
+
+    def get_values_from_str(self, str):
+        sig_type = 'val'
+        env_signal_names = self.signals_map.keys()
+                    
+        if str in env_signal_names or str.split('(')[0] in env_signal_names:                        
+            sig_val = self.get_sig(str)                        
+        elif str.startswith('rho(') or str.startswith('rob('):
+            arg_rho = str.split('(')[1][:-1]
+            arg_rho = arg_rho.split(',')            
+            hor = 0            
+            phi = arg_rho[0]
+            if len(arg_rho)>1:                          
+                hor = -float(arg_rho[1])            
+            sig_val = self.get_rob(phi, horizon=hor, online=False)                                                                                                
+            sig_type = 'rob'
+        elif str.startswith('sat('):
+            arg_rho = str.split('(')[1][:-1]
+            arg_rho = arg_rho.split(',')
+            hor = 0
+            phi = arg_rho[0]
+            if len(arg_rho)>1:                
+                hor = -float(arg_rho[1])
+            sig_val = self.get_rob(phi, horizon=hor, online=False)
+            sig_val = (sig_val >0).astype(int)         
+            sig_type = 'sat'
+        else: # try implicit rho(str), i.e., str is a formula name
+            sig_val = self.get_rob(str, online=False)                                                                                            
+            sig_type = 'rob'                        
+        
+        return sig_val, sig_type
 
     def get_rob(self, formula, horizon=None, online=True):
     # Compute robustness signal. If online is true, then 

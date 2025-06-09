@@ -1,18 +1,25 @@
-from context import *
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
-import rlrom.wrappers.stl_wrapper
 import stlrom
+from rlrom.wrappers.stl_wrapper import STLWrapper
+
 from rlrom.envs import *
-import rlrom.utils
+import rlrom.utils as utils
 import time
 import matplotlib.pyplot as plt
 import highway_env  # noqa: F401
+import rlrom.trainers as trainers
 
-
+from pprint import pprint
+import numpy as np
 
 cfg=dict()
 cfg['exp_type'] = 'vanilla'; # type of experiment 'vanilla' for normal reward and environment 
@@ -28,73 +35,72 @@ def init_cfg_train():
 cfg['cfg_train'] = init_cfg_train()
 
 
-def train_ppo(cfg):
-    cfg = utils.load_cfg(cfg)    
-    
+# Instantiate environment
+def make_train_env(cfg):
     # env configuration
-    cfg_env = cfg['cfg_env']        
     
+    cfg_env = cfg['cfg_env']            
     if cfg_env.get('manual_control', False):
         print("WARNING: manual_control was set to True. I'm setting it back to False")
-        cfg_env['manual_control'] = False
-
-    # hyperparams, training configuration
-    cfg_train = cfg['cfg_train']        
-    n_envs = cfg_train['n_envs']
-    batch_size = cfg_train['batch_size']
-    neurons = cfg_train['neurons']
-    learning_rate = cfg_train.get('learning_rate', 5e-4)
-    total_timesteps = cfg_train['total_timesteps']    
-    model_name = cfg_train['model_name']
-    tb_dir= cfg_train.get('model_path/tb_logs/','./tb_logs/')        
-    tb_prefix =  f"{model_name}_{int(time.time())}"
-
-    policy_kwargs = dict(
-      #activation_fn=th.nn.ReLU,
-      net_arch=dict(pi=[neurons, neurons], qf=[neurons, neurons])
-    )
-
-    # Instantiate environment
-    def make_env():
-        env = gym.make("highway-fast-v0")
-        env.unwrapped.configure(cfg_env)
-        #if env_mode==EnvMode.TERM_SLOW:
-    #    cfg = cfg_envs['highway-env']
-    #    driver= stlrom.STLDriver()
-    #    driver.parse_string(cfg['specs'])        
-    #    env = rlrom.wrappers.stl_wrapper.STLWrapper(env,driver,signals_map=cfg, terminal_formulas={'ego_slow_too_long'}        
-        return env
-    env = make_vec_env(make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
-
-    # Instantiate model
-    model = PPO("MlpPolicy",env,
-     device='cpu',
-     policy_kwargs=policy_kwargs,
-     n_steps=batch_size * 12 // n_envs,
-     batch_size=batch_size,
-     n_epochs=10,
-     learning_rate=learning_rate,
-     gamma=0.9,
-     verbose=1,
-     tensorboard_log=tb_dir
-    )
-
-    # Train the agent
-    model.learn(
-      total_timesteps=total_timesteps,
-      progress_bar=True,
-      tb_log_name=tb_prefix
-    )
-
-    # Saving the agent
-    model_name, cfg_name = utils.get_model_fullpath(cfg)
-    model.save(model_name) #TODO try except 
-    with open(cfg_name,'w') as f:
-         yaml.safe_dump(cfg, f)
+        cfg_env['manual_control'] = False    
+    env = gym.make("highway-fast-v0")    
+    env.unwrapped.configure(cfg_env)
     
-    return model
+    # STL wrapper TODO
+    if cfg['exp_type']=='stl_term':
+        cfg_specs = cfg.get('cfg_specs')
+        driver= stlrom.STLDriver()
+        driver.parse_string(cfg_specs['specs'])        
+        env = STLWrapper(env,driver,signals_map=cfg_specs, terminal_formulas=['phi_term'])
+            
+    return env
+    
+class HwEnvTestCallback(BaseCallback):
+    def __init__(self, verbose=0, cfg=cfg):
+        super().__init__(verbose)
+        self.cfg = cfg
+        self.custom_rollout_metric=0
+        self.is_vanilla =  cfg['exp_type']=='vanilla'
 
-class Tester: 
+    def _on_step(self):
+        return True
+    
+    def _on_rollout_end(self):
+        # Access the rollout buffer
+        buffer = self.model.rollout_buffer
+        episodes = utils.get_episodes_from_rollout(buffer)
+        num_ep = len(episodes)
+
+        print('Number of episodes:', num_ep )
+        
+        v_mean = []
+        v_sum = []
+        for i in range(0,num_ep):
+            print('----------------------------------------------------')
+            print('EPISODE ', i)            
+            obs = episodes[i]['obs']
+            v =[]            
+
+            if self.is_vanilla:                        
+                for o in obs:        
+                    v.append(80*o[0,3])
+            else:
+                for o in obs:        
+                    v.append(80*o[3])
+
+            print(v)
+            print('mean v:',np.mean(v) )
+            v_mean.append(np.mean(v))
+            v_sum.append(np.sum(v))
+
+        print('mean ego_vx:', v_mean)
+        print('sum ego_vx:', v_sum)           
+    
+        self.logger.record("eval/mean_velocity", np.mean(v_mean))
+        self.logger.record("eval/mean_final_dist", np.mean(v_sum))
+        return True
+
+class HwEnvTester: 
     def __init__(self,cfg):
         cfg_env = cfg['cfg_env']
         self.manual_control = True
@@ -111,22 +117,25 @@ class Tester:
         env = gym.make("highway-v0", render_mode='human')
         env.unwrapped.configure(cfg_env)
 
-        # wrap env with stl_wrapper. We'll have to check if not done already
+        # wrap env with stl_wrapper. We'll have to check if not done already        
         cfg_specs = cfg.get('cfg_specs')
         driver= stlrom.STLDriver()
         driver.parse_string(cfg_specs['specs'])        
-        env = rlrom.wrappers.stl_wrapper.STLWrapper(env,driver,signals_map=cfg_specs)
+        env = STLWrapper(env,driver,signals_map=cfg_specs)
         
         self.cfg = cfg
         self.model=model
-        self.env= env
+        self.env= env        
+        self.agent_is_vanilla = cfg['exp_type']=='vanilla'
+
+    def get_action(self, obs):        
+        if self.agent_is_vanilla:   # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action
+            obs = self.env.wrapped_obs
         
-    def get_action(self):
-        wobs = self.env.wrapped_obs
         if self.manual_control is True:
             action = self.env.action_space.sample()
         else:
-            action, _ = self.model.predict(wobs)
+            action, _ = self.model.predict(obs)
         return action
 
     def run_seed(self, seed=None, num_steps=100):
@@ -135,14 +144,13 @@ class Tester:
         else:
             obs, info = self.env.reset()        
         for _ in range(num_steps):    
-            action = self.get_action()
+            action = self.get_action(obs)
             obs, reward, terminated, truncated, info = self.env.step(action)    
             if terminated:
                 print('Crash')
                 break    
         self.env.close()
         return 
-
 
 if __name__ == "__main__":
     # train_highway_env cfg_main.yml [--cfg-train cfg_train.yml]    
@@ -174,4 +182,13 @@ if __name__ == "__main__":
         else:
             print(f"Warning: Training config file {args.cfg_train} not found.")
     pprint(custom_cfg)
-    train_ppo(custom_cfg)
+    
+
+    make_env= lambda: make_train_env(custom_cfg)
+
+    # Callback(s)
+    callbacks = CallbackList([
+        HwEnvTestCallback(verbose=1, cfg=custom_cfg),        
+    ])
+
+    trainers.train_ppo(custom_cfg,make_env, callbacks)

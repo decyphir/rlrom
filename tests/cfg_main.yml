@@ -1,4 +1,5 @@
-exp_type: vanilla
+#exp_type: vanilla
+exp_type: stl_term
 cfg_env: cfg_env.yml
 cfg_train: cfg_train.yml
 cfg_specs: cfg_specs.yml
