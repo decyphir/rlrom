@@ -10,17 +10,14 @@ from bokeh.palettes import Dark2_5 as palette
 
 class STLWrapper(gym.Wrapper):
     
-    def __init__(self,env,stl_driver,formulas=[], horizon=[],signals_map={}, terminal_formulas=[]):
+    def __init__(self,env,stl_driver, obs_formulas=[], signals_map={}, end_formulas=[]):
         gym.Wrapper.__init__(self, env)
         self.env = env
         self.real_time_step = 1
         self.time_step = 0        
         self.stl_driver = stl_driver                        
-        self.formulas = formulas
-        self.horizon=horizon
-
-        if horizon==[]:
-            self.horizon=[0]*len(self.formulas)
+        self.obs_formulas = obs_formulas
+        self.end_formulas= end_formulas
         
         self.signals_map={}
         if signals_map=={}:
@@ -55,16 +52,24 @@ class STLWrapper(gym.Wrapper):
             self.signals_map['reward'] = 'reward'
         else: # assumes all is fine (TODO? catch bad signals_map here)    
             self.signals_map=signals_map
-            
-        self.terminal_formulas=terminal_formulas
-
+        
+        
         low = self.observation_space.__getattribute__("low") 
         high = self.observation_space.__getattribute__("high")
         
         BigM = stlrom.Signal.get_BigM()
-        self.observation_space = spaces.Box(np.append(low,  [-BigM]*len(self.formulas)), 
-                                            np.append(high, [BigM]*len(self.formulas)),        
+        self.observation_space = spaces.Box(np.append(low,  [-BigM]*len(self.obs_formulas)), 
+                                            np.append(high, [BigM]*len(self.obs_formulas)),        
                                             dtype=np.float32)
+        
+        idx_obs_f = self.observation_space.shape[0]-len(self.obs_formulas) # adding mapping from stl signal to obs array, now flat 
+        for f in obs_formulas:
+            f_name, f_hor = next(iter(f.items()))
+            obs_name = 'obs_'+f_name+'_hor_'+str(f_hor)
+            ref_in_obs = 'obs['+str(idx_obs_f)+']'
+            self.signals_map[obs_name]= ref_in_obs
+            idx_obs_f +=1
+        
         
     def step(self, action):
     
@@ -81,26 +86,28 @@ class STLWrapper(gym.Wrapper):
         self.stl_driver.add_sample(s)        
         
         idx_formula = 0
-        rob = [0]*len(self.formulas)
-        for f in self.formulas:
-           t0_f = max(0, self.time_step-self.horizon[idx_formula])
-           robs_f = self.stl_driver.get_online_rob(f, t0_f)
-           rob[idx_formula] = robs_f[0] # forget about low and high rob for now     
-        
-        for f in self.terminal_formulas:
-            t0_f = 0
-            robs_f = self.stl_driver.get_online_rob(f, t0_f)
-            
+        rob = [0]*len(self.obs_formulas)
+        for obs_f in self.obs_formulas:
+            f_name, f_hor = next(iter(obs_f.items()))
+            t0_f = max(0, self.time_step-f_hor)
+            robs_f = self.stl_driver.get_online_rob(f_name, t0_f)
+            rob[idx_formula] = robs_f[0] # forget about low and high rob for now
+            idx_formula+=1     
+         
+        for end_f in self.end_formulas:
+            f_name, f_hor = next(iter(end_f.items()))
+            t0_f = max(0, self.time_step-f_hor)
+            robs_f = self.stl_driver.get_online_rob(f_name, t0_f)
+              
             #if self.time_step >20 and self.time_step % 5 == 0:
             #    print('t,rob:',self.time_step,robs_f[1])
 
             if robs_f[1] > 0:
-                print('Episode terminated because of formula', f)
+                print('Episode terminated because of formula', f_name)
                 terminated = True
 
         # update current time
         self.time_step += 1
-        
         
         # return obs with added robustness
         new_obs = np.append(obs, rob)
@@ -112,13 +119,16 @@ class STLWrapper(gym.Wrapper):
 
     def get_sample(self,obs,action,reward):        
         # get a sample for stl driver, converts obs, action,reward into (t, signals_values)
-        s = np.zeros(len(self.signals_map)+1)
+        s = np.zeros(len(self.signals_map)+1-len(self.obs_formulas))
         s[0] = self.time_step*self.real_time_step
         i_sig = 0
         for key, value in self.signals_map.items():
             i_sig = i_sig+1
+            if i_sig>len(s)-1:
+                break
             #print(key, value)
-            s[i_sig] = eval(value) 
+            s[i_sig] = eval(value)
+
         return s
 
     def reset(self, **kwargs):
@@ -133,7 +143,7 @@ class STLWrapper(gym.Wrapper):
 
     def reset_monitor(self, obs0):        
         self.stl_driver.data = [] 
-        return [0]*len(self.formulas) 
+        return [0]*len(self.obs_formulas) 
     
     def render(self):
         return self.env.render()
@@ -234,25 +244,13 @@ class STLWrapper(gym.Wrapper):
         
         return sig_val, sig_type
 
-    def get_rob(self, formula, horizon=None, online=True):
+    def get_rob(self, formula, horizon=0, online=True):
     # Compute robustness signal. If online is true, then 
     # compute it at each time as if future was not known, 
     # otherwise uses all data for all computation
 
         if self.stl_driver.data == []:
             raise ValueError("No data/episode was computed.")
-
-        #if not (formula in self.formulas):
-        #    raise ValueError("Name '{formula}' not in formulas")
-
-        if (horizon is None):
-            if formula in self.formulas:
-                index_formula = self.formulas.index(formula)
-                horizon = self.horizon[index_formula]
-            else:
-               horizon = 0
-               #print(f"Warning: Horizon for formula '{formula}' is set to 0.")
-
         
         monitor = self.stl_driver.get_monitor(formula)
         

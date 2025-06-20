@@ -53,5 +53,12 @@ specs: |
   phi_term := ev_[0,100] safe_too_long
   
   car1_blind_spot := not car1_same_lane and car1_too_close 
-  
+
+obs_formulas: 
+  - safe: 0
+  - safe: 10
+  - car1_too_close: 0  
+end_formulas:
+  - phi_term: 100
+
 real_time_step: 1.0

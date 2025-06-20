@@ -1,8 +1,8 @@
 batch_size: 128
-#model_name: hw_vanilla_not_norm_col10_ppo
-#model_name: hw_vanilla_ppo_col10
+#model_name: hw_term0_col10_ppo
+model_name: hw_vanilla_ppo_col10
 #model_name: hw_vanilla_ppo_col1
-model_name: test_ppo
+#model_name: test_ppo
 model_path: ./models
 n_envs: 12
 neurons: 128
