@@ -225,7 +225,7 @@ class STLWrapper(gym.Wrapper):
                 action = actions[step]
                 reward = rewards[step]                
                 sig.append(eval(sig_expr))
-                step += 1
+                step +
         return sig
 
     def get_values_from_str(self, str):
