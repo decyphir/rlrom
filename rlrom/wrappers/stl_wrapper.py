@@ -224,8 +224,8 @@ class STLWrapper(gym.Wrapper):
                 obs = observations[step]
                 action = actions[step]
                 reward = rewards[step]                
-                sig.append(eval(sig_expr))
-                step += 1
+                sig.append(eval(sig_expr))                
+                step +=1
         return sig
 
     def get_values_from_str(self, str):
