@@ -3,6 +3,3 @@ exp_type: stl
 cfg_env: cfg_env.yml
 cfg_train: cfg_train.yml
 cfg_specs: cfg_specs.yml
-cfg_tmp: 
-  - 'test1'
-  - 'test2'

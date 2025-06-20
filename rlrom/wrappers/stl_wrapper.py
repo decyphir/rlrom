@@ -18,7 +18,7 @@ class STLWrapper(gym.Wrapper):
         self.stl_driver = stl_driver                        
         self.obs_formulas = obs_formulas
         self.end_formulas= end_formulas
-        self.episode={'obs':[], 'actions':[],'rewards':[], 'dones':[]}
+        self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
 
         self.signals_map={}
         if signals_map=={}:
