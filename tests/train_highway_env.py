@@ -35,6 +35,15 @@ def init_cfg_train():
 cfg['cfg_train'] = init_cfg_train()
 
 
+def stl_wrap_env(env, cfg_specs):
+    driver= stlrom.STLDriver()
+    stl_specs_str = cfg_specs['specs']
+    driver.parse_string(stl_specs_str)
+    obs_formulas = cfg_specs.get('obs_formulas',[])
+    end_formulas = cfg_specs.get('end_formulas',[])
+    env = STLWrapper(env,driver,signals_map=cfg_specs, obs_formulas = obs_formulas,end_formulas=end_formulas)
+    return env
+        
 # Instantiate environment
 def make_train_env(cfg):
     # env configuration
@@ -47,11 +56,10 @@ def make_train_env(cfg):
     env.unwrapped.configure(cfg_env)
     
     # STL wrapper TODO
-    if cfg['exp_type']=='stl_term':
+
+    if cfg['exp_type']=='stl':
         cfg_specs = cfg.get('cfg_specs')
-        driver= stlrom.STLDriver()
-        driver.parse_string(cfg_specs['specs'])        
-        env = STLWrapper(env,driver,signals_map=cfg_specs, terminal_formulas=['phi_term'])
+        env = stl_wrap_env(env, cfg_specs)
             
     return env
     
@@ -78,7 +86,7 @@ class HwEnvTestCallback(BaseCallback):
         for i in range(0,num_ep):
             print('----------------------------------------------------')
             print('EPISODE ', i)            
-            obs = episodes[i]['obs']
+            obs = episodes[i]['observations']
             v =[]            
 
             if self.is_vanilla:                        
@@ -113,15 +121,13 @@ class HwEnvTester:
             model= PPO.load(model_name)
             self.manual_control = False
         
-        # todo switch exp_type
         env = gym.make("highway-v0", render_mode='human')
         env.unwrapped.configure(cfg_env)
 
         # wrap env with stl_wrapper. We'll have to check if not done already        
         cfg_specs = cfg.get('cfg_specs')
-        driver= stlrom.STLDriver()
-        driver.parse_string(cfg_specs['specs'])        
-        env = STLWrapper(env,driver,signals_map=cfg_specs)
+        if cfg['exp_type']=='stl':
+            env = stl_wrap_env(env, cfg_specs)
         
         self.cfg = cfg
         self.model=model

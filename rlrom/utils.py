@@ -67,7 +67,7 @@ def get_episodes_from_rollout(buffer):
         for step in range(len(env_dones)):
             episode = dict()
             if env_dones[step] and step > 0:  # found episode boundary
-                episode['obs'] = env_obs[episode_start:step]                
+                episode['observations'] = env_obs[episode_start:step]                
                 episode['actions'] = env_actions[episode_start:step]                
                 episode['rewards'] = env_rewards[episode_start:step]                
                 episode['dones'] = env_dones[episode_start:step]                

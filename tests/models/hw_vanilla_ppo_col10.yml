@@ -9,8 +9,17 @@ cfg_env:
   initial_lane_id: null
   lane_change_reward: 0
   lanes_count: 4
+  manual_control: false
   normalize_reward: true
   observation:
+    absolute: false
+    features:
+    - presence
+    - x
+    - y
+    - vx
+    - vy
+    normalize: true
     type: Kinematics
   offroad_terminal: false
   reward_speed_range:
@@ -19,8 +28,48 @@ cfg_env:
   right_lane_reward: 0.0
   vehicles_count: 50
   vehicles_density: 1
+cfg_specs:
+  action_names:
+  - action: action
+  env_name: highway-v0
+  obs_names:
+  - ego_presence: obs[0]
+  - ego_x: obs[1]
+  - ego_y: obs[2]
+  - ego_vx: 80*obs[3]
+  - ego_vy: 80*obs[4]
+  - car1_presence: obs[5]
+  - car1_x: obs[6]
+  - car1_y: obs[7]
+  - car1_vx: 80*obs[8]
+  - car1_vy: 80*obs[9]
+  - car2_presence: obs[10]
+  - car2_x: obs[11]
+  - car2_y: obs[12]
+  - car2_vx: 80*obs[13]
+  - car2_vy: 80*obs[14]
+  - car3_presence: obs[15]
+  - car3_x: obs[16]
+  - car3_y: obs[17]
+  - car3_vx: 80*obs[18]
+  - car3_vy: 80*obs[19]
+  - car4_presence: obs[20]
+  - car4_x: obs[21]
+  - car4_y: obs[22]
+  - car4_vx: 80*obs[23]
+  - car4_vy: 80*obs[24]
+  real_time_step: 1.0
+  specs: "signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy, \n       car1_presence,\
+    \ car1_x, car1_y, car1_vx, car1_vy, \n       car2_presence, car2_x, car2_y, car2_vx,\
+    \ car2_vy, \n       car3_presence, car3_x, car3_y, car3_vx, car3_vy, \n      \
+    \ car4_presence, car4_x, car4_y, car4_vx, car4_vy, \n       reward\nparam v_slow=22,\
+    \ v_fast=28, d_min = 1, t1 = 5, t2 = 5\nego_slow := ego_vx[t] < v_slow\nev_ego_slow\
+    \ := ev_[0,t1] ego_slow\nego_slow_too_long := alw_[0,t2] (ego_slow)\ncar1_same_lane\
+    \ := abs(car1_y[t]) < 0.1\ncar1_too_close := car1_x[t]<0 and car1_x[t]+d_min >\
+    \ 0\ncar1_blind_spot:= not car1_same_lane and car1_too_close \ncar2_same_lane\
+    \ := abs(car2_y[t]) < 0.1\n"
 cfg_train:
-  batch_size: 64
+  batch_size: 128
   model_name: hw_vanilla_ppo_col10
   model_path: ./models
   n_envs: 12
