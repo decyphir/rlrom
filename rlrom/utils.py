@@ -7,6 +7,76 @@ import re
 import yaml
 import os
 import numpy as np
+from tensorboard.backend.event_processing import event_accumulator
+
+
+def list_folders(folder, filter=''):
+    try:
+        # List all items in the given directory
+        items = os.listdir(folder)
+        # Filter out only the directories
+        folders = [os.path.join(folder, item) for item in items 
+                   if (os.path.isdir(os.path.join(folder, item)) and
+                       filter in item)]
+        
+        return folders
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []
+    
+def tb_extract_from_tag(file_path_list, tag='rollout/ep_rew_mean'):
+# return a list of data dict with fields steps and values        
+
+    if not(isinstance(file_path_list,list)):
+        file_path_list = [file_path_list]
+    
+    all_data = []
+    for file_path in file_path_list:
+        l = os.listdir(file_path)
+        event_file = file_path+'/'+l[0]    
+    
+        # Initialize the event accumulator
+        ea = event_accumulator.EventAccumulator(event_file)
+        ea.Reload()
+
+        # Extract scalar values for the specified tag        
+        data = dict()
+        if tag in ea.Tags()['scalars']:
+            scalar_events = ea.Scalars(tag)
+            data["steps"] = [event.step for event in scalar_events]
+            data["values"] = [event.value for event in scalar_events]            
+        
+        all_data.append(data)
+
+    return all_data    
+
+def get_upper_values(all_data):
+    # Assumes all_data in sync (i.e. same steps)
+
+    all_values = []
+    for v in all_data:
+        all_values.append(v.get('values'))
+
+    return np.max(all_values,axis=0)        
+
+def get_lower_values(all_data):
+# Assumes all_data in sync (i.e. same steps)
+
+    all_values = []
+    for v in all_data:
+        all_values.append(v.get('values'))
+
+    return np.min(all_values, axis=0)        
+
+def get_mean_values(all_data):
+    # Assumes all_data in sync (i.e. same steps)
+
+    all_values = []
+    for v in all_data:
+        all_values.append(v.get('values'))
+
+    return np.mean(all_values,axis=0)        
+
 
 # load cfg recursively 
 def load_cfg(cfg, verbose=1):
@@ -82,7 +152,7 @@ def get_model_fullpath(cfg):
     # returns absolute path for model, as well as for yaml config (may not exist yet)
     model_path = cfg['cfg_train'].get('model_path', './models')
     model_name = cfg['cfg_train'].get('model_name', 'ppo_model')
-    full_path = os.path.join(model_path, model_name+'.zip')
+    file_path = os.path.join(model_path, model_name+'.zip')
 
     if not os.path.exists(full_path):
         print(f"WARNING: Path does not exist: {full_path}")
@@ -90,8 +160,6 @@ def get_model_fullpath(cfg):
         full_path= os.path.abspath(full_path)
     
     return full_path, full_path.replace('.zip', '.yml')
-
-
         
 def load_ppo_model(env_name, repo_id, filename=None):
     if filename is None:
@@ -296,3 +364,4 @@ def get_symmetric_max(sig):
     max_pos = npsig.max()
     min_neg = -npsig.min()
     return max(max_pos,min_neg)
+
