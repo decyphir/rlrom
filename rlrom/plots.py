@@ -4,6 +4,9 @@ from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
 import itertools
 import re
+import matplotlib.pyplot as plt
+import rlrom.utils as utils
+
 
 def get_layout_from_string(signals_layout):
     out = []
@@ -71,3 +74,30 @@ def get_fig(envs, signals_layout, tr_idx=0):
     fig = gridplot(figs, sizing_mode='stretch_width')        
         
     return fig, status
+
+def plot_training_logs(data, ax=None, label=None, color='gray', linestyle='-'):
+# assumes data is a list of sync logs with steps and values fields    
+    
+    steps = data[0].get('steps')
+    mean_values = utils.get_mean_values(data)
+    min_values = utils.get_lower_values(data)
+    max_values = utils.get_upper_values(data)    
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.grid(True)
+    if label is None:    
+        ax.plot(steps, mean_values, color=color,linestyle=linestyle)
+    else:
+        ax.plot(steps, mean_values,label=label, color=color,linestyle=linestyle)
+
+    ax.plot(steps, min_values, color=color, linestyle=linestyle)
+    ax.plot(steps, max_values, color=color,linestyle=linestyle)
+
+    ax.fill_between(steps, min_values, max_values, color=color, alpha=0.25, label='Min-Max Range')
+    ax.legend()
+    ax.set_xlabel('Training Steps')
+    ax.set_ylabel('Average cumulated reward')
+
+
+    return ax
