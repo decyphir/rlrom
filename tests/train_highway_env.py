@@ -167,7 +167,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train or test PPO on highway environment')
     parser.add_argument('main_cfg', type=str, help='Path to main configuration file')
     parser.add_argument('--cfg-train', type=str, help='Path to training configuration file')
-    
+    parser.add_argument('--num-trainings',type=int, help='Number of repeats of training')
     args = parser.parse_args()
     
     # Start with default configuration
@@ -189,7 +189,8 @@ if __name__ == "__main__":
             print(f"Warning: Training config file {args.cfg_train} not found.")
     pprint(custom_cfg)
     
-
+    # Get
+        
     make_env= lambda: make_train_env(custom_cfg)
 
     # Callback(s)
@@ -197,4 +198,10 @@ if __name__ == "__main__":
         HwEnvTestCallback(verbose=1, cfg=custom_cfg),        
     ])
 
-    trainers.train_ppo(custom_cfg,make_env, callbacks)
+    if args.num_trainings:
+        num_trainings= args.num_trainings
+    else:
+        num_trainings = 1
+    
+    for _ in range(0, num_trainings):
+        trainers.train_ppo(custom_cfg,make_env, callbacks)
