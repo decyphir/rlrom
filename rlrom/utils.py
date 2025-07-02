@@ -152,7 +152,7 @@ def get_model_fullpath(cfg):
     # returns absolute path for model, as well as for yaml config (may not exist yet)
     model_path = cfg['cfg_train'].get('model_path', './models')
     model_name = cfg['cfg_train'].get('model_name', 'ppo_model')
-    file_path = os.path.join(model_path, model_name+'.zip')
+    full_path = os.path.join(model_path, model_name+'.zip')
 
     if not os.path.exists(full_path):
         print(f"WARNING: Path does not exist: {full_path}")

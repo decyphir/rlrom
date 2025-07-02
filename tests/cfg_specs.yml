@@ -60,3 +60,5 @@ obs_formulas:
 #  - phi_term: 100
 
 real_time_step: 1.0
+
+reward_machine: 
