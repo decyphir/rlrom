@@ -10,13 +10,21 @@ from bokeh.palettes import Dark2_5 as palette
 
 class STLWrapper(gym.Wrapper):
     
-    def __init__(self,env,stl_driver, obs_formulas=[], signals_map={}, end_formulas=[]):
+    def __init__(self,env,
+                 stl_driver, 
+                 signals_map={},
+                 obs_formulas=[],  
+                 reward_formulas=[],
+                 end_formulas=[],
+                 BigM=None
+                 ):
         gym.Wrapper.__init__(self, env)
         self.env = env
         self.real_time_step = 1
         self.time_step = 0        
         self.stl_driver = stl_driver                        
         self.obs_formulas = obs_formulas
+        self.reward_formulas = reward_formulas
         self.end_formulas= end_formulas
         self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
 
@@ -57,20 +65,27 @@ class STLWrapper(gym.Wrapper):
         
         low = self.observation_space.__getattribute__("low") 
         high = self.observation_space.__getattribute__("high")
-        
-        BigM = stlrom.Signal.get_BigM()
+        if BigM is None:
+            BigM = stlrom.Signal.get_BigM()
         self.observation_space = spaces.Box(np.append(low,  [-BigM]*len(self.obs_formulas)), 
                                             np.append(high, [BigM]*len(self.obs_formulas)),        
                                             dtype=np.float32)
         
         idx_obs_f = self.observation_space.shape[0]-len(self.obs_formulas) # adding mapping from stl signal to obs array, now flat 
         for f in obs_formulas:
-            f_name, f_hor = next(iter(f.items()))
+            f_name, f_opt = next(iter(f.items()))
+            f_hor = f_opt.get('hor',0)
             obs_name = 'obs_'+f_name+'_hor_'+str(f_hor)
+            obs_name = f_opt.get('obs_name', obs_name)
             ref_in_obs = 'obs['+str(idx_obs_f)+']'
             self.signals_map[obs_name]= ref_in_obs
             idx_obs_f +=1
         
+    def eval_rob(self,f_name, f_opt):                
+        f_hor = f_opt.get('hor',0)            
+        t0_f = max(0, self.time_step-f_hor)
+        robs_f = self.stl_driver.get_online_rob(f_name, t0_f)
+        return robs_f
         
     def step(self, action):
     
@@ -79,7 +94,7 @@ class STLWrapper(gym.Wrapper):
         
         # store wrapped obs
         self.wrapped_obs = obs
-
+                
         # collect the sample for monitoring 
         s = self.get_sample(self.prev_obs, action, reward) 
         
@@ -89,35 +104,39 @@ class STLWrapper(gym.Wrapper):
         idx_formula = 0
         rob = [0]*len(self.obs_formulas)
         for obs_f in self.obs_formulas:
-            f_name, f_hor = next(iter(obs_f.items()))
-            t0_f = max(0, self.time_step-f_hor)
-            robs_f = self.stl_driver.get_online_rob(f_name, t0_f)
+            f_name, f_opt = next(iter(obs_f.items()))
+            robs_f = self.eval_rob(f_name,f_opt)        
             rob[idx_formula] = robs_f[0] # forget about low and high rob for now
             idx_formula+=1     
          
         for end_f in self.end_formulas:
-            f_name, f_hor = next(iter(end_f.items()))
-            t0_f = max(0, self.time_step-f_hor)
-            robs_f = self.stl_driver.get_online_rob(f_name, t0_f)
-              
+            f_name, f_opt = next(iter(end_f.items()))
+            robs_f = self.eval_rob(f_name,f_opt)          
             #if self.time_step >20 and self.time_step % 5 == 0:
             #    print('t,rob:',self.time_step,robs_f[1])
-
             if robs_f[1] > 0:
                 print('Episode terminated because of formula', f_name)
                 terminated = True
 
+        new_reward = reward                         
+        # add stl robustness to reward
+        for rew_f in self.reward_formulas:
+            f_name, f_opt = next(iter(rew_f.items()))
+            robs_f = self.eval_rob(f_name,f_opt)
+            w = f_opt.get('weight',1)        
+            new_reward += w*robs_f[0]   
+        
         # update current time
         self.time_step += 1
         
         # return obs with added robustness
         new_obs = np.append(obs, rob)
-        new_reward = reward                 
+                        
         self.prev_obs = new_obs
 
         self.episode['observations'].append(new_obs)               
         self.episode['actions'].append(action)
-        self.episode['rewards'].append(reward)
+        self.episode['rewards'].append(new_reward)
         self.episode['dones'].append(terminated)
         if terminated: self.env.reset()
         return new_obs, new_reward, terminated, truncated, info
@@ -217,7 +236,7 @@ class STLWrapper(gym.Wrapper):
         if sig_expr != []:                     
             observations = self.episode['observations']
             actions = self.episode['actions']
-            rewards = self.episode['rewards']
+            rewards = self.episode['rewards']            
             step = 0
             sig=[]            
             while step<len(observations):

@@ -35,30 +35,60 @@ specs: |
          car3_presence, car3_x, car3_y, car3_vx, car3_vy, 
          car4_presence, car4_x, car4_y, car4_vx, car4_vy, 
          reward
-  param v_slow=22, v_fast=28, d_min = .2, t1 = 5, t2 = 20
+
+  param v_slow=22, v_fast=28, d_close = .2, t1 = 5, t2 = 20, d_far = .3, malus = 10
   ego_slow := ego_vx[t] < v_slow
   ego_fast := ego_vx[t] > v_fast
   ev_slow := ev_[0,t1] ego_slow
   
-  car1_same_lane  := abs(car1_y[t]) < 0.1
-  car1_too_close  := car1_x[t] > 0 and car1_x[t] < d_min 
+  car1_too_far := car1_x[t] > d_far
+  car1_same_lane  := abs(car1_y[t]) < 0.1  
+  car1_too_close := car1_x[t] > 0.1 and malus*(car1_x[t]-d_close) < 0 
   car1_in_front := car1_same_lane and car1_too_close
 
   car2_same_lane  := abs(car2_y[t]) < 0.1
-  car2_too_close  := car2_x[t] > 0 and car2_x[t] < d_min 
+  car2_too_close  := car2_x[t] > 0.1 and malus*(car2_x[t]-d_close) < 0 
   car2_in_front := car2_same_lane and car2_too_close
 
-  safe := not (car1_in_front) and not (car2_in_front) and not (ego_fast)
+  car3_same_lane  := abs(car2_y[t]) < 0.
+  car3_too_close  := car3_x[t] > 0.1 and malus*(car3_x[t]-d_close) < 0 
+  car3_in_front := car3_same_lane and car3_too_close
+
+  safe := not (car1_in_front) and not (car2_in_front)
   safe_too_long := alw_[0,t2] (safe)
   phi_term := ev_[0,100] safe_too_long
   
-  car1_blind_spot := not car1_same_lane and car1_too_close 
+  
+  danger_front := car1_in_front or car2_in_front or car3_in_front
+  car_good_dist := not (danger_front or car1_too_far)
 
-obs_formulas: 
-  - safe: 0
-#end_formulas:
-#  - phi_term: 100
+  ego_lane0 := ego_y[t] > 0.6
+  ego_lane1 := ego_y[t] > 0.4  and ego_y[t] < 0.6
+
+BigM: 10
+
+#obs_formulas: # will add parameters for normalization in particular
+#  - car1_in_front: 
+#      obs_name: 'obs_car1_ahead'
+#      hor: 0
+#  - car2_in_front: 
+#      obs_name: 'obs_car2_ahead'
+#      hor: 0
+
+# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
+reward_formulas:
+  - ego_lane0:
+      hor: 0
+      weight: 0.1
+  - ego_fast:
+      hor: 0
+      weight: 0.1
+  - car_good_dist:
+      hor: 0
+      weight: 10 
+  
+
 
 real_time_step: 1.0
 
-reward_machine: 
+reward_machine:

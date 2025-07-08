@@ -40,8 +40,17 @@ def stl_wrap_env(env, cfg_specs):
     stl_specs_str = cfg_specs['specs']
     driver.parse_string(stl_specs_str)
     obs_formulas = cfg_specs.get('obs_formulas',[])
+    reward_formulas = cfg_specs.get('reward_formulas',[])
     end_formulas = cfg_specs.get('end_formulas',[])
-    env = STLWrapper(env,driver,signals_map=cfg_specs, obs_formulas = obs_formulas,end_formulas=end_formulas)
+    BigM = cfg_specs.get('BigM')
+
+    print('reward_formulas:', reward_formulas)
+    env = STLWrapper(env,driver,
+                     signals_map=cfg_specs, 
+                     obs_formulas = obs_formulas,
+                     reward_formulas = reward_formulas,
+                     end_formulas=end_formulas,
+                     BigM=BigM)
     return env
         
 # Instantiate environment
