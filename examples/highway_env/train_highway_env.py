@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import gymnasium as gym
 from stable_baselines3 import PPO
@@ -20,19 +20,6 @@ import rlrom.trainers as trainers
 
 from pprint import pprint
 import numpy as np
-
-cfg=dict()
-cfg['exp_type'] = 'vanilla'; # type of experiment 'vanilla' for normal reward and environment 
-cfg['cfg_env'] = 'cfg_env.yml'
-def init_cfg_train():
-        model_path = './models'
-        model_name = 'hw_vanilla_ppo'
-        n_envs = 12
-        batch_size = 64
-        neurons = 128
-        total_timesteps = 200_000
-        return locals()
-cfg['cfg_train'] = init_cfg_train()
 
 
 def stl_wrap_env(env, cfg_specs):
@@ -73,7 +60,7 @@ def make_train_env(cfg):
     return env
     
 class HwEnvTestCallback(BaseCallback):
-    def __init__(self, verbose=0, cfg=cfg):
+    def __init__(self, verbose=0, cfg=dict()):
         super().__init__(verbose)
         self.cfg = cfg
         self.custom_rollout_metric=0

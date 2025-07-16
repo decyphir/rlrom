@@ -58,12 +58,14 @@ specs: |
   safe_too_long := alw_[0,t2] (safe)
   phi_term := ev_[0,100] safe_too_long
   
-  
   danger_front := car1_in_front or car2_in_front or car3_in_front
   car_good_dist := not (danger_front or car1_too_far)
 
-  ego_lane0 := ego_y[t] > 0.6
-  ego_lane1 := ego_y[t] > 0.4  and ego_y[t] < 0.6
+  ego_right_lane := ego_y[t] > 0.6
+  keep_right_lane := alw_[0,10] ego_right_lane  
+  phi_right_lane := ev_[0,10] keep_right_lane
+  keep_good_dist := alw_[0,10] car_good_dist
+  phi_good_dist := ev_[0,10] alw_[0,10] car_good_dist
 
 BigM: 10
 
@@ -77,15 +79,15 @@ BigM: 10
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
 reward_formulas:
-  - ego_lane0:
-      hor: 0
-      weight: 0.1
+  - phi_right_lane:
+      hor: 15
+      weight: 1
   - ego_fast:
       hor: 0
       weight: 0.1
-  - car_good_dist:
-      hor: 0
-      weight: 10 
+  - phi_good_dist:
+      hor: 15
+      weight: 50 
   
 
 

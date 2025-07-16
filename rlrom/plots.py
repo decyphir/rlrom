@@ -42,7 +42,7 @@ def get_fig(envs, signals_layout, tr_idx=0):
         for signal in signal_list[1]:                
             #try: 
                 color=colors.__next__()                                        
-                print(signal.strip())
+                #print(signal.strip())
                 if signal.strip().startswith("set_trace_idx(") or signal.strip().startswith("_tr("):            
                     tr_idx = int(signal.split('(')[1][:-1])
                     current_env= envs[tr_idx]                                                 

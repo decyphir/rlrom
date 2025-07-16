@@ -5,7 +5,7 @@ batch_size: 128
 #model_name: rew_lane0_fast01_col10
 #model_name: rew_lane1_fast01_col10
 #model_name: rew_front_fast01_obs_col10
-model_name: rew_front_fast01_col10
+model_name: rew_phi_dist_50
 
 model_path: ./models
 n_envs: 12

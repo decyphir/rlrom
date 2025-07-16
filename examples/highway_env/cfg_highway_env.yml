@@ -1,0 +1,17 @@
+exp_type: stl
+# Options for environment
+cfg_env:
+  action:
+    type: DiscreteMetaAction
+  collision_reward: -10.0
+  duration: 100
+  high_speed_reward: 1.
+  initial_lane_id: null
+  lanes_count: 4
+  manual_control: false
+  vehicles_count: 50
+  vehicles_density: 1
+# Import specification file
+cfg_specs: hw_specs.yml
+# Import training options
+cfg_train: hw_train.yml

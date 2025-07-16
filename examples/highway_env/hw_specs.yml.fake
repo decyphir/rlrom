@@ -1,0 +1,40 @@
+env_name: "highway-v0"
+action_names:
+  - action: "action"
+obs_names:
+  - ego_presence: "obs[0]"
+  - ego_x: "obs[1]"
+# (...)
+  - car4_vx: "80*obs[23]"
+  - car4_vy: "80*obs[24]"
+  
+specs: |
+  signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy,car1_presence, car1_x, car1_y, car1_vx, car1_vy, car2_presence, car2_x, car2_y, car2_vx, car2_vy,car3_presence, car3_x, car3_y, car3_vx, car3_vy,car4_presence, car4_x, car4_y, car4_vx, car4_vy,reward
+  param v_fast=28, d_close = .2, t1 = 5, t2 = 20, d_far = .3, malus = 10
+  
+  car1_too_far := car1_x[t] > d_far
+  car1_same_lane  := abs(car1_y[t]) < 0.1  
+  car1_too_close := car1_x[t] > 0.1 and malus*(car1_x[t]-d_close) < 0 
+  car1_in_front := car1_same_lane and car1_too_close
+  (...)
+  car_ahead := car1_in_front or car2_in_front
+  car_good_dist := not (car_ahead or car1_too_far)
+
+  ego_right_lane := ego_y[t] > 0.6
+  phi_right_lane := ev_[0,10] alw_[0,5] ego_right_lane
+  phi_good_dist := ev_[0,10] alw_[0,5] car_good_dist
+
+# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
+reward_formulas:
+  - phi_right_lane:
+      hor: 15
+      weight: 0.1
+  - keep_good_dist:
+      hor: 15
+      weight: 5 
+
+obs_formulas: # adds robustness to observation vector
+  - car_ahead: 
+      obs_name: 'obs_car_ahead'
+      hor: 0
+  
