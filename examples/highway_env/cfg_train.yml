@@ -1,13 +1,11 @@
-batch_size: 128
-#model_name: hw_vanilla_ppo_col10
-#model_name: hw_vanilla_ppo_col1
-#model_name: test_ppo_no_stl
-#model_name: rew_lane0_fast01_col10
-#model_name: rew_lane1_fast01_col10
-#model_name: rew_front_fast01_obs_col10
-model_name: rew_phi_dist_50
-
+model_name: test_dev
 model_path: ./models
-n_envs: 12
-neurons: 128
-total_timesteps: 100_000
+algo:
+  ppo:  
+    batch_size: 128
+    n_envs: 12
+    neurons: 128
+    learning_rate: 5e-4    
+    total_timesteps: 200_000
+    tensorboard:
+      tb_path: ./tb_logs    

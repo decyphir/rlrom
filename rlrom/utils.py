@@ -147,7 +147,6 @@ def get_episodes_from_rollout(buffer):
 
     return episodes
 
-
 def get_model_fullpath(cfg):
     # returns absolute path for model, as well as for yaml config (may not exist yet)
     model_path = cfg['cfg_train'].get('model_path', './models')
@@ -224,6 +223,10 @@ def load_trpo_model(env_name, repo_id, filename=None):
 
 def load_model(env_name, repo_id=None, filename=None):
 
+    if repo_id is None and filename is None:
+        filename =env_name
+
+    model = None
     # checks if filename point to a valid file
     if filename is not None:
         try:
@@ -233,7 +236,7 @@ def load_model(env_name, repo_id=None, filename=None):
             # try loading with PPO, A2C, SAC, TD3, DQN, QRDQN, DDPG, TRPO
             try:
                 model= PPO.load(filename)
-                print("loading PPO model succeeded")
+                print("loading PPO model succeeded")                
                 return model
             except:
                 print("loading PPO model failed")
@@ -241,7 +244,7 @@ def load_model(env_name, repo_id=None, filename=None):
 
             try:
                 model= A2C.load(filename)
-                print("loading A2C model succeeded")
+                print("loading A2C model succeeded")                
                 return model
             except:
                 print("loading A2C model failed")
@@ -249,7 +252,7 @@ def load_model(env_name, repo_id=None, filename=None):
 
             try:
                 model= SAC.load(filename)
-                print("loading SAC model succeeded")
+                print("loading SAC model succeeded")                
                 return model
             except:
                 print("loading SAC model failed")                
@@ -257,15 +260,15 @@ def load_model(env_name, repo_id=None, filename=None):
 
             try:
                 model= TD3.load(filename)
-                print("loading TD3 model succeeded")
-                return model                                
+                print("loading TD3 model succeeded")                                                
+                return model
             except:
                 print("loading TD3 model failed")
                 pass
 
             try:                
                 model= DQN.load(filename)
-                print("loading DQN model succeeded")
+                print("loading DQN model succeeded")                
                 return model
             except:
                 print("loading DQN model failed")
@@ -273,7 +276,7 @@ def load_model(env_name, repo_id=None, filename=None):
 
             try:
                 model= QRDQN.load(filename)
-                print("loading QRDQN model succeeded")
+                print("loading QRDQN model succeeded")                
                 return model
             except:
                 print("loading QRDQN model failed")
@@ -281,42 +284,41 @@ def load_model(env_name, repo_id=None, filename=None):
 
             try:
                 model= DDPG.load(filename)
-                print("loading DDPG model succeeded")
-                return model                    
+                print("loading DDPG model succeeded")                                    
+                return model
             except:
                 print("loading DDPG model failed")
                 pass
-
             try:
                 model= TRPO.load(filename)
-                print("loading TRPO model succeeded")
+                print("loading TRPO model succeeded")                
                 return model
             except:
                 print("loading TRPO model failed")
                 pass            
-
         except FileNotFoundError:
-            return None
+            print("File not found",filename)            
 
-
-    if 'ppo' in repo_id:
-        return load_ppo_model(env_name, repo_id, filename=filename)
-    elif 'a2c' in repo_id:
-        return load_a2c_model(env_name, repo_id, filename=filename)
-    elif 'sac' in repo_id:
-        return load_sac_model(env_name, repo_id, filename=filename)
-    elif 'td3' in repo_id:
-        return load_td3_model(env_name, repo_id, filename=filename)
-    elif 'dqn' in repo_id:
-        return load_dqn_model(env_name, repo_id, filename=filename)
-    elif 'qrdqn' in repo_id:
-        return load_qrdqn_model(env_name, repo_id, filename=filename)
-    elif 'ddpg' in repo_id:
-        return load_ddpg_model(env_name, repo_id, filename=filename)
-    elif 'trpo' in repo_id:
-        return load_trpo_model(env_name, repo_id, filename=filename)
-    else:
-        return None
+    if repo_id is not None:
+        if 'ppo' in repo_id:
+            model = load_ppo_model(env_name, repo_id, filename=filename)
+        elif 'a2c' in repo_id:
+            model = load_a2c_model(env_name, repo_id, filename=filename)
+        elif 'sac' in repo_id:
+            model = load_sac_model(env_name, repo_id, filename=filename)
+        elif 'td3' in repo_id:
+            model = load_td3_model(env_name, repo_id, filename=filename)
+        elif 'dqn' in repo_id:
+            model = load_dqn_model(env_name, repo_id, filename=filename)
+        elif 'qrdqn' in repo_id:
+            model = load_qrdqn_model(env_name, repo_id, filename=filename)
+        elif 'ddpg' in repo_id:
+            model = load_ddpg_model(env_name, repo_id, filename=filename)
+        elif 'trpo' in repo_id:
+            model = load_trpo_model(env_name, repo_id, filename=filename)
+        else:
+            model = None
+    return model
 
 def find_models(env_name):
     api = HfApi()

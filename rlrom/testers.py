@@ -6,6 +6,7 @@ import pandas as pd
 import stlrom
 import rlrom.envs as envs
 import rlrom.utils as utils
+from rlrom.wrappers.stl_wrapper import STLWrapper
 
 from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
@@ -14,7 +15,102 @@ from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
 
-class RLModelTester:
+
+
+def stl_wrap_env(env, cfg_specs):
+    driver= stlrom.STLDriver()
+    stl_specs_str = cfg_specs['specs']
+    driver.parse_string(stl_specs_str)
+    obs_formulas = cfg_specs.get('obs_formulas',{})        
+    reward_formulas = cfg_specs.get('reward_formulas',{})
+    eval_formulas = cfg_specs.get('eval_formulas',{})
+    end_formulas = cfg_specs.get('end_formulas',{})
+    BigM = cfg_specs.get('BigM')
+
+    env = STLWrapper(env,driver,
+                     signals_map=cfg_specs, 
+                     obs_formulas = obs_formulas,
+                     reward_formulas = reward_formulas,
+                     eval_formulas=eval_formulas,
+                     end_formulas=end_formulas,
+                     BigM=BigM)
+    return env
+
+def make_env_generic(cfg, render_mode='human'):
+
+    env_name = cfg.get('env_name','highway-v0')                   
+    env = gym.make(env_name, render_mode=render_mode)
+    
+    cfg_env = cfg.get('cfg_env',dict())
+    if cfg_env != dict():
+        env.unwrapped.configure(cfg_env)
+      # wrap env with stl_wrapper. We'll have to check if not done already        
+    cfg_specs = cfg.get('cfg_specs', None)
+            
+    if cfg_specs is not None:
+        env = stl_wrap_env(env, cfg_specs)
+            
+    return env
+
+
+class RLTester:
+    def __init__(self,cfg, render_mode='human'):
+        self.cfg = cfg        
+        self.manual_control = True    
+        self.env_name = cfg.get('env_name','highway-v0')                                
+        self.env = None
+        self.model = None
+        self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
+
+    def load_model(self):
+        cfg_env = self.cfg.get('cfg_env',dict())
+        if cfg_env.get('manual_control', False):
+            model = 'manual'
+            print("INFO: manual_control set to True, stay alert.")            
+        else:                                       
+            model_name, _ = utils.get_model_fullpath(self.cfg)
+            print("INFO: Loading model ", model_name)
+            model= utils.load_model(model_name)
+            self.manual_control = False
+        self.model = model
+
+    def _get_action(self, obs):        
+        if self.has_stl_wrapper is not True:   # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action
+            obs = self.env.wrapped_obs
+        
+        if self.manual_control is True:
+            action = self.env.action_space.sample()
+        else:
+            action, _ = self.model.predict(obs)
+        return action
+
+    def init_env(self, render_mode=None):
+        self.env = make_env_generic(self.cfg, render_mode=render_mode)
+
+    def run_seed(self, seed=None, num_steps=100):
+        
+        self.env = make_env_generic(self.cfg)
+        self.load_model()
+
+        if seed is not None:
+            obs, info = self.env.reset(seed=seed)
+        else:
+            obs, info = self.env.reset()        
+        for _ in range(num_steps):    
+            action = self._get_action(obs)
+            obs, reward, terminated, truncated, info = self.env.step(action)    
+            if terminated:
+                print('Terminated. Crash?')
+                break    
+        self.env.close()
+        return 
+
+    def add_episode(self, cfg, episode):
+        self.episodes.append((cfg,episode))
+
+
+# Old version - we keep for now
+class RLModelTester:  
     
     def __init__(self, env_name=None, model=None, cfg={}):
         self.reset()
@@ -45,7 +141,6 @@ class RLModelTester:
                 self.signals_names = envs.cfg_envs[self.env_name]['action_names']+envs.cfg_envs[self.env_name]['obs_names']+['reward']
                 self.real_time_step = envs.cfg_envs[self.env_name]['real_time_step']
                 
-
     def configure_env(self, cfg):
         print("Configuring env with ", cfg)
         if cfg is None:

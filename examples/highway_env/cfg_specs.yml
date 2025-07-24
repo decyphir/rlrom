@@ -1,32 +1,32 @@
 env_name: "highway-v0"
 action_names:
-  - action: "action"
+  action: "action"
 obs_names:
-  - ego_presence: "obs[0]"
-  - ego_x: "obs[1]"
-  - ego_y: "obs[2]"
-  - ego_vx: "80*obs[3]"
-  - ego_vy: "80*obs[4]"
-  - car1_presence: "obs[5]"
-  - car1_x: "obs[6]"
-  - car1_y: "obs[7]"
-  - car1_vx: "80*obs[8]"
-  - car1_vy: "80*obs[9]"
-  - car2_presence: "obs[10]"
-  - car2_x: "obs[11]"
-  - car2_y: "obs[12]"
-  - car2_vx: "80*obs[13]"
-  - car2_vy: "80*obs[14]"
-  - car3_presence: "obs[15]"
-  - car3_x: "obs[16]"
-  - car3_y: "obs[17]"
-  - car3_vx: "80*obs[18]"
-  - car3_vy: "80*obs[19]"
-  - car4_presence: "obs[20]"
-  - car4_x: "obs[21]"
-  - car4_y: "obs[22]"
-  - car4_vx: "80*obs[23]"
-  - car4_vy: "80*obs[24]"
+  ego_presence: "obs[0]"
+  ego_x: "obs[1]"
+  ego_y: "obs[2]"
+  ego_vx: "80*obs[3]"
+  ego_vy: "80*obs[4]"
+  car1_presence: "obs[5]"
+  car1_x: "obs[6]"
+  car1_y: "obs[7]"
+  car1_vx: "80*obs[8]"
+  car1_vy: "80*obs[9]"
+  car2_presence: "obs[10]"
+  car2_x: "obs[11]"
+  car2_y: "obs[12]"
+  car2_vx: "80*obs[13]"
+  car2_vy: "80*obs[14]"
+  car3_presence: "obs[15]"
+  car3_x: "obs[16]"
+  car3_y: "obs[17]"
+  car3_vx: "80*obs[18]"
+  car3_vy: "80*obs[19]"
+  car4_presence: "obs[20]"
+  car4_x: "obs[21]"
+  car4_y: "obs[22]"
+  car4_vx: "80*obs[23]"
+  car4_vy: "80*obs[24]"
   
 specs: |
   signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy, 
@@ -36,61 +36,85 @@ specs: |
          car4_presence, car4_x, car4_y, car4_vx, car4_vy, 
          reward
 
-  param v_slow=22, v_fast=28, d_close = .2, t1 = 5, t2 = 20, d_far = .3, malus = 10
+  param v_slow=22, v_fast=25, d_close = .2, t1 = 5, t2 = 20, d_far = .3, malus = 10
+  
+  ego_speed := ego_vx[t] > 0 # used for evaluation
   ego_slow := ego_vx[t] < v_slow
   ego_fast := ego_vx[t] > v_fast
   ev_slow := ev_[0,t1] ego_slow
   
   car1_too_far := car1_x[t] > d_far
+  car1_parallel := abs(car1_x[t]) < 0.1 
+  car1_parallel_too_long := alw_[0,10] car1_parallel
   car1_same_lane  := abs(car1_y[t]) < 0.1  
-  car1_too_close := car1_x[t] > 0.1 and malus*(car1_x[t]-d_close) < 0 
-  car1_in_front := car1_same_lane and car1_too_close
+  car1_too_close := abs(car1_x[t]) < 0.1 
+  car1_danger := car1_same_lane and car1_too_close
 
   car2_same_lane  := abs(car2_y[t]) < 0.1
-  car2_too_close  := car2_x[t] > 0.1 and malus*(car2_x[t]-d_close) < 0 
-  car2_in_front := car2_same_lane and car2_too_close
+  car2_too_close  := abs(car2_x[t]) < 0.1 
+  car2_danger := car2_same_lane and car2_too_close
 
-  car3_same_lane  := abs(car2_y[t]) < 0.
-  car3_too_close  := car3_x[t] > 0.1 and malus*(car3_x[t]-d_close) < 0 
-  car3_in_front := car3_same_lane and car3_too_close
+  car3_same_lane  := abs(car3_y[t]) < 0.1
+  car3_too_close  := abs(car3_x[t]) < 0.1 
+  car3_danger := car3_same_lane and car3_too_close
 
-  safe := not (car1_in_front) and not (car2_in_front)
+  safe := not (car1_danger) and not (car2_danger)
   safe_too_long := alw_[0,t2] (safe)
   phi_term := ev_[0,100] safe_too_long
   
-  danger_front := car1_in_front or car2_in_front or car3_in_front
-  car_good_dist := not (danger_front or car1_too_far)
+  danger := car1_danger or car2_danger or car3_danger
+  car_good_dist := not (danger or car1_too_far)
 
   ego_right_lane := ego_y[t] > 0.6
   keep_right_lane := alw_[0,10] ego_right_lane  
-  phi_right_lane := ev_[0,10] keep_right_lane
+  ev_right_lane := ev_[0,10] ego_right_lane
   keep_good_dist := alw_[0,10] car_good_dist
   phi_good_dist := ev_[0,10] alw_[0,10] car_good_dist
+  phi_tb := ev_[0, 100] (ego_vx[t] > 25)
+  phi_right_lane := alw_[0,80] ev_right_lane
+  phi_parallel := ev_[0,80] car1_parallel_too_long
 
 BigM: 10
 
 #obs_formulas: # will add parameters for normalization in particular
-#  - car1_in_front: 
-#      obs_name: 'obs_car1_ahead'
-#      hor: 0
-#  - car2_in_front: 
-#      obs_name: 'obs_car2_ahead'
-#      hor: 0
+#  ego_right_lane:
+#    obs_name: 'obs_ego_right_lane'
+#    past_horizon: 0
+#  car1_in_front: 
+#    obs_name: 'obs_car1_ahead'
+#    past_past_horizon: 0
+#  car2_in_front: 
+#    obs_name: 'obs_car2_ahead'
+#    past_horizon: 0
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
+
 reward_formulas:
-  - phi_right_lane:
-      hor: 15
-      weight: 1
-  - ego_fast:
-      hor: 0
-      weight: 0.1
-  - phi_good_dist:
-      hor: 15
-      weight: 50 
+  ego_right_lane:
+    past_horizon: 0
+    weight: 0    
+  ego_fast:
+    past_horizon: 0
+    weight: 0
+  danger:
+    past_horizon: 0
+    weight: -1
+#    lower_bound: 0   # we don't want to penalize going slow 
   
 
+#  phi_good_dist:
+#    past_horizon: 15
+#    weight: 2 
+#  car1_parallel_too_long:
+#    past_horizon: 10
+#    weight: -1
+
+eval_formulas: 
+  ego_speed:    
+    past_horizon: 0    
+    eval_all_steps: true
 
 real_time_step: 1.0
+
 
 reward_machine:
