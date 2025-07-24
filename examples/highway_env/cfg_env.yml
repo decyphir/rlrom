@@ -26,4 +26,4 @@ reward_speed_range:
 - 30
 normalize_reward: false
 offroad_terminal: false
-manual_control: true
+manual_control: false

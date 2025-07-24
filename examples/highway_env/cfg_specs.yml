@@ -92,10 +92,10 @@ BigM: 10
 reward_formulas:
   ego_right_lane:
     past_horizon: 0
-    weight: 0    
+    weight: 1    
   ego_fast:
     past_horizon: 0
-    weight: 0
+    weight: 0.1
   danger:
     past_horizon: 0
     weight: -1

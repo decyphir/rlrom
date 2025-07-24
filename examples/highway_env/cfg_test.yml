@@ -1,5 +1,4 @@
-plots: |
-  _tr(0)
-  ego_vx
-  sat(ego_slow)
-  sat(ego_fast)
+init_seeds: 0
+num_ep: 10
+num_steps: 100 
+render: true

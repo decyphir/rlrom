@@ -60,6 +60,7 @@ class RLTester:
         self.env_name = cfg.get('env_name','highway-v0')                                
         self.env = None
         self.model = None
+        self.test_results = []
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
 
     def load_model(self):
@@ -88,9 +89,9 @@ class RLTester:
         self.env = make_env_generic(self.cfg, render_mode=render_mode)
 
     def run_seed(self, seed=None, num_steps=100):
-        
-        self.env = make_env_generic(self.cfg)
-        self.load_model()
+
+        # We actually might want to reload every time to en    
+        # self.load_model()
 
         if seed is not None:
             obs, info = self.env.reset(seed=seed)
@@ -104,6 +105,49 @@ class RLTester:
                 break    
         self.env.close()
         return 
+
+    def run_cfg_test(self):
+        cfg_test = self.cfg.get('cfg_test') 
+        test_result = dict({'cfg':self.cfg})                        
+        if cfg_test is not None:
+            init_seed = cfg_test.get('init_seed',0)
+            num_ep = cfg_test.get('num_ep',1)
+            render = cfg_test.get('render', True)
+            num_steps  = cfg_test.get('num_steps', 100)
+            
+            if render:
+                render_mode = 'human'
+            else:            
+                render_mode = None
+                cfg_env = self.cfg.get('cfg_env',dict())
+                if cfg_env.get('manual_control', False):                    
+                    print('WARNING: Manual control was set too True without render, that is dangerous. Setting to False')
+                    self.cfg['cfg_env']['manual_control'] = False
+                
+            self.init_env(render_mode=render_mode)
+            self.load_model()
+
+            res = dict()
+            res_all_ep = dict()
+            res_rew_f_list = []
+            res_eval_f_list = []
+            episodes = []
+            for seed in range(init_seed, init_seed+num_ep):
+                self.run_seed(seed=seed, num_steps = num_steps)
+                episodes.append(self.env.episode)
+                res, res_all_ep, res_rew_f_list, res_eval_f_list  = self.env.eval_episode(res=res,
+                                                                                          res_rew_f_list= res_rew_f_list,
+                                                                                          res_eval_f_list= res_eval_f_list)
+            test_result['episodes']= episodes
+            test_result['res']= res
+            test_result['res_all_ep']= res_all_ep
+            test_result['res_rew_f_list']= res_rew_f_list
+            test_result['res_eval_f_list']= res_eval_f_list
+            self.test_results.append(test_result)
+
+        return test_result
+
+
 
     def add_episode(self, cfg, episode):
         self.episodes.append((cfg,episode))
