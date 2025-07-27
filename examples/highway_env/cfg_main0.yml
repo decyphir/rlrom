@@ -1,20 +1,20 @@
 env_name: highway-v0
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs0.yml
-cfg_train: 
+cfg_train:
   model_name: basic
   model_path: ./models
   algo:
-    ppo:    
+    ppo:
       batch_size: 128
       n_envs: 12
       neurons: 128
-      learning_rate: 5e-4    
+      learning_rate: 5e-4
       total_timesteps: 200_000
       tensorboard:
-        tb_path: ./tb_logs    
-cfg_test: 
+        tb_path: ./tb_logs
+cfg_test:
   init_seeds: 0
-  num_ep: 100
-  num_steps: 100 
-  render: false
+  num_ep: 5
+  num_steps: 100
+  render: True

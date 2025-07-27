@@ -1,7 +1,7 @@
-# RLRom  APP BRANCH NOT IN WORKING STATE - STAY ON MAIN FOR NOW
+# RLRom
 
 This module integrates Robust Online Monitoring methods with Reinforcement Learning stuff.
-The first motivation is testing/monitoring RL models. 
+The motivation is first to test RL agents using interpretable monitors, then use these monitors to train models to perform complex tasks, and/or converge toward behaviors that reliably satisfy certain requirements. 
 
 ## Install
 
@@ -14,20 +14,6 @@ Then run the following:
 pip install --upgrade -r requirements.txt 
 ``` 
 
-## Running 
+## Testing
 
-Run `python run_app.py`, then open browser.
-
-## Features
-
-- Select an environment among a list of supported ones.
-- To load a model, choose between 
-  - **Random**: random actions
-  - **Local**: Upload  model zip files created with stable-baselines-3, then choose one
-  - **Hugging Face**: Fetch the list of models available on Hugging Face, then choose one
-- Choose between running with or without human render
-- Runs from a list of seeds and store traces
-- Compute total rewards
-- Plots observation, reward, actions, individually or together of any trace, with flexible layout
-- Evaluate (monitor) and plot quantitative and Boolean satisfaction of any Signal Temporal Logic formula (STL)
-- Sort runs against STL formula robustness
+In the current version, features are mostly demonstrated in [this notebook](examples/highway_env/highway_notebook.ipynb) in the example folder, which present a case study around [highway-env](https://github.com/Farama-Foundation/HighwayEnv) environment. 
