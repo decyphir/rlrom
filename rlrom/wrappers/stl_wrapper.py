@@ -367,8 +367,8 @@ class STLWrapper(gym.Wrapper):
         rewards = episode['rewards']
         rewards_wrapped = episode.get('rewards_wrapped',rewards)         
 
-        print('rewards',rewards)
-        print('rewards_wrapped',rewards_wrapped)
+#        print('rewards',rewards)
+#       print('rewards_wrapped',rewards_wrapped)
 
         # episode length
         ep_len = len(rewards)        
@@ -482,6 +482,7 @@ class STLWrapper(gym.Wrapper):
                 if eval_all_steps:
                     res_all_ep['eval_formulas'][f_name]['mean_sum'] = res[f_name]['sum'].mean()
                     res_all_ep['eval_formulas'][f_name]['mean_mean'] = res[f_name]['mean'].mean()
+                    res_all_ep['eval_formulas'][f_name]['mean_num_sat'] = res[f_name]['num_sat'].mean()
                 else:
                     res_all_ep['eval_formulas'][f_name]['ratio_init_sat'] = (res[f_name]['init_sat']>0).sum()/num_ep
                     res_all_ep['eval_formulas'][f_name]['mean_init_rob'] = res[f_name]['init_rob'].mean()

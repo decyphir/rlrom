@@ -1,4 +1,4 @@
-# RLRom 
+# RLRom  APP BRANCH NOT IN WORKING STATE - STAY ON MAIN FOR NOW
 
 This module integrates Robust Online Monitoring methods with Reinforcement Learning stuff.
 The first motivation is testing/monitoring RL models. 

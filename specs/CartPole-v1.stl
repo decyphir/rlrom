@@ -1,4 +1,0 @@
-signal push, cart_pos, cart_speed, pole_angle, pole_speed, reward
-
-mu := reward[t]> 0
-phi := alw_[0, 1000] mu 

@@ -1,0 +1,7 @@
+batch_size: 128
+learning_rate: 5e-4
+n_envs: 12
+neurons: 128
+tensorboard:
+  tb_path: ./tb_logs
+total_timesteps: 200000

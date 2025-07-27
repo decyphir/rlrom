@@ -82,15 +82,20 @@ def get_mean_values(all_data):
 def load_cfg(cfg, verbose=1):
     def recursive_load(cfg):
         for key, value in cfg.items():
-            if key.startswith('cfg_') and isinstance(value, str) and value.endswith('.yml'):
+            if isinstance(value, str) and value.endswith('.yml'):
                 if verbose>=1:
-                    print('loading field [', key, '] from file [', value, ']')
-                if os.path.exists(value):
+                    print('loading field [', key, '] from YAML file [', value, ']')
+                if os.path.exists(value) and value.endswith('.stl'):
+                    if verbose>=1:
+                        print('loading field [', key, '] from STL file [', value, ']')
                     with open(value, 'r') as f:                        
                         cfg[key] = recursive_load(yaml.safe_load(f))
                 else:
                     cfg[key] = value
                     print('WARNING: file', value,'not found!')
+            elif isinstance(value, str) and value.endswith('.stl'):
+                with open(value,'r') as F: 
+                    cfg[key]= F.read()
         return cfg
 
     if isinstance(cfg, str) and os.path.exists(cfg):

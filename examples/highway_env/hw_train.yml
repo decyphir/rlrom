@@ -1,7 +1,0 @@
-model_name: rew_front_fast01_col10
-model_path: ./models
-algo: ppo
-batch_size: 128
-n_envs: 12
-neurons: 128
-total_timesteps: 100_000

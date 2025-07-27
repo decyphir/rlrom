@@ -1,3 +1,4 @@
+#model_name: with_obs
 model_name: test_dev
 model_path: ./models
 algo:

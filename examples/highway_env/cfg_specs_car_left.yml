@@ -1,0 +1,55 @@
+env_name: "highway-v0"
+specs: hw-env_specs.stl
+
+action_names:
+  action: "action"
+obs_names:
+  ego_presence: "obs[0]"
+  ego_x: "obs[1]"
+  ego_y: "obs[2]"
+  ego_vx: "80*obs[3]"
+  ego_vy: "80*obs[4]"
+  car1_presence: "obs[5]"
+  car1_x: "obs[6]"
+  car1_y: "obs[7]"
+  car1_vx: "80*obs[8]"
+  car1_vy: "80*obs[9]"
+  car2_presence: "obs[10]"
+  car2_x: "obs[11]"
+  car2_y: "obs[12]"
+  car2_vx: "80*obs[13]"
+  car2_vy: "80*obs[14]"
+  car3_presence: "obs[15]"
+  car3_x: "obs[16]"
+  car3_y: "obs[17]"
+  car3_vx: "80*obs[18]"
+  car3_vy: "80*obs[19]"
+  
+
+BigM: 10
+real_time_step: 1.0
+
+obs_formulas: # will add parameters for normalization in particular
+  car_left:
+    obs_name: 'obs_car_left'
+    past_horizon: 0
+  danger:
+    obs_name: 'obs_danger'
+    past_horizon: 0
+
+
+# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
+reward_formulas:
+  ego_fast:
+    past_horizon: 0
+    weight: .1
+  danger:
+    past_horizon: 0
+    weight: -25
+    lower_bound: 0.0
+  car_left:
+    past_horizon: 0
+    weight: -25
+    lower_bound: 0
+
+eval_formulas: cfg_eval.yml

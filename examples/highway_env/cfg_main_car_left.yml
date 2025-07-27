@@ -1,8 +1,8 @@
 env_name: highway-v0
 cfg_env: cfg_env.yml
-cfg_specs: cfg_specs.yml
+cfg_specs: cfg_specs_car_left.yml
 cfg_train: 
-  model_name: test_dev
+  model_name: car_left
   model_path: ./models
   algo:
     ppo:  
@@ -14,7 +14,7 @@ cfg_train:
       tensorboard:
         tb_path: ./tb_logs    
 cfg_test: 
-  init_seeds: 1
-  num_ep: 1
+  init_seeds: 0
+  num_ep: 5
   num_steps: 100 
   render: true

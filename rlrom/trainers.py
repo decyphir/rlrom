@@ -78,6 +78,13 @@ class RLTrainer:
           STLWrapperCallback(verbose=1, cfg_main=self.cfg)        
           ])
           model = self.train_ppo(cfg_ppo, make_env, model_name,callbacks)
+    # Saving the agent
+    model_name, cfg_name = utils.get_model_fullpath(self.cfg)
+    model.save(model_name) #TODO try except 
+    with open(cfg_name,'w') as f:
+         yaml.safe_dump(self.cfg, f)
+
+
     return model
 
   def train_ppo(self,cfg, make_env,model_name, callbacks):
@@ -120,13 +127,7 @@ class RLTrainer:
       tb_log_name=tb_prefix,
       progress_bar=True
     )
-
-    # Saving the agent
-    model_name, cfg_name = utils.get_model_fullpath(self.cfg)
-    model.save(model_name) #TODO try except 
-    with open(cfg_name,'w') as f:
-         yaml.safe_dump(cfg, f)
-
+    
     return model
 
   def get_tb_dir(self, cfg, model_name):

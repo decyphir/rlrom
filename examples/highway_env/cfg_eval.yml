@@ -1,0 +1,30 @@
+# Evaluating speed and 
+phi_speed:    
+  t0: 0    
+  eval_all_steps: false
+
+# Sum of this estimates distance traveled
+ego_moves:     
+  past_horizon: 0    
+  eval_all_steps: true
+
+ego_fast:
+  past_horizon: 0    
+  eval_all_steps: true
+
+# Right lane
+ego_right_lane:
+    past_horizon: 0
+    eval_all_steps: true
+
+phi_right_lane:
+  t0: 0
+  eval_all_steps: false
+
+# car left
+phi_car_left:
+  t0: 0
+  eval_all_steps: false
+car_left:
+  past_horizon: 0    
+  eval_all_steps: true

@@ -1,0 +1,126 @@
+cfg_env:
+  action:
+    type: DiscreteMetaAction
+  collision_reward: -10.0
+  controlled_vehicles: 1
+  duration: 100
+  ego_spacing: 2
+  high_speed_reward: 0.0
+  initial_lane_id: null
+  lane_change_reward: 0.0
+  lanes_count: 4
+  manual_control: true
+  normalize_reward: false
+  observation:
+    absolute: false
+    features:
+    - presence
+    - x
+    - y
+    - vx
+    - vy
+    normalize: true
+    type: Kinematics
+  offroad_terminal: false
+  reward_speed_range:
+  - 20
+  - 30
+  right_lane_reward: 0.0
+  vehicles_count: 50
+  vehicles_density: 0.75
+cfg_specs:
+  BigM: 10
+  action_names:
+    action: action
+  env_name: highway-v0
+  eval_formulas:
+    car_left:
+      eval_all_steps: true
+      past_horizon: 0
+    ego_speed:
+      eval_all_steps: true
+      past_horizon: 0
+    phi_car_left:
+      eval_all_steps: false
+      t0: 0
+  obs_formulas:
+    car_left:
+      obs_name: obs_car_left
+      past_horizon: 0
+    danger:
+      obs_name: obs_danger
+      past_horizon: 0
+  obs_names:
+    car1_presence: obs[5]
+    car1_vx: 80*obs[8]
+    car1_vy: 80*obs[9]
+    car1_x: obs[6]
+    car1_y: obs[7]
+    car2_presence: obs[10]
+    car2_vx: 80*obs[13]
+    car2_vy: 80*obs[14]
+    car2_x: obs[11]
+    car2_y: obs[12]
+    car3_presence: obs[15]
+    car3_vx: 80*obs[18]
+    car3_vy: 80*obs[19]
+    car3_x: obs[16]
+    car3_y: obs[17]
+    car4_presence: obs[20]
+    car4_vx: 80*obs[23]
+    car4_vy: 80*obs[24]
+    car4_x: obs[21]
+    car4_y: obs[22]
+    ego_presence: obs[0]
+    ego_vx: 80*obs[3]
+    ego_vy: 80*obs[4]
+    ego_x: obs[1]
+    ego_y: obs[2]
+  real_time_step: 1.0
+  reward_formulas:
+    car_left:
+      lower_bound: 0
+      past_horizon: 0
+      weight: -25
+    danger:
+      lower_bound: 0.0
+      past_horizon: 0
+      weight: -25
+    ego_fast:
+      past_horizon: 0
+      weight: 0.1
+  specs: "signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy, \n       car1_presence,\
+    \ car1_x, car1_y, car1_vx, car1_vy, \n       car2_presence, car2_x, car2_y, car2_vx,\
+    \ car2_vy, \n       car3_presence, car3_x, car3_y, car3_vx, car3_vy, \n      \
+    \ car4_presence, car4_x, car4_y, car4_vx, car4_vy, \n       reward\n\nparam v_slow=22,\
+    \ v_fast=25, d_close = .2, t1 = 5, t2 = 20, d_far = .3, malus = 10\n\nego_speed\
+    \ := ego_vx[t] > 0 # used for evaluation\nego_slow := ego_vx[t] < v_slow\nego_fast\
+    \ := ego_vx[t] > v_fast\nev_slow := ev_[0,t1] ego_slow\n\ncar1_same_lane  := abs(car1_y[t])\
+    \ < 0.1  \ncar1_too_close := abs(car1_x[t]) < 0.1 \ncar1_danger := car1_same_lane\
+    \ and car1_too_close\n\ncar2_same_lane  := abs(car2_y[t]) < 0.1\ncar2_too_close\
+    \  := abs(car2_x[t]) < 0.1 \ncar2_danger := car2_same_lane and car2_too_close\n\
+    \ncar3_same_lane  := abs(car3_y[t]) < 0.1\ncar3_too_close  := abs(car3_x[t]) <\
+    \ 0.1 \ncar3_danger := car3_same_lane and car3_too_close\n\ndanger := car1_danger\
+    \ or car2_danger or car3_danger\n\n\ncar1_left := car1_y[t] > -.35 and car1_y[t]\
+    \ < -.15 and car1_too_close\ncar2_left := car2_y[t] > -.35 and car2_y[t] < -.15\
+    \ and car2_too_close\ncar3_left := car3_y[t] > -.35 and car3_y[t] < -.15 and car3_too_close\n\
+    car_left := car1_left or car2_left or car3_left\n\nphi_car_left := alw_[0,100]\
+    \ not car_left \n"
+cfg_test:
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 100
+  render: true
+cfg_train:
+  algo:
+    ppo:
+      batch_size: 128
+      learning_rate: 5e-4
+      n_envs: 12
+      neurons: 128
+      tensorboard:
+        tb_path: ./tb_logs
+      total_timesteps: 200000
+  model_name: car_left
+  model_path: ./models
+env_name: highway-v0

@@ -42,8 +42,7 @@ specs: |
   ego_slow := ego_vx[t] < v_slow
   ego_fast := ego_vx[t] > v_fast
   ev_slow := ev_[0,t1] ego_slow
-  
-  car1_too_far := car1_x[t] > d_far
+
   car1_same_lane  := abs(car1_y[t]) < 0.1  
   car1_too_close := abs(car1_x[t]) < 0.1 
   car1_danger := car1_same_lane and car1_too_close
@@ -56,38 +55,21 @@ specs: |
   car3_too_close  := abs(car3_x[t]) < 0.1 
   car3_danger := car3_same_lane and car3_too_close
 
-  safe := not (car1_danger) and not (car2_danger)
   danger := car1_danger or car2_danger or car3_danger
-  
-  car1_left := car1_y[t] > -.35 and car1_y[t] < -.15 and car1_too_close
-  car2_left := car2_y[t] > -.35 and car2_y[t] < -.15 and car2_too_close
-  car3_left := car3_y[t] > -.35 and car3_y[t] < -.15 and car3_too_close
-  car_left := car1_left or car2_left or car3_left
-  
+
   ego_right_lane := ego_y[t] > 0.6
   keep_right_lane := alw_[0,10] ego_right_lane  
   ev_right_lane := ev_[0,10] ego_right_lane
-
-
   phi_right_lane := alw_[0,80] ev_right_lane
-  
+
 BigM: 10
 real_time_step: 1.0
 
-# obs_formulas: # will add parameters for normalization in particular
-#   ego_right_lane:
-#     obs_name: 'obs_ego_right_lane'
-#     past_horizon: 0
-#   danger:
-#     obs_name: 'obs_danger'
-#     past_horizon: 0
-
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-
 reward_formulas:
   ego_right_lane:
     past_horizon: 0
-    weight: 1    
+    weight: 1      
   ego_fast:
     past_horizon: 0
     weight: .1
@@ -95,12 +77,6 @@ reward_formulas:
     past_horizon: 0
     weight: -20
     lower_bound: 0.0
-#  phi_good_dist:
-#    past_horizon: 15
-#    weight: 2 
-#  car1_parallel_too_long:
-#    past_horizon: 10
-#    weight: -1
 
 eval_formulas: 
   ego_speed:    

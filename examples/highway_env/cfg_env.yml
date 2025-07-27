@@ -16,7 +16,7 @@ controlled_vehicles: 1
 initial_lane_id: null
 duration: 100
 ego_spacing: 2
-vehicles_density: .5
+vehicles_density: .75
 collision_reward: -10.
 right_lane_reward: 0.
 high_speed_reward: 0.
