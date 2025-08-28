@@ -1,0 +1,17 @@
+[project]
+name = "rlrom"
+version = "0.1.0"
+description = "RLROM is a library for testing and training reinforcement learning agent using online monitoring of signal temporal logics formulas, and more."
+authors = [
+    {name = "Alexandre Donze",email = "alexandre.donze@univ-grenoble-alpes.fr"}
+]
+license = {text = "BSD3"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

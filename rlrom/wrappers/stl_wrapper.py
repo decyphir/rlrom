@@ -7,6 +7,7 @@ from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
+from rlrom.utils import append_to_field_array as add_metric
 
 class STLWrapper(gym.Wrapper):
     
@@ -344,21 +345,11 @@ class STLWrapper(gym.Wrapper):
         return val, res
             
         
-    def eval_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
+    def eval_specs_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
     # computes different metrics to evaluate an episode. If res contains values already, concatenate
     # returns top level metrics, and robustness and stuff at all steps for reward formulas and eval formulas    
     
-        # helper function to concat new values in a dict
-        def add_metric(res, metric, val):
-            vals = res.get(metric,None)
-            if vals is None:
-                res[metric]=np.array([val])
-            else:
-                vals = np.atleast_1d(vals)
-                vals = np.append(vals,val)
-                res[metric]= vals
-            return res
-
+        
         if episode is None:
             episode= self.episode            
         else:
@@ -366,9 +357,6 @@ class STLWrapper(gym.Wrapper):
                 
         rewards = episode['rewards']
         rewards_wrapped = episode.get('rewards_wrapped',rewards)         
-
-#        print('rewards',rewards)
-#       print('rewards_wrapped',rewards_wrapped)
 
         # episode length
         ep_len = len(rewards)        
@@ -379,8 +367,9 @@ class STLWrapper(gym.Wrapper):
         for step in range(0,ep_len):            
             ep_rew +=  rewards[step]
         res= add_metric(res,'ep_rew',ep_rew)
-        res['rewards']= rewards
-        res['rewards_wrapped']= rewards_wrapped
+        # dafuck is this for ? We have rewards in ze episode
+        #res['rewards']= rewards
+        #res['rewards_wrapped']= rewards_wrapped
 
         if self.reward_formulas != dict():
             self.reset_monitor()

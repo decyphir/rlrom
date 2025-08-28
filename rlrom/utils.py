@@ -9,6 +9,16 @@ import os
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 
+# helper function to concat new values in a dict field array
+def append_to_field_array(res, metric, val):
+    vals = res.get(metric,None)
+    if vals is None:
+        res[metric]=np.array([val])
+    else:
+        vals = np.atleast_1d(vals)
+        vals = np.append(vals,val)
+        res[metric]= vals
+    return res
 
 def list_folders(folder, filter=''):
     try:
@@ -77,7 +87,6 @@ def get_mean_values(all_data):
 
     return np.mean(all_values,axis=0)        
 
-
 # load cfg recursively 
 def load_cfg(cfg, verbose=1):
     def recursive_load(cfg):
@@ -108,130 +117,49 @@ def load_cfg(cfg, verbose=1):
     
     return recursive_load(cfg)
 
-def get_episodes_from_rollout(buffer):
-# Takes a rollout buffer as produced by PPO and returns a list of complete episodes     
-    episodes = []
-    for env_idx in range(buffer.n_envs):
-        env_dones = buffer.episode_starts[:, env_idx] # dones flags for each steps
-
-        sz = np.shape(buffer.observations)        
-        if sz[0]==buffer.buffer_size:
-            env_obs = buffer.observations[:, env_idx]  # All steps for this env
-        else:
-            start_idx_env = env_idx*buffer.buffer_size 
-            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
-            env_obs = buffer.observations[start_idx_env:end_idx_env]  # All steps for this env
-        
-        sz = np.shape(buffer.actions)        
-        if sz[0]==buffer.buffer_size:            
-            env_actions = buffer.actions[:, env_idx]  # All actions for this env            
-        else:
-            start_idx_env = env_idx*buffer.buffer_size 
-            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
-            env_actions = buffer.actions[start_idx_env:end_idx_env]  # All actions for this env
-
-        sz = np.shape(buffer.rewards)        
-        if sz[0]==buffer.buffer_size:            
-            env_rewards = buffer.rewards[:, env_idx]  # All rewards for this env            
-        else:
-            start_idx_env = env_idx*buffer.buffer_size 
-            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
-            env_rewards = buffer.rewards[start_idx_env:end_idx_env]  # All actions for this env
-            
-        
-        # Split into episodes based on done flags
-        episode_start = 0                
-        for step in range(len(env_dones)):
-            episode = dict()
-            if env_dones[step] and step > 0:  # found episode boundary
-                episode['observations'] = env_obs[episode_start:step]                
-                episode['actions'] = env_actions[episode_start:step]                
-                episode['rewards'] = env_rewards[episode_start:step]                
-                episode['dones'] = env_dones[episode_start:step]                
-                episodes.append(episode)
-                episode_start = step                        
-        # note we only want complete episodes, so we drop the last observations for each batch, if they don't end with a done
-
-    return episodes
-
 def get_model_fullpath(cfg):
     # returns absolute path for model, as well as for yaml config (may not exist yet)
-    model_path = cfg['cfg_train'].get('model_path', './models')
-    model_name = cfg['cfg_train'].get('model_name', 'ppo_model')
+    # The yml file (second output), if it exists, contains the full configuration used 
+    # to train the model
+    model_path = cfg.get('model_path', './models')
+    model_name = cfg.get('model_name', 'random')
     full_path = os.path.join(model_path, model_name+'.zip')
-
-    if not os.path.exists(full_path):
-        print(f"WARNING: Path does not exist: {full_path}")
-    else:
-        full_path= os.path.abspath(full_path)
     
-    return full_path, full_path.replace('.zip', '.yml')
-        
-def load_ppo_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('ppo', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    custom_objects = {
-            "learning_rate": 0.0,
-            "lr_schedule": lambda _: 0.0,
-            "clip_range": lambda _: 0.0,
-    }
-    model = PPO.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
-    return model
+    if model_name=='random':
+        if os.path.exists(full_path):
+            print(f"WARNING: Somehow a model was named 'random' (path: {full_path}). Rename it if you actually want to use it.")        
+        full_path = 'random'
+        cfg_full_path = None
+    else:
+        if not os.path.exists(full_path):
+            print(f"WARNING: Path does not exist: {full_path}")
+        else:
+            full_path= os.path.abspath(full_path)
+            cfg_full_path = full_path.replace('.zip', '.yml')
+    
+    return full_path, cfg_full_path
 
-def load_a2c_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('a2c', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = A2C.load(checkpoint, print_system_info=True)
-    return model
+def find_model(env_name):
+    return find_huggingface_models(env_name)
 
-def load_sac_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('sac', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = SAC.load(checkpoint, print_system_info=True)
-    return model
-
-def load_td3_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('td3', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = TD3.load(checkpoint, print_system_info=True)
-    return model
-
-def load_dqn_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('dqn', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = DQN.load(checkpoint, print_system_info=True)
-    return model
-
-def load_qrdqn_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('dqn', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = QRDQN.load(checkpoint, print_system_info=True)
-    return model
-
-def load_ddpg_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('ddpg', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    model = DDPG.load(checkpoint, print_system_info=True)
-    return model
-
-def load_trpo_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('trpo', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    model = TRPO.load(checkpoint, print_system_info=True)
-    return model
+def find_huggingface_models(env_name, repo_contains='', algo=''):
+    api = HfApi()
+    models_iter = api.list_models(tags=env_name)
+    
+    models = []
+    models_ids = []
+    for model in models_iter:
+        model_id = model.modelId
+        if repo_contains.lower() in model_id.lower() and algo.lower() in model_id.lower(): 
+            models.append(model)
+            models_ids.append(model_id)
+   
+    return models, [model.modelId for model in models]
 
 def load_model(env_name, repo_id=None, filename=None):
 
     if repo_id is None and filename is None:
-        filename =env_name
+        filename=env_name
 
     model = None
     # checks if filename point to a valid file
@@ -327,12 +255,51 @@ def load_model(env_name, repo_id=None, filename=None):
             model = None
     return model
 
-def find_models(env_name):
-    api = HfApi()
-    #models_iter = api.list_models(filter=ModelFilter(tags=env_name))
-    models_iter = api.list_models(tags=env_name)
-    models = list(models_iter)
-    return models, [model.modelId for model in models]
+def get_episodes_from_rollout(buffer):
+# Takes a rollout buffer as produced by PPO and returns a list of complete episodes     
+    episodes = []
+    for env_idx in range(buffer.n_envs):
+        env_dones = buffer.episode_starts[:, env_idx] # dones flags for each steps
+
+        sz = np.shape(buffer.observations)        
+        if sz[0]==buffer.buffer_size:
+            env_obs = buffer.observations[:, env_idx]  # All steps for this env
+        else:
+            start_idx_env = env_idx*buffer.buffer_size 
+            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
+            env_obs = buffer.observations[start_idx_env:end_idx_env]  # All steps for this env
+        
+        sz = np.shape(buffer.actions)        
+        if sz[0]==buffer.buffer_size:            
+            env_actions = buffer.actions[:, env_idx]  # All actions for this env            
+        else:
+            start_idx_env = env_idx*buffer.buffer_size 
+            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
+            env_actions = buffer.actions[start_idx_env:end_idx_env]  # All actions for this env
+
+        sz = np.shape(buffer.rewards)        
+        if sz[0]==buffer.buffer_size:            
+            env_rewards = buffer.rewards[:, env_idx]  # All rewards for this env            
+        else:
+            start_idx_env = env_idx*buffer.buffer_size 
+            end_idx_env = env_idx*buffer.buffer_size + buffer.buffer_size
+            env_rewards = buffer.rewards[start_idx_env:end_idx_env]  # All actions for this env
+            
+        
+        # Split into episodes based on done flags
+        episode_start = 0                
+        for step in range(len(env_dones)):
+            episode = dict()
+            if env_dones[step] and step > 0:  # found episode boundary
+                episode['observations'] = env_obs[episode_start:step]                
+                episode['actions'] = env_actions[episode_start:step]                
+                episode['rewards'] = env_rewards[episode_start:step]                
+                episode['dones'] = env_dones[episode_start:step]                
+                episodes.append(episode)
+                episode_start = step                        
+        # note we only want complete episodes, so we drop the last observations for each batch, if they don't end with a done
+
+    return episodes
 
 def parse_signal_spec(signal):
     # extract sig_name and args from signal_name(args)
@@ -343,7 +310,6 @@ def parse_signal_spec(signal):
     else:
         args = [arg.strip() for arg in signal[1][:-1].split(',')]
     return sig_name, args
-
 
 def get_formulas(specs):
     # regular expression matching id variable in the specs at the beginning of a line followed by :=
@@ -374,3 +340,64 @@ def get_symmetric_max(sig):
     min_neg = -npsig.min()
     return max(max_pos,min_neg)
 
+# Auxiliary load functions        
+def load_ppo_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('ppo', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
+    custom_objects = {
+            "learning_rate": 0.0,
+            "lr_schedule": lambda _: 0.0,
+            "clip_range": lambda _: 0.0,
+    }
+    model = PPO.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
+    return model
+
+def load_a2c_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('a2c', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
+    model = A2C.load(checkpoint, print_system_info=True)
+    return model
+
+def load_sac_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('sac', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
+    model = SAC.load(checkpoint, print_system_info=True)
+    return model
+
+def load_td3_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('td3', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
+    model = TD3.load(checkpoint, print_system_info=True)
+    return model
+
+def load_dqn_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('dqn', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
+    model = DQN.load(checkpoint, print_system_info=True)
+    return model
+
+def load_qrdqn_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('dqn', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
+    model = QRDQN.load(checkpoint, print_system_info=True)
+    return model
+
+def load_ddpg_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('ddpg', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
+    model = DDPG.load(checkpoint, print_system_info=True)
+    return model
+
+def load_trpo_model(env_name, repo_id, filename=None):
+    if filename is None:
+        filename = ModelName('trpo', env_name)+'.zip'
+    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
+    model = TRPO.load(checkpoint, print_system_info=True)
+    return model
