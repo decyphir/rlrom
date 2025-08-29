@@ -4,7 +4,6 @@ from gymnasium.spaces.utils import flatten_space
 import numpy as np
 import pandas as pd
 import stlrom
-import rlrom.envs as envs
 import rlrom.utils as utils
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.wrappers.stl_wrapper import STLWrapper

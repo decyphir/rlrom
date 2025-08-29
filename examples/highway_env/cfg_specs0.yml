@@ -36,7 +36,7 @@ reward_formulas:
   danger:
     past_horizon: 0
     weight: -20
-    lower_bound: 0.0
+    lower_bound: 0.0 # we don't want to reward safety too much
 
 # Same for everybody
 eval_formulas: cfg_eval.yml
