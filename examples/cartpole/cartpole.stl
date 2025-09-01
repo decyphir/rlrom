@@ -1,0 +1,6 @@
+signal push, x, x_dot, theta, theta_dot, reward
+
+
+go_left := x_dot[t]>0
+far_left := x[t]<-0.1
+phi_far_left := ev_[0, 100] far_left

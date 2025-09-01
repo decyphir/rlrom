@@ -1,8 +1,7 @@
-import gymnasium as gym
-from gymnasium.utils.save_video import save_video
-from gymnasium.spaces.utils import flatten_space
 import numpy as np
-import pandas as pd
+
+import gymnasium as gym
+from gymnasium.spaces.utils import flatten_space
 import stlrom
 import rlrom.utils as utils
 from rlrom.utils import append_to_field_array as add_metric
@@ -15,12 +14,28 @@ from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
-import os
 
 
 def stl_wrap_env(env, cfg_specs):
     driver= stlrom.STLDriver()
-    stl_specs_str = cfg_specs['specs']
+    stl_specs_str = cfg_specs.get('specs','')
+    if stl_specs_str=='':
+        stl_specs_str = 'signal'
+        first = True
+        for a in cfg_specs.get('action_names',{}):
+            if first:
+                stl_specs_str += ' '+ a
+                first = False
+            else:
+                stl_specs_str += ','+ a
+        for o in cfg_specs.get('obs_names',{}):
+            if first:
+                stl_specs_str += ' '+ o
+                first = False
+            else:
+                stl_specs_str += ','+ o
+        stl_specs_str += ',reward'                                 
+
     driver.parse_string(stl_specs_str)
     obs_formulas = cfg_specs.get('obs_formulas',{})        
     reward_formulas = cfg_specs.get('reward_formulas',{})
@@ -182,20 +197,23 @@ class RLTester:
             res, res_all_ep, res_rew_f_list, res_eval_f_list  = self.env.eval_specs_episode(res=res,
                                                                                       res_rew_f_list= res_rew_f_list,
                                                                                       res_eval_f_list= res_eval_f_list)
-            test_result['res_all_ep'] = res_all_ep
-        else: # only episode length and 
+        else: # only episode length and sum reward
             rewards = episode['rewards']
-            ep_len = len(rewards)        
-            
+            ep_len = len(rewards)                    
             res = add_metric(res,'ep_len',ep_len)
             ep_rew=0        
-            for step in range(0,ep_len):            
+            for step in range(0,ep_len):  # computes sum of rewards
                 ep_rew +=  rewards[step]
-            res= add_metric(res,'ep_rew',ep_rew)
-            all_rewards = res.get('all_rewards', [])
-            all_rewards.append(rewards)
-            res['all_rewards']=all_rewards
+            res= add_metric(res,'ep_rew',ep_rew)            
+            
+            # synthetic over all past episodes
+            res_all_ep = dict({'basics':{}, 'reward_formulas':dict(), 'eval_formulas':dict()})            
+            res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
+            res_all_ep['basics']['mean_ep_rew'] = res['ep_rew'].mean()
             test_result['res'] = res
+                
+        test_result['res_all_ep'] = res_all_ep
+
         return test_result
 
     def eval_all_episodes(self, episodes):
@@ -222,15 +240,18 @@ class RLTester:
         print('mean_ep_rew:', f"{res_all_ep['basics']['mean_ep_rew']:.4g}")
         #for f_name,_ in self.env.reward_formulas.items():
         #    print(f_name+':',f"{res_all_ep['reward_formulas'][f_name]['mean_sum']:.4g}",end=' | ')      
-        for f_name,f_cfg in self.env.eval_formulas.items():
-            is_local_formula = f_cfg.get('eval_all_steps', True)
-            if is_local_formula:                                                
-                print(f_name, end=': ')
-                print("sum=",f"{res_all_ep['eval_formulas'][f_name]['mean_sum']:.4g}",end=' | ')
-                print("mean=",f"{res_all_ep['eval_formulas'][f_name]['mean_mean']:.4g}",end=' | ')
-                print("num_sat=",f"{res_all_ep['eval_formulas'][f_name]['mean_num_sat']:.4g}")                
-            else:           
-                print(f_name+": ratio_sat=",f"{res_all_ep['eval_formulas'][f_name]['ratio_init_sat']:.4g}")                      
+        if self.has_stl_wrapper:
+            for f_name,f_cfg in self.env.eval_formulas.items():
+                if f_cfg is None:
+                    f_cfg = {}                
+                is_local_formula = f_cfg.get('eval_all_steps', False)
+                if is_local_formula:                                                
+                    print(f_name, end=': ')
+                    print("sum=",f"{res_all_ep['eval_formulas'][f_name]['mean_sum']:.4g}",end=' | ')
+                    print("mean=",f"{res_all_ep['eval_formulas'][f_name]['mean_mean']:.4g}",end=' | ')
+                    print("num_sat=",f"{res_all_ep['eval_formulas'][f_name]['mean_num_sat']:.4g}")                
+                else:           
+                    print(f_name+": ratio_sat=",f"{res_all_ep['eval_formulas'][f_name]['ratio_init_sat']:.4g}")                      
                     
     def find_huggingface_models(self, repo_contains='', algo=''):
         env_name = self.cfg.get('env_name')

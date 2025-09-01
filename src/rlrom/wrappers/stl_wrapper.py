@@ -40,7 +40,7 @@ class STLWrapper(gym.Wrapper):
 
             for sig in signals:
                 if i_sig==0:
-                    self.signals_map[sig] = 'action[0]'
+                    self.signals_map[sig] = 'action'
                 elif i_sig<len(signals)-1:    
                     self.signals_map[sig] = f'obs[{i_sig-1}]'
                 else:
@@ -319,7 +319,10 @@ class STLWrapper(gym.Wrapper):
         
     def eval_formula_cfg(self, f_name, f_opt, res=dict()):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
-            
+
+        if f_opt is None:
+            f_opt={}
+
         f_hor = f_opt.get('past_horizon',0)            
         t0 = f_opt.get('t0',max(0, self.current_time-f_hor))
         robs = self.stl_driver.get_online_rob(f_name, t0)
@@ -367,17 +370,19 @@ class STLWrapper(gym.Wrapper):
         for step in range(0,ep_len):            
             ep_rew +=  rewards[step]
         res= add_metric(res,'ep_rew',ep_rew)
-        # dafuck is this for ? We have rewards in ze episode
-        #res['rewards']= rewards
-        #res['rewards_wrapped']= rewards_wrapped
 
+        res_all_ep = dict({'basics':{}, 'reward_formulas':dict(), 'eval_formulas':dict()})            
+        res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
+        res_all_ep['basics']['mean_ep_rew'] = res['ep_rew'].mean()
+        # maybe a mean mean reward ?
+
+        observations = episode['observations']
+        actions = episode['actions']            
         if self.reward_formulas != dict():
             self.reset_monitor()
             self.current_time=0
             self.time_step = 0
 
-            observations = episode['observations']
-            actions = episode['actions']
             
             res_f = dict()
             for f_name,f_cfg in self.reward_formulas.items():
@@ -413,7 +418,7 @@ class STLWrapper(gym.Wrapper):
             res_rew_f_list.append(res_f)            
 
         # eval formulas - for those, we evaluate off-line, after the trace has been completely computed
-
+            
         if self.eval_formulas != dict():
                         
             self.current_time=0
@@ -436,6 +441,8 @@ class STLWrapper(gym.Wrapper):
             
             # Synthesize: we compute all metrics - maybe we choose in cfg  (TODO)
             for f_name,f_cfg in self.eval_formulas.items():                
+                if f_cfg is None:
+                    f_cfg = {}
                 eval_all_steps = f_cfg.get('eval_all_steps', False)                
                 if eval_all_steps:
                     w = f_cfg.get('weight', 1)
@@ -451,12 +458,10 @@ class STLWrapper(gym.Wrapper):
                     res[f_name] = add_metric(res[f_name], 'init_sat', init_sat)                
                 
             res_eval_f_list.append(res_f)
-            
-            res_all_ep = dict({'basics':{}, 'reward_formulas':dict(), 'eval_formulas':dict()})            
-            res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
-            res_all_ep['basics']['mean_ep_rew'] = res['ep_rew'].mean()
-            
+                        
             for f_name,f_cfg in self.reward_formulas.items():
+              if f_cfg is None:
+                    f_cfg = {}                
               if isinstance(res[f_name], dict):                    
                 res_all_ep['reward_formulas'][f_name] = dict()
                 res_all_ep['reward_formulas'][f_name]['mean_rob'] = res[f_name]['mean'].mean()
@@ -465,6 +470,8 @@ class STLWrapper(gym.Wrapper):
 
             num_ep = len(res['ep_len'])
             for f_name,f_cfg in self.eval_formulas.items():
+              if f_cfg is None:
+                    f_cfg = {}                
               if isinstance(res[f_name], dict):                    
                 res_all_ep['eval_formulas'][f_name] = dict()                
                 eval_all_steps = f_cfg.get('eval_all_steps', False)

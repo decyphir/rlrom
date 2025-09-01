@@ -2,3 +2,5 @@
 rlrom_env/
 events.out.*
 .vscode/settings.json
+*.whl
+*.tar.gz

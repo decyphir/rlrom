@@ -9,8 +9,29 @@ license = {text = "BSD3"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "stlrom (>=0.2.3,<0.3.0)",
+    "gymnasium[classic_control] (>=1.2.0,<2.0.0)",
+    "bokeh (>=3.8.0,<4.0.0)",
+    "stable-baselines3 (>=2.7.0,<3.0.0)",
+    "sb3-contrib (>=2.7.0,<3.0.0)",
+    "huggingface-hub (>=0.34.4,<0.35.0)",
+    "huggingface-sb3 (>=3.0,<4.0)",
+    "tensorboard (>=2.20.0,<3.0.0)",
+    "gym (>=0.26.2,<0.27.0)",
+    "shimmy (>=2.0.0,<3.0.0)",
 ]
 
+[tool.poetry]
+packages = [{include = "rlrom", from = "src"}]
+
+[tool.poetry.scripts]
+rlrom_run = "rlrom.rlrom_run:main"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.1.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
