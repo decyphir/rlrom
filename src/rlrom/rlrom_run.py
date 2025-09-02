@@ -26,13 +26,12 @@ def main():
     custom_cfg = dict()        
     
     # Load main config file
-    try:
-        if os.path.exists(args.main_cfg):
-            custom_cfg = utils.load_cfg(args.main_cfg)
-        else:        
-            print(f"Warning: Config file {args.main_cfg} not found.")
-    except FileNotFoundError:
-        print(f"Error: The main config file '{args.main_cfg}' was not found. Exiting.")
+    if os.path.exists(args.main_cfg):
+        dirname, basename = os.path.split(args.main_cfg)
+        os.chdir(dirname)            
+        custom_cfg = utils.load_cfg(basename)
+    else:        
+        print(f"Error: Config file {args.main_cfg} was not found.")
         sys.exit(1)
 
     # Override with train config if specified

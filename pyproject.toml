@@ -1,11 +1,11 @@
 [project]
 name = "rlrom"
-version = "0.1.0"
+version = "0.1.1"
 description = "RLROM is a library for testing and training reinforcement learning agent using online monitoring of signal temporal logics formulas, and more."
 authors = [
     {name = "Alexandre Donze",email = "alexandre.donze@univ-grenoble-alpes.fr"}
 ]
-license = {text = "BSD3"}
+license = {text = "BSD-3-Clauses"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -17,9 +17,8 @@ dependencies = [
     "huggingface-hub (>=0.34.4,<0.35.0)",
     "huggingface-sb3 (>=3.0,<4.0)",
     "tensorboard (>=2.20.0,<3.0.0)",
-    "gym (>=0.26.2,<0.27.0)",
     "shimmy (>=2.0.0,<3.0.0)",
-    "jupyter[notebooks] (>=1.1.1,<2.0.0)",
+    "gym[old-gym] (>=0.26.2,<0.27.0)"
 ]
 
 [tool.poetry]

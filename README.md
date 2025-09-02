@@ -13,6 +13,12 @@ Then installing should be as simple as
 pip install rlrom 
 ``` 
 
+Note that some environments still require an older version of Gym. It can be installed with 
+```
+pip install rlrom[old_gym]
+``` 
+
+
 ## Getting Started
 
 RLRom reads configuration files in the YAML format as inputs. Examples are provided in the examples folder. A command line interface is provided through the script `rlrom_run`. For instance, 
