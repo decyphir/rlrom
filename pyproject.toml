@@ -19,6 +19,7 @@ dependencies = [
     "tensorboard (>=2.20.0,<3.0.0)",
     "gym (>=0.26.2,<0.27.0)",
     "shimmy (>=2.0.0,<3.0.0)",
+    "jupyter[notebooks] (>=1.1.1,<2.0.0)",
 ]
 
 [tool.poetry]

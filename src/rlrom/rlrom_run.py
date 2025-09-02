@@ -8,8 +8,6 @@ from rlrom.trainers import RLTrainer
 from pprint import pprint
 import numpy as np
 
-    
-
 
 def main():
     # rlrom_run [test|train] cfg_main.yml [--cfg-train cfg_train.yml]    
@@ -72,7 +70,8 @@ def main():
         
     if args.action=='test':
         tester = RLTester(custom_cfg)
-        tester.run_cfg_test()
+        Tres= tester.run_cfg_test()
+        tester.print_res_all_ep(Tres)
     elif args.action=='train':    
         trainer = RLTrainer(custom_cfg)
         trainer.train()
