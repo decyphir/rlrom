@@ -1,19 +1,24 @@
 # RLRom
 
-This module integrates Robust Online Monitoring methods with Reinforcement Learning stuff.
-The motivation is first to test RL agents using interpretable monitors, then use these monitors to train models to perform complex tasks, and/or converge toward behaviors that reliably satisfy certain requirements. 
+This module integrates Robust Online Monitoring methods with Reinforcement Learning stuff. The motivation is first to test RL agents using interpretable monitors, then use these monitors to train models to perform complex tasks, and/or converge toward behaviors that reliably satisfy certain requirements. 
 
 ## Install
 
-Those are needed for building some of the required python modules: 
+Those are needed for building some of the required python modules, in particular [stlrom](https://github.com/decyphir/stlrom) for STL monitoring.
 - CMake
 - swig 
 
-Then run the following:
+Then installing should be as simple as
 ```
-pip install --upgrade -r requirements.txt 
+pip install rlrom 
 ``` 
 
-## Testing
+## Getting Started
 
-In the current version, features are mostly demonstrated in [this notebook](examples/highway_env/highway_notebook.ipynb) in the example folder, which present a case study around [highway-env](https://github.com/Farama-Foundation/HighwayEnv) environment. 
+RLRom reads configuration files in the YAML format as inputs. Examples are provided in the examples folder. A command line interface is provided through the script `rlrom_run`. For instance, 
+```
+$ rlrom_run test examples/cartpole/cfg_cartpole.cfg
+```
+will run a few episode of the cartpole classic environment, fetching a model on huggingface and monitor a formula on these episodes. 
+
+More programmatic features are demonstrated in notebooks, in particular [this notebook](examples/highway_env/highway_notebook.ipynb) which presents a case study around [highway-env](https://github.com/Farama-Foundation/HighwayEnv) environment. 
