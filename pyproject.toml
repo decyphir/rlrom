@@ -17,9 +17,12 @@ dependencies = [
     "huggingface-hub (>=0.34.4,<0.35.0)",
     "huggingface-sb3 (>=3.0,<4.0)",
     "tensorboard (>=2.20.0,<3.0.0)",
-    "shimmy (>=2.0.0,<3.0.0)",
-    "gym[old-gym] (>=0.26.2,<0.27.0)"
+    "shimmy (>=2.0.0,<3.0.0)"    
 ]
+
+[project.optional-dependencies]
+old_gym = ["gym (>=0.26.2,<0.27.0)"]
+highway-env = ["highway-env (>=1.10.1,<2.0.0)"]
 
 [tool.poetry]
 packages = [{include = "rlrom", from = "src"}]
@@ -32,6 +35,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
+jupyter-bokeh = "^4.0.5"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
