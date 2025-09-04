@@ -1,9 +1,10 @@
 env_name: highway-v0
+model_path: ./models
+model_name: basic_with_obs
+
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs0_with_obs.yml
 cfg_train: 
-  model_name: basic_with_obs
-  model_path: ./models
   algo:
     ppo:  
       batch_size: 128

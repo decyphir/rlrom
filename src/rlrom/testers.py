@@ -2,10 +2,10 @@ import numpy as np
 
 import gymnasium as gym
 from gymnasium.spaces.utils import flatten_space
-import stlrom
+
 import rlrom.utils as utils
+from rlrom.wrappers.stl_wrapper import stl_wrap_env
 from rlrom.utils import append_to_field_array as add_metric
-from rlrom.wrappers.stl_wrapper import STLWrapper
 
 import rlrom.plots
 from bokeh.models.annotations import Title
@@ -16,43 +16,7 @@ from bokeh.palettes import Dark2_5 as palette
 import itertools
 
 
-def stl_wrap_env(env, cfg_specs):
-    driver= stlrom.STLDriver()
-    stl_specs_str = cfg_specs.get('specs','')
-    if stl_specs_str=='':
-        stl_specs_str = 'signal'
-        first = True
-        for a in cfg_specs.get('action_names',{}):
-            if first:
-                stl_specs_str += ' '+ a
-                first = False
-            else:
-                stl_specs_str += ','+ a
-        for o in cfg_specs.get('obs_names',{}):
-            if first:
-                stl_specs_str += ' '+ o
-                first = False
-            else:
-                stl_specs_str += ','+ o
-        stl_specs_str += ',reward'                                 
-
-    driver.parse_string(stl_specs_str)
-    obs_formulas = cfg_specs.get('obs_formulas',{})        
-    reward_formulas = cfg_specs.get('reward_formulas',{})
-    eval_formulas = cfg_specs.get('eval_formulas',{})
-    end_formulas = cfg_specs.get('end_formulas',{})
-    BigM = cfg_specs.get('BigM')
-
-    env = STLWrapper(env,driver,
-                     signals_map=cfg_specs, 
-                     obs_formulas = obs_formulas,
-                     reward_formulas = reward_formulas,
-                     eval_formulas=eval_formulas,
-                     end_formulas=end_formulas,
-                     BigM=BigM)
-    return env
-
-def make_env_generic(cfg, render_mode='human'):
+def make_env_test(cfg, render_mode='human'):
 
     env_name = cfg.get('env_name','highway-v0')                   
     env = gym.make(env_name, render_mode=render_mode)
@@ -117,7 +81,7 @@ class RLTester:
         return action
 
     def init_env(self, render_mode=None):
-        self.env = make_env_generic(self.cfg, render_mode=render_mode)
+        self.env = make_env_test(self.cfg, render_mode=render_mode)
 
     def run_seed(self, seed=None, num_steps=100, render_mode='human', reload_model=False):
 

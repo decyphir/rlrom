@@ -1,9 +1,9 @@
+model_path: ./models
+model_name: right_lane
 env_name: highway-v0
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_right_lane.yml
 cfg_train: 
-  model_name: right_lane
-  model_path: ./models
   algo:
     ppo:  
       batch_size: 128

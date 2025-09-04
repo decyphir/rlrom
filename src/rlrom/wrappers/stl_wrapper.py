@@ -7,7 +7,44 @@ from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
+
 from rlrom.utils import append_to_field_array as add_metric
+
+def stl_wrap_env(env, cfg_specs):
+    driver= stlrom.STLDriver()
+    stl_specs_str = cfg_specs.get('specs','')
+    if stl_specs_str=='':
+        stl_specs_str = 'signal'
+        first = True
+        for a in cfg_specs.get('action_names',{}):
+            if first:
+                stl_specs_str += ' '+ a
+                first = False
+            else:
+                stl_specs_str += ','+ a
+        for o in cfg_specs.get('obs_names',{}):
+            if first:
+                stl_specs_str += ' '+ o
+                first = False
+            else:
+                stl_specs_str += ','+ o
+        stl_specs_str += ',reward'                                 
+
+    driver.parse_string(stl_specs_str)
+    obs_formulas = cfg_specs.get('obs_formulas',{})        
+    reward_formulas = cfg_specs.get('reward_formulas',{})
+    eval_formulas = cfg_specs.get('eval_formulas',{})
+    end_formulas = cfg_specs.get('end_formulas',{})
+    BigM = cfg_specs.get('BigM')
+
+    env = STLWrapper(env,driver,
+                     signals_map=cfg_specs, 
+                     obs_formulas = obs_formulas,
+                     reward_formulas = reward_formulas,
+                     eval_formulas=eval_formulas,
+                     end_formulas=end_formulas,
+                     BigM=BigM)
+    return env
 
 class STLWrapper(gym.Wrapper):
     

@@ -1,9 +1,10 @@
 env_name: highway-v0
+model_path: ./models
+model_name: car_left
+
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_car_left.yml
 cfg_train: 
-  model_name: car_left
-  model_path: ./models
   algo:
     ppo:  
       batch_size: 128

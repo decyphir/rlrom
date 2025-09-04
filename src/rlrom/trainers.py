@@ -7,6 +7,25 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import numpy as np
 import yaml
 import time
+import gymnasium as gym
+from rlrom.wrappers.stl_wrapper import stl_wrap_env
+
+
+def make_env_train(cfg):
+
+    env_name = cfg.get('env_name','')                   
+    env = gym.make(env_name, render_mode=None)
+    
+    cfg_env = cfg.get('cfg_env',dict())
+    if cfg_env != dict():
+        env.unwrapped.configure(cfg_env)
+      # wrap env with stl_wrapper. We'll have to check if not done already        
+    cfg_specs = cfg.get('cfg_specs', None)
+            
+    if cfg_specs is not None:
+        env = stl_wrap_env(env, cfg_specs)
+            
+    return env
 
 
 class STLWrapperCallback(BaseCallback):
@@ -65,8 +84,9 @@ class RLTrainer:
     self.cfg_train = self.cfg.get('cfg_train', {})
     pass   
 
-  def train(self,make_env):
+  def train(self,make_en_train=make_env_train):
     
+    make_env= lambda: make_env_train(self.cfg)
     cfg_algo = self.cfg_train.get('algo')
     model_name = self.cfg_train.get('model_name')
     
@@ -83,7 +103,6 @@ class RLTrainer:
     model.save(model_name) #TODO try except 
     with open(cfg_name,'w') as f:
          yaml.safe_dump(self.cfg, f)
-
 
     return model
 
