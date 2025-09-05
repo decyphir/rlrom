@@ -17,7 +17,8 @@ dependencies = [
     "huggingface-hub (>=0.34.4,<0.35.0)",
     "huggingface-sb3 (>=3.0,<4.0)",
     "tensorboard (>=2.20.0,<3.0.0)",
-    "shimmy (>=2.0.0,<3.0.0)"    
+    "shimmy (>=2.0.0,<3.0.0)",
+    "minigrid (>=3.0.0,<4.0.0)"    
 ]
 
 [project.optional-dependencies]

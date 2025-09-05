@@ -1,0 +1,5 @@
+signal reward_machine_state, action, has_key, reward
+not_key := has_key[t]<1
+key := not not_key   
+phi_action :=  alw_[0,10](action[t] > 2)
+phi_terminal :=  alw_[0, 100] (( not_key ) or key => ev_[0,5] (not_key)) # we don't want this

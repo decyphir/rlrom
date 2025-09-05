@@ -2177,6 +2177,27 @@ files = [
 traitlets = "*"
 
 [[package]]
+name = "minigrid"
+version = "3.0.0"
+description = "Minimalistic gridworld reinforcement learning environments."
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "minigrid-3.0.0-py3-none-any.whl", hash = "sha256:5b505fcdab7e4306a78e7735f1114285d404a10503e9bfdd60169b49dfa34ccd"},
+    {file = "minigrid-3.0.0.tar.gz", hash = "sha256:272d08242baea8e96f49495ec8d62db1be32e0f7b1e399e1c85c22368c7b0cc5"},
+]
+
+[package.dependencies]
+gymnasium = ">=0.28.1"
+numpy = ">=1.18.0"
+pygame = ">=2.4.0"
+
+[package.extras]
+testing = ["matplotlib (>=3.0)", "pytest (>=7.0.1)", "pytest-mock (>=3.10.0)"]
+wfc = ["imageio (>=2.31.1)", "networkx"]
+
+[[package]]
 name = "mistune"
 version = "3.1.4"
 description = "A sane and fast Markdown parser with useful plugins and renderers"
@@ -4801,4 +4822,4 @@ old-gym = ["gym"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "aa642a52fac7f9db1a1cfd2beee19740b578e953abed1b3536dbde65a20accb2"
+content-hash = "1b5a70f61f4f663629d55ddc576ced5a41b9d2e61b4e351894d28a43c2dd6312"
