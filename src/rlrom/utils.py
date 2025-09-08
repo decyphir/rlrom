@@ -122,7 +122,7 @@ def get_model_fullpath(cfg):
     # returns absolute path for model, as well as for yaml config (may not exist yet)
     # The yml file (second output), if it exists, contains the full configuration used 
     # to train the model
-    model_path = cfg.get('model_path', './models')
+    model_path = cfg.get('model_path', './models')        
     model_name = cfg.get('model_name', 'random')
     full_path = os.path.join(model_path, model_name+'.zip')
     
@@ -132,11 +132,9 @@ def get_model_fullpath(cfg):
         full_path = 'random'
         cfg_full_path = None
     else:
-        if not os.path.exists(full_path):
-            print(f"WARNING: Path does not exist: {full_path}")
-        else:
-            full_path= os.path.abspath(full_path)
-            cfg_full_path = full_path.replace('.zip', '.yml')
+        os.makedirs(model_path, exist_ok=True) # creates folder for model(s) if it does not exist
+        full_path= os.path.abspath(full_path)
+        cfg_full_path = full_path.replace('.zip', '.yml')
     
     return full_path, cfg_full_path
 

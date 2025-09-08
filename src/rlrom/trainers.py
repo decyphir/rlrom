@@ -43,11 +43,9 @@ class STLWrapperCallback(BaseCallback):
     buffer = self.model.rollout_buffer
     episodes = utils.get_episodes_from_rollout(buffer)
     num_ep = len(episodes)
-    
-                
+                    
     res_rew = dict()
     res_rew_f_list = []    
-    res_eval_f_list = []
     
     ep_lens = []
     for i in range(0,num_ep):        
@@ -59,7 +57,7 @@ class STLWrapperCallback(BaseCallback):
       rewards = episodes[i]['rewards']
       ep_lens.append(len(rewards))
       #print()
-    my_mean_ep_len =   np.array(ep_lens).mean()
+    my_mean_ep_len = np.array(ep_lens).mean()
     print('Number of episodes:', num_ep, 'mean ep len:', my_mean_ep_len )
     self.logger.record('rollout/my_mean_ep_len', my_mean_ep_len)
       
@@ -88,16 +86,25 @@ class RLTrainer:
     
     make_env= lambda: make_env_train(self.cfg)
     cfg_algo = self.cfg_train.get('algo')
-    model_name = self.cfg_train.get('model_name')
+    model_name = self.cfg.get('model_name')
     
     if cfg_algo is not None:       
-       if cfg_algo.get('ppo') is not None:                     
-          cfg_ppo = cfg_algo.get('ppo')
-          print('Training  with PPO...',cfg_ppo )
-          callbacks = CallbackList([        
+      has_cfg_specs = 'cfg_specs' in self.cfg
+      if has_cfg_specs:
+        with self.cfg.get('cfg_specs') as s:
+          has_cfg_specs = s != {}
+
+    if has_cfg_specs:   
+      callbacks = CallbackList([        
           STLWrapperCallback(verbose=1, cfg_main=self.cfg)        
           ])
-          model = self.train_ppo(cfg_ppo, make_env, model_name,callbacks)
+    else:
+      callbacks = [] 
+       
+    if cfg_algo.get('ppo') is not None:                     
+      cfg_ppo = cfg_algo.get('ppo')
+      print('Training  with PPO...',cfg_ppo )          
+      model = self.train_ppo(cfg_ppo, make_env, model_name,callbacks)
     # Saving the agent
     model_name, cfg_name = utils.get_model_fullpath(self.cfg)
     model.save(model_name) #TODO try except 
@@ -128,15 +135,15 @@ class RLTrainer:
 
     # Instantiate model
     model = PPO("MlpPolicy",env,
-    device='cpu',
-    policy_kwargs=policy_kwargs,
-    n_steps=batch_size * 12 // n_envs,
-    batch_size=batch_size,
-    n_epochs=10,
-    learning_rate=learning_rate,
-    gamma=0.9,
-    verbose=1,
-    tensorboard_log=tb_dir
+      device='cpu',
+      policy_kwargs=policy_kwargs,
+      n_steps=batch_size * 12 // n_envs,
+      batch_size=batch_size,
+      n_epochs=10,
+      learning_rate=learning_rate,
+      gamma=0.9,
+      verbose=1,
+      tensorboard_log=tb_dir
     )
  
     # Train the agent
