@@ -1,6 +1,6 @@
 [project]
 name = "rlrom"
-dynamic = ["version"]  # Remove static version and add this line
+dynamic = ["version"]
 description = "RLROM is a library for testing and training reinforcement learning agent using online monitoring of signal temporal logics formulas, and more."
 authors = [{ name = "Alexandre Donze", email = "alexandre.donze@univ-grenoble-alpes.fr" }]
 requires-python = ">=3.10"

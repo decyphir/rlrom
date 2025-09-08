@@ -1,5 +1,5 @@
 env_name: highway-v0
-model_name: basic
+model_name: basic_new
 model_path: ./models
 
 cfg_env: cfg_env.yml
