@@ -12,6 +12,7 @@ cfg_specs:
     sin_theta2: 'obs[3]'
     theta1_dot: 'obs[4]'
     theta2_dot: 'obs[5]'
+  real_time_step: 0.05
      
 cfg_test: 
   init_seeds: 1

@@ -46,6 +46,7 @@ class STLWrapperCallback(BaseCallback):
                     
     res_rew = dict()
     res_rew_f_list = []    
+    res_eval_f_list = []
     
     ep_lens = []
     for i in range(0,num_ep):        
@@ -53,7 +54,8 @@ class STLWrapperCallback(BaseCallback):
       #print('EPISODE', i, end=' ')            
       self.tester.env.set_episode_data(episodes[i])      
       # eval reward formulas and eval formulas
-      res_rew, res_all_ep, res_rew_f_list, res_eval_f_list = self.tester.env.eval_episode(episodes[i],res=res_rew,res_rew_f_list=res_rew_f_list, res_eval_f_list=res_eval_f_list)
+      res_rew, res_all_ep, res_rew_f_list, res_eval_f_list = self.tester.env.eval_specs_episode(
+        episodes[i],res=res_rew,res_rew_f_list=res_rew_f_list, res_eval_f_list=res_eval_f_list)
       rewards = episodes[i]['rewards']
       ep_lens.append(len(rewards))
       #print()
@@ -91,8 +93,8 @@ class RLTrainer:
     if cfg_algo is not None:       
       has_cfg_specs = 'cfg_specs' in self.cfg
       if has_cfg_specs:
-        with self.cfg.get('cfg_specs') as s:
-          has_cfg_specs = s != {}
+        s = self.cfg.get('cfg_specs')        
+        has_cfg_specs = s != None
 
     if has_cfg_specs:   
       callbacks = CallbackList([        

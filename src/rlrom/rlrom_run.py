@@ -29,7 +29,8 @@ def main():
     if os.path.exists(args.main_cfg):
         # we change dir to where the cfg file is, so that the file can use relative path
         dirname, basename = os.path.split(args.main_cfg)
-        os.chdir(dirname)            
+        if dirname != '':
+            os.chdir(dirname)            
         custom_cfg = utils.load_cfg(basename)
     else:        
         print(f"Error: Config file {args.main_cfg} was not found.")

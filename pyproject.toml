@@ -1,17 +1,15 @@
 [project]
 name = "rlrom"
-version = "0.1.1"
+dynamic = ["version"]  # Remove static version and add this line
 description = "RLROM is a library for testing and training reinforcement learning agent using online monitoring of signal temporal logics formulas, and more."
-authors = [
-    {name = "Alexandre Donze",email = "alexandre.donze@univ-grenoble-alpes.fr"}
-]
-license = {text = "BSD-3-Clauses"}
-readme = "README.md"
+authors = [{ name = "Alexandre Donze", email = "alexandre.donze@univ-grenoble-alpes.fr" }]
 requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "BSD-3-Clauses" }
 dependencies = [
     "stlrom (>=0.2.3,<0.3.0)",
     "gymnasium[classic_control] (>=1.2.0,<2.0.0)",
-    "bokeh (>=3.8.0,<4.0.0)",
+    "bokeh (>=3.6.0,<4.0.0)",
     "sb3-contrib (>=2.7.0,<3.0.0)",
     "huggingface-hub (>=0.34.4,<0.35.0)",
     "huggingface-sb3 (>=3.0,<4.0)",
@@ -19,26 +17,34 @@ dependencies = [
     "shimmy (>=2.0.0,<3.0.0)",
     "stable-baselines3 (>=2.7.0,<3.0.0)",
     "tqdm (>=4.67.1,<5.0.0)",
-    "rich (>=14.1.0,<15.0.0)"    
+    "rich (>=14.1.0,<15.0.0)",
 ]
 
 [project.optional-dependencies]
 old_gym = ["gym (>=0.26.2,<0.27.0)"]
 highway-env = ["highway-env (>=1.10.1,<2.0.0)"]
 
-[tool.poetry]
-packages = [{include = "rlrom", from = "src"}]
-
-[tool.poetry.scripts]
+[project.scripts]
 rlrom_run = "rlrom.rlrom_run:main"
 
-[tool.poetry.group.dev]
-optional = true
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1,<2",
+    "jupyter-bokeh>=4.0.5,<5",
+]
 
-[tool.poetry.group.dev.dependencies]
-jupyter = "^1.1.1"
-jupyter-bokeh = "^4.0.5"
+[tool.hatch.build.targets.sdist]
+include = ["src/rlrom"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/rlrom"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/rlrom" = "rlrom"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling","uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
