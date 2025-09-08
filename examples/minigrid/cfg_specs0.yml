@@ -1,21 +1,6 @@
-specs: minigrid_specs.stl
-
-real_time_step: 1.0
+#specs: minigrid_specs.stl
 
 action_names:
   action: "action"
 obs_names:
-  rm_state: "obs[-1]"
-  
-# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
-  ego_fast:
-    past_horizon: 0
-    weight: .1
-  danger:
-    past_horizon: 0
-    weight: -20
-    lower_bound: 0.0 # we don't want to reward safety too much
-
-# Same for everybody
-eval_formulas: cfg_eval.yml
+  obs0: "obs[0][0][0]"
