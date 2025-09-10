@@ -14,36 +14,48 @@ from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
+import sys
 
 
-def make_env_test(cfg, render_mode='human'):
+def make_env_test(cfg):
 
-    env_name = cfg.get('env_name','highway-v0')                   
-    env = gym.make(env_name, render_mode=render_mode)
+    if 'make_env_test' in cfg:
+      # recover and execute the make_env_test custom function
+      context = sys.modules[cfg['import_module']]
+      custom_make_env = getattr(context, cfg['make_env_test'])        
+      env = custom_make_env(cfg)      
+    else:  
+      # default
+      env_name = cfg.get('env_name','')                           
+      cfg_test = cfg.get('cfg_test',{})
     
-    cfg_env = cfg.get('cfg_env',dict())
-    if cfg_env != dict():
-        env.unwrapped.configure(cfg_env)
-      # wrap env with stl_wrapper. We'll have to check if not done already        
-    cfg_specs = cfg.get('cfg_specs', None)
-            
+      if 'render_mode' in cfg_test:
+        render_mode = cfg.get('render_mode', 'human')
+      else: 
+        render_mode='human'
+    
+      env = gym.make(env_name, render_mode=render_mode)
+    
+    cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         env = stl_wrap_env(env, cfg_specs)
             
     return env
 
+    
 class RLTester:
-    def __init__(self,cfg, render_mode='human'):
+    def __init__(self,cfg):
         
         cfg = utils.load_cfg(cfg)
         self.cfg = cfg        
-        self.manual_control = True    
-        self.env_name = cfg.get('env_name','highway-v0')                                
+        self.manual_control = True
+        self.env_name = cfg.get('env_name')
         self.env = None
         self.model = None
         self.test_results = []
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
         self.model_use_stl_wrapper = True # if False, model will use observation from the wrapped environment
+        
 
     def load_model(self):
         cfg_env = self.cfg.get('cfg_env',dict())
@@ -80,12 +92,12 @@ class RLTester:
             action, _ = self.model.predict(obs)
         return action
 
-    def init_env(self, render_mode=None):
-        self.env = make_env_test(self.cfg, render_mode=render_mode)
+    def init_env(self):
+        self.env = make_env_test(self.cfg)
 
-    def run_seed(self, seed=None, num_steps=100, render_mode='human', reload_model=False):
+    def run_seed(self, seed=None, num_steps=100, reload_model=False):
 
-        self.init_env(render_mode=render_mode)
+        self.init_env()
 
         if reload_model:
              self.load_model()
@@ -120,19 +132,9 @@ class RLTester:
         test_result = dict({'cfg':self.cfg})                        
         if cfg_test is not None:
             init_seed = cfg_test.get('init_seed',0)
-            num_ep = cfg_test.get('num_ep',1)
-            render = cfg_test.get('render', True)
+            num_ep = cfg_test.get('num_ep',1)            
             num_steps  = cfg_test.get('num_steps', 100)
             reload_model = cfg_test.get('reload_model',False)
-
-            if render:
-                render_mode = 'human'
-            else:            
-                render_mode = None
-                cfg_env = self.cfg.get('cfg_env',dict())
-                if cfg_env.get('manual_control', False):                    
-                    print('WARNING: Manual control was set too True without render, that is dangerous. Setting to False')
-                    self.cfg['cfg_env']['manual_control'] = False
                 
             test_result = {'episodes':[], 'res':{}}
             num_ep_so_far=0
@@ -140,7 +142,7 @@ class RLTester:
                 self.load_model() 
 
             for seed in range(init_seed, init_seed+num_ep):
-                episode = self.run_seed(seed=seed, num_steps=num_steps,render_mode=render_mode, reload_model=False)
+                episode = self.run_seed(seed=seed, num_steps=num_steps, reload_model=False)
                 num_ep_so_far+=1
                 print('.', end='')
                 if num_ep_so_far%10==0:

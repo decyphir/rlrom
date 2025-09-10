@@ -7,3 +7,5 @@ It contains methods for robust online monitoring of reinforcement learning model
 from .envs import supported_envs, supported_models, cfg_envs
 
 __all__ = ['supported_envs', 'supported_models', 'cfg_envs']
+
+__version__ = "0.1.2"

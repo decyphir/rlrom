@@ -9,19 +9,22 @@ import yaml
 import time
 import gymnasium as gym
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
+import sys
 
 
 def make_env_train(cfg):
 
-    env_name = cfg.get('env_name','')                   
-    env = gym.make(env_name, render_mode=None)
-    
-    cfg_env = cfg.get('cfg_env',dict())
-    if cfg_env != dict():
-        env.unwrapped.configure(cfg_env)
-      # wrap env with stl_wrapper. We'll have to check if not done already        
-    cfg_specs = cfg.get('cfg_specs', None)
-            
+    if 'make_env_train' in cfg:
+      # recover and execute the make_env_train custom function
+      context = sys.modules[cfg['import_module']]
+      custom_make_env = getattr(context, cfg['make_env_train'])        
+      env = custom_make_env(cfg)      
+    else:  
+      # default
+      env_name = cfg.get('env_name','')                           
+      env = gym.make(env_name, render_mode=None)
+      
+    cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         env = stl_wrap_env(env, cfg_specs)
             
