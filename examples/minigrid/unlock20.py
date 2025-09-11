@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import gymnasium as gym
+from gymnasium.spaces import Box
 from minigrid.core.mission import MissionSpace
 from minigrid.core.roomgrid import RoomGrid
+import numpy as np
+import pprint
 from gymnasium.envs.registration import register
 
 class UnlockEnv20(RoomGrid):
@@ -54,7 +57,7 @@ class UnlockEnv20(RoomGrid):
     """
 
     def __init__(self, max_steps: int | None = None, **kwargs):
-        room_size = 10
+        room_size = 5
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         if max_steps is None:
@@ -67,6 +70,16 @@ class UnlockEnv20(RoomGrid):
             room_size=room_size,
             max_steps=max_steps,
             **kwargs,
+        )
+
+        # Initialize observation_space after creating a sample obs
+        sample_obs, _ = super().reset()
+        flat_sample = self._get_flat_obs(sample_obs)
+        self.observation_space = Box(
+            low=0,
+            high=255,
+            shape=(flat_sample.size,),
+            dtype=np.uint8,
         )
 
     @staticmethod
@@ -86,6 +99,17 @@ class UnlockEnv20(RoomGrid):
         self.door = door
         self.mission = "open the door"
 
+    def _get_flat_obs(self, obs):
+        """
+        Flatten the observation into a 1D array like FlatObsWrapper.
+        obs: the original dict observation from RoomGrid
+        """
+        if isinstance(obs, dict) and "image" in obs:
+            return obs["image"].ravel()
+        else:
+            # If your environment returns a raw array already
+            return np.array(obs).ravel()
+
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
 
@@ -93,8 +117,20 @@ class UnlockEnv20(RoomGrid):
             if self.door.is_open:
                 reward = self._reward()
                 terminated = True
-
+        # Flatten the observation
+        obs = self._get_flat_obs(obs)
+        self.key = 1 if self.carrying and self.carrying.type == "key" else 0
+        # print()
+        # print("action", action)
+        print("key", self.key)
+        # print("obs[26]", obs[24:27])
+        #1 if len(obs) > 1 and obs[26] == 5 else 0
         return obs, reward, terminated, truncated, info
+    
+    def reset(self, **kwargs):
+        obs, info = super().reset(**kwargs)
+        flat_obs = self._get_flat_obs(obs).astype(np.uint8)
+        return {"observation": flat_obs}, info
     
 register(
     id="MiniGrid-CustomUnlock-20x20-v0",
