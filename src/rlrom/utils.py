@@ -8,6 +8,7 @@ import yaml
 import os
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
+import importlib
 
 # helper function to concat new values in a dict field array
 def append_to_field_array(res, metric, val):
@@ -105,6 +106,12 @@ def load_cfg(cfg, verbose=1):
                     print('loading field [', key, '] from STL file [', value, ']')            
                 with open(value,'r') as F: 
                     cfg[key]= F.read()
+            elif key=='import_module':                
+                to_import = cfg.get('import_module')
+                if to_import is not None:
+                    imported = importlib.import_module(to_import)
+                    print(f'Imported module {to_import}')
+
             elif isinstance(value, dict):
                 cfg[key]= recursive_load(value)
 
