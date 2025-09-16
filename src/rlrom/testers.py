@@ -240,6 +240,7 @@ class RLTester:
                 test_result = self.test_results[test_result]
         episodes = test_result['episodes']
         current_ep = episodes[ep_idx] 
+        cfg = self.cfg        
         self.init_env()
         self.env.set_episode_data(current_ep)
         num_ep = len(episodes)            

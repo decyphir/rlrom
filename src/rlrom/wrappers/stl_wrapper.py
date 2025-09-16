@@ -46,7 +46,7 @@ def stl_wrap_env(env, cfg_specs):
                      BigM=BigM)
     return env
 
-class STLWrapper(gym.Wrapper):
+class STLWrapper(gym.Wrapper): 
     
     def __init__(self,env,
                  stl_driver, 
@@ -276,10 +276,11 @@ class STLWrapper(gym.Wrapper):
             step = 0
             sig=[]            
             while step<len(observations):
-                obs = observations[step]
+                obs = observations[step]['unwrapped']
+                obs_formulas= observations[step]['obs_formulas']        
                 action = actions[step]
                 reward = rewards[step]
-                reward_wrapped = rewards_wrapped[step]                
+                reward_wrapped = rewards_wrapped[step]                                
                 sig.append(eval(sig_expr))                
                 step +=1
         return sig
@@ -356,8 +357,7 @@ class STLWrapper(gym.Wrapper):
             self.stl_driver.add_sample(s)            
             self.time_step +=1
             self.current_time += self.real_time_step
-
-        
+   
     def eval_formula_cfg(self, f_name, f_opt, res=dict()):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
 
@@ -387,12 +387,10 @@ class STLWrapper(gym.Wrapper):
         val = min(val, upper_bound)
 
         return val, res
-            
-        
+               
     def eval_specs_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
     # computes different metrics to evaluate an episode. If res contains values already, concatenate
     # returns top level metrics, and robustness and stuff at all steps for reward formulas and eval formulas    
-    
         
         if episode is None:
             episode= self.episode            
