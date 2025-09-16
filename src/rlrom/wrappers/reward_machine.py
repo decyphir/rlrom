@@ -3,22 +3,20 @@ import gymnasium as gym
 from gymnasium import spaces
 #from tensorflow.python.ops.numpy_ops.np_dtypes import float32
 from collections import Counter
+import minigrid.wrappers
 import numpy as np
-import math
+from gymnasium.wrappers import TransformObservation
+from gymnasium.wrappers import ResizeObservation
+import minigrid
+from minigrid.wrappers import FlatObsWrapper
 
 class RewardMachine(gym.Wrapper):
     """Transform the reward via reward machine.
 
     Warning:
-        If the base environment specifies a reward range which is not invariant under :attr:`f`, the :attr:`reward_range` of the wrapped environment will be incorrect.
+        If the base environment specifies a reward range which is not invariant under :attr:`f`, 
+        the :attr:`reward_range` of the wrapped environment will be incorrect.
 
-    Example:
-        >>> import gymnasium as gym
-        >>> from gymnasium.wrappers import TransformReward
-        >>> env = gym.make("CartPole-v1")
-        >>> env = RewardMachine(env)
-        >>> _ = env.reset()
-        >>> observation, reward, terminated, truncated, info = env.step(env.action_space.sample())
     """
 
     def __init__(self, env, rm_filename):
@@ -26,53 +24,71 @@ class RewardMachine(gym.Wrapper):
 
         Args:
             env: The environment to apply the wrapper
-            rm_filename: The location and the filename of the reward machine
+            rm_filename: The location and the filename.txt of the reward machine
         """
-        gym.Wrapper.__init__(self, env)
+        super().__init__(env)
         self.env = env
         self.timestep = 0
-        self.rm_list, self.num_states , self.ut = self._load_reward_machine(f"./{rm_filename}")
-        self.u_in = 0
-        self.task = 0
+        self.rm_list, self.num_states, self.u_0, self.ut = self._load_reward_machine(f"./{rm_filename}")
+        self.key_pickups = 0
+        self.last_carring = None
+        self.has_key = False
+        
+        '''        self.observation_space = self.env.observation_space
+        self.action_space = self.env.action_space'''
 
     def step(self, action):
         """Modify the step function
         :param action: same as the original step
-        :return: observation with the reward machine state and robustness, and the new reward value from the
+        :return: observation with the reward machine state, the new reward value from the
         reward machine, terminated, truncated, info.
         """
         obs, reward, terminated, truncated, info = self.env.step(action)
-        self.timestep += 1
-        reward_env = reward
         u_in = self.u_in
-        self.u_in, rm_reward = self.get_rm_transition(u_in, action, self.timestep, obs[0],reward_env)
-        
-        if terminated: self.env.reset()
-        return obs, rm_reward, terminated, truncated, info
+        # Check if the agent is carrying the key
+        carrying = self.env.unwrapped.carrying
+        self.has_key = False ; door = False ; open = False
+        if carrying and carrying.type == "key":
+            self.has_key = True
+            # Detect key pickup by comparing last_carrying and current
+            if carrying != self.last_carrying:
+                self.key_pickups += 1
+        self.last_carrying = carrying
+        # Add key pickup count to info
+        info["key_pickups"] = self.key_pickups
 
-    def reset(self, **kwargs):
+        #Check if the agent is in front and the door and can open the door
+        front_pos = self.env.unwrapped.front_pos
+        obj_in_front = self.env.unwrapped.grid.get(*front_pos)
+        if obj_in_front:
+            if obj_in_front.type == "door" and obj_in_front.is_open:
+                open = True
+        # Update the values of the reward machine
+        self.u_in, rm_reward = self.get_rm_transition(u_in, self.has_key, open)
+        if self.u_in == self.ut:
+            terminated = True
+            self.env.reset()
+        self.timestep += 1
+        if reward == 0:
+            reward = 1
+        return obs, rm_reward*reward, terminated, truncated, info
+
+    def reset(self, *, seed=None, options=None):
         self.timestep = 0
-        self.u_in = 0
-        return self.env.reset(**kwargs)
+        self.u_in = self.u_0
+        self.key_pickups = 0
+        self.last_carrying = None
+        return self.env.reset(seed=seed, options=options)
 
-    def render(self):
-        return self.env.render()
 
-    def close(self):
-        return self.env.close()
-
-    def seed(self, seed):
-        return self.env.reset(seed=seed)
-
-    def get_rm_transition(self, u_in, action, ts, x, reward_env):
+    def get_rm_transition(self, u_in, has_key, open):
         # Evaluate the new state given the input state with the true specification in the reward machine
-        u_out = 0 ; reward = reward_env
+        u_out = 0 
         for transition in self.rm_list:
-            if transition[3] == "reward_env":
-                transition[3] = reward_env
             if u_in == transition[0]:
                 p = transition[2]
                 if eval(p): # boolean variable
+                    
                     u_out = transition[1]
                     reward = float(transition[3])
                     break
@@ -84,13 +100,13 @@ class RewardMachine(gym.Wrapper):
         f_copy = open(file)
         len_file = len(f_copy.readlines())
         f = open(file)
-        self.u0 = int(f.readline()[0]) # Initial state. First line of txt file
+        u_0 = int(f.readline()[0]) # Initial state. First line of txt file
         terminal_state = f.readline().split('[')[1].split(']')[0] # Terminal state(s). Second line of txt file
         terminal_state = terminal_state.split(",")
         try:
-            self.ut = [int(i) for i in terminal_state]
+            ut = [int(i) for i in terminal_state]
         except ValueError:
-            self.ut = None # If there is no terminal state
+            ut = None # If there is no terminal state
 
         rm_list = []
         for line in range(len_file - 2): # Rest of the lines in txt file --> [ui, uo, dnf, reward_env]
@@ -102,35 +118,4 @@ class RewardMachine(gym.Wrapper):
             num_states += U[:2]
         num_states = len(Counter(num_states).keys())
         #returns a list of all possible transitions and the number of states of the reward machine
-        return rm_list, num_states, self.ut
-
-
-MAX_NUM_STATE = 100 # Max number of state for reward machine - we might want do reconsider if we go into composing and stuff
-class RewardMachineObservation(gym.ObservationWrapper):
-    def __init__(self, env):
-        gym.ObservationWrapper.__init__(self, env)
-        self.u0 = 0
-        self.ut = None
-        
-        low = self.observation_space.__getattribute__("low") 
-        high = self.observation_space.__getattribute__("high")
-        
-        self.observation_space = spaces.Box(np.append(low, self.u0), 
-                                            np.append(high, MAX_NUM_STATE),        
-                                            dtype=np.float32)
-        
-        #self.observation_space = spaces.Box(np.append(low, np.array([self.u0, -1000])), 
-        #                                    np.append(high,np.array([MAX_NUM_STATE, 1000])),        
-        #                                    dtype=np.float32)
-        
-
-    def observation(self, observation):
-        # observation with rm state 
-        observation = np.append(observation , self.get_wrapper_attr('u_in'))
-
-        # Observation only rm state and dummy 0. after
-        # observation = np.append(observation , np.array([self.get_wrapper_attr('u_in'),0.]))
-        
-        return observation
-    
-
+        return rm_list, num_states, u_0, ut
