@@ -46,7 +46,7 @@ def stl_wrap_env(env, cfg_specs):
                      BigM=BigM)
     return env
 
-class STLWrapper(gym.Wrapper):
+class STLWrapper(gym.Wrapper): 
     
     def __init__(self,env,
                  stl_driver, 
@@ -99,20 +99,20 @@ class STLWrapper(gym.Wrapper):
         else: # assumes all is fine (TODO? catch bad signals_map here)    
             self.signals_map=signals_map
         
-        low = self.observation_space.__getattribute__("low") 
-        high = self.observation_space.__getattribute__("high")
+        num_obs_formulas = len(self.obs_formulas)
         if BigM is None:
             BigM = stlrom.Signal.get_BigM()
-        self.observation_space = spaces.Box(np.append(low,  [-BigM]*len(self.obs_formulas)), 
-                                            np.append(high, [BigM]*len(self.obs_formulas)),        
-                                            dtype=np.float32)
-        
-        idx_obs_f = self.observation_space.shape[0]-len(self.obs_formulas) # adding mapping from stl signal to obs array, now flat 
+                
+        obs_formula_space = spaces.Box(np.array([-BigM]*num_obs_formulas), np.array([BigM]*num_obs_formulas))
+        dict_obs = {'unwrapped': env.observation_space, 'obs_formulas': obs_formula_space}        
+        self.observation_space =  spaces.Dict(dict_obs)        
+
+        idx_obs_f = 0 # adding mapping from stl signal to obs array, now flat 
         for f_name, f_opt in obs_formulas.items():             
             f_hor = f_opt.get('past_horizon',0)
             obs_name = 'obs_'+f_name+'_hor_'+str(f_hor)
             obs_name = f_opt.get('obs_name', obs_name)
-            ref_in_obs = 'obs['+str(idx_obs_f)+']'
+            ref_in_obs = 'obs_formulas['+str(idx_obs_f)+']'
             self.signals_map[obs_name]= ref_in_obs
             idx_obs_f +=1
 
@@ -120,10 +120,7 @@ class STLWrapper(gym.Wrapper):
     
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
-        
-        # store wrapped obs
-        self.wrapped_obs = obs
-                
+                        
         # collect the sample for monitoring 
         s = self.get_sample(self.prev_obs, action, reward) 
         
@@ -131,10 +128,10 @@ class STLWrapper(gym.Wrapper):
         self.stl_driver.add_sample(s)        
         
         idx_formula = 0
-        rob = [0]*len(self.obs_formulas)
+        robs = [0]*len(self.obs_formulas)
         for f_name, f_opt in self.obs_formulas.items():             
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
-            rob[idx_formula] = robs_f # forget about low and high rob for now
+            robs[idx_formula] = robs_f # forget about low and high robs for now
             idx_formula+=1     
          
         for f_name, f_opt in self.end_formulas.items():             
@@ -155,8 +152,11 @@ class STLWrapper(gym.Wrapper):
         self.current_time += self.real_time_step
         
         # return obs with added robustness
-        new_obs = np.append(obs, rob)
-                        
+        
+        new_obs = dict()
+        new_obs['unwrapped'] = obs
+        new_obs['obs_formulas'] = robs
+                                
         self.prev_obs = new_obs
 
         self.episode['observations'].append(new_obs)               
@@ -171,8 +171,10 @@ class STLWrapper(gym.Wrapper):
 
         return new_obs, new_reward, terminated, truncated, info
 
-    def get_sample(self,obs,action,reward):        
+    def get_sample(self,obs_dict,action,reward):        
         # get a sample for stl driver, converts obs, action,reward into (t, signals_values)
+        obs = obs_dict['unwrapped']
+        obs_formulas= obs_dict['obs_formulas']
         s = np.zeros(len(self.signals_map)+1-len(self.obs_formulas))
         s[0] = self.current_time
         i_sig = 0
@@ -191,7 +193,9 @@ class STLWrapper(gym.Wrapper):
         obs0, info = self.env.reset(**kwargs)
         self.wrapped_obs = obs0        
         robs0 = self.reset_monitor()
-        obs = np.append(obs0, robs0)
+        obs = dict()
+        obs['unwrapped'] = obs0
+        obs['obs_formulas'] = robs0
         self.prev_obs = obs
         self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[]}        
         return obs, info
@@ -272,10 +276,11 @@ class STLWrapper(gym.Wrapper):
             step = 0
             sig=[]            
             while step<len(observations):
-                obs = observations[step]
+                obs = observations[step]['unwrapped']
+                obs_formulas= observations[step]['obs_formulas']        
                 action = actions[step]
                 reward = rewards[step]
-                reward_wrapped = rewards_wrapped[step]                
+                reward_wrapped = rewards_wrapped[step]                                
                 sig.append(eval(sig_expr))                
                 step +=1
         return sig
@@ -352,8 +357,7 @@ class STLWrapper(gym.Wrapper):
             self.stl_driver.add_sample(s)            
             self.time_step +=1
             self.current_time += self.real_time_step
-
-        
+   
     def eval_formula_cfg(self, f_name, f_opt, res=dict()):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
 
@@ -383,12 +387,10 @@ class STLWrapper(gym.Wrapper):
         val = min(val, upper_bound)
 
         return val, res
-            
-        
+               
     def eval_specs_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
     # computes different metrics to evaluate an episode. If res contains values already, concatenate
     # returns top level metrics, and robustness and stuff at all steps for reward formulas and eval formulas    
-    
         
         if episode is None:
             episode= self.episode            

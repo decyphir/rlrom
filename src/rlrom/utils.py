@@ -6,6 +6,7 @@ from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepo
 import re
 import yaml
 import os
+import sys
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
@@ -107,7 +108,7 @@ def load_cfg(cfg, verbose=1):
                 with open(value,'r') as F: 
                     cfg[key]= F.read()
             elif key=='import_module':                
-                to_import = cfg.get('import_module')
+                to_import = cfg.get('import_module')                
                 if to_import is not None:
                     imported = importlib.import_module(to_import)
                     print(f'Imported module {to_import}')
@@ -117,8 +118,13 @@ def load_cfg(cfg, verbose=1):
 
         return cfg
 
+    # we change dir to where the cfg file is, so that the file can use relative path        
     if isinstance(cfg, str) and os.path.exists(cfg):
-        with open(cfg, 'r') as f:
+        dirname, basename = os.path.split(cfg)
+        if dirname != '':
+            os.chdir(dirname)            
+        sys.path.append('')
+        with open(basename, 'r') as f:
             cfg= yaml.safe_load(f)
     elif not isinstance(cfg, dict): 
         raise TypeError(f"Expected file name or dict.")

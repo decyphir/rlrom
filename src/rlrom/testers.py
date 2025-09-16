@@ -1,8 +1,7 @@
 import numpy as np
 
 import gymnasium as gym
-from gymnasium.spaces.utils import flatten_space
-
+from gymnasium import spaces
 import rlrom.utils as utils
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
 from rlrom.utils import append_to_field_array as add_metric
@@ -77,6 +76,10 @@ class RLTester:
                 else:
                     print("INFO: Loading model ", model_name)
                     model= utils.load_model(model_name)
+        try:
+            self.model_use_stl_wrapper = isinstance(model.observation_space,spaces.Dict)
+        except:
+            self.model_use_stl_wrapper = False
         self.model = model
 
     def _get_action(self, obs):        
@@ -87,8 +90,7 @@ class RLTester:
             if self.has_stl_wrapper:  
                 if self.model_use_stl_wrapper is False:
                     # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action
-                    obs = self.env.wrapped_obs
-
+                    obs = obs['unwrapped']
             action, _ = self.model.predict(obs)
         return action
 
@@ -238,6 +240,7 @@ class RLTester:
                 test_result = self.test_results[test_result]
         episodes = test_result['episodes']
         current_ep = episodes[ep_idx] 
+        cfg = self.cfg        
         self.init_env()
         self.env.set_episode_data(current_ep)
         num_ep = len(episodes)            
