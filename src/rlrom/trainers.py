@@ -8,17 +8,24 @@ import numpy as np
 import yaml
 import time
 import gymnasium as gym
+from gymnasium.wrappers import FlattenObservation
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
+import os
 import sys
-
+import importlib
 
 def make_env_train(cfg):
-
+    print(f'currend folder: {os.getcwd()}')
+        
     if 'make_env_train' in cfg:
-      # recover and execute the make_env_train custom function
-      context = sys.modules[cfg['import_module']]
-      custom_make_env = getattr(context, cfg['make_env_train'])        
-      env = custom_make_env(cfg)      
+      # recover and execute the make_env_train custom function      
+      to_import = cfg.get('import_module')                
+      sys.path.append('')
+      if to_import is not None: #TODO better exception handling ?
+        imported = importlib.import_module(to_import)
+        print(f'Imported module {to_import}')      
+        custom_make_env = getattr(imported, cfg['make_env_train'])        
+        env = custom_make_env(cfg)      
     else:  
       # default
       env_name = cfg.get('env_name','')                           
@@ -34,7 +41,7 @@ def make_env_train(cfg):
 class STLWrapperCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict()):
     super().__init__(verbose)
-    self.tester = RLTester(cfg_main, render_mode=None)
+    self.tester = RLTester(cfg_main)
     self.tester.init_env()    
   
 
