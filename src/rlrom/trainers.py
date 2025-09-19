@@ -42,7 +42,7 @@ class STLWrapperCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict()):
     super().__init__(verbose)
     self.tester = RLTester(cfg_main)
-    self.tester.init_env()    
+    self.tester.init_env(render_mode=None)    
   
 
   def _on_step(self):
@@ -64,7 +64,7 @@ class STLWrapperCallback(BaseCallback):
       #print('EPISODE', i, end=' ')            
       self.tester.env.set_episode_data(episodes[i])      
       # eval reward formulas and eval formulas
-      res_rew, res_all_ep, res_rew_f_list, res_eval_f_list = self.tester.env.eval_specs_episode(
+      res_rew, res_all_ep, res_rew_f_list, res_eval_f_list = self.tester.env.env.eval_specs_episode(
         episodes[i],res=res_rew,res_rew_f_list=res_rew_f_list, res_eval_f_list=res_eval_f_list)
       rewards = episodes[i]['rewards']
       ep_lens.append(len(rewards))

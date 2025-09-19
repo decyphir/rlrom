@@ -18,7 +18,7 @@ cfg_test:
   init_seeds: 1
   num_ep: 5
   num_steps: 500 
-  render: true
+  render_mode: 'human'
 
 cfg_train:
   algo:

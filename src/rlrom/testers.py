@@ -29,10 +29,12 @@ def make_env_test(cfg):
       cfg_test = cfg.get('cfg_test',{})
     
       if 'render_mode' in cfg_test:
-        render_mode = cfg.get('render_mode', 'human')
+        render_mode = cfg_test.get('render_mode', 'human')
+        if render_mode=='None':
+            render_mode=None
       else: 
-        render_mode='human'
-    
+        render_mode=None
+      
       env = gym.make(env_name, render_mode=render_mode)
     
     cfg_specs = cfg.get('cfg_specs', None)            
@@ -55,7 +57,6 @@ class RLTester:
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
         self.model_use_stl_wrapper = True # if False, model will use observation from the wrapped environment
         
-
     def load_model(self):
         cfg_env = self.cfg.get('cfg_env',dict())
         if cfg_env.get('manual_control', False):
@@ -89,13 +90,16 @@ class RLTester:
         else:
             if self.has_stl_wrapper:  
                 if self.model_use_stl_wrapper is False:
-                    # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action
-                    obs = obs['unwrapped']
+                    # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action                    
+                    obs = self.env.env.last_obs['unwrapped'] # TODO might break with more than one layer of wrapper
             action, _ = self.model.predict(obs)
         return action
 
-    def init_env(self):
-        self.env = make_env_test(self.cfg)
+    def init_env(self, **kargs):      # **kargs allows to override self.cfg fields without changing self.cfg
+        cfg = self.cfg        
+        cfg= utils.set_rec_cfg_field(cfg,**kargs)            
+        print(cfg)
+        self.env = make_env_test(cfg)
 
     def run_seed(self, seed=None, num_steps=100, reload_model=False):
 
@@ -106,17 +110,20 @@ class RLTester:
         
         # We actually might want to reload every time to enforce determinism     
         if self.has_stl_wrapper is False:
-            episode = {'observations':[], 'actions':[],'rewards':[], 'dones':[]}
+            episode = {'observations':[], 'actions':[],'rewards':[], 'dones':[], 'last_obs':[]}
 
         if seed is not None:
-            obs, info = self.env.reset(seed=seed)
+            last_obs, info = self.env.reset(seed=seed)
         else:
-            obs, info = self.env.reset()        
+            last_obs, info = self.env.reset()        
+        
         for _ in range(num_steps):    
-            action = self._get_action(obs)
+
+            action = self._get_action(last_obs)
             obs, reward, terminated, truncated, info = self.env.step(action)    
             if self.has_stl_wrapper is False:
-                episode['observations'].append(obs)               
+                episode['observations'].append(last_obs)               
+                episode['last_obs'] = obs
                 episode['actions'].append(action)
                 episode['rewards'].append(reward)
                 episode['dones'].append(terminated)
@@ -125,7 +132,7 @@ class RLTester:
                 break    
         
         if self.has_stl_wrapper:
-            episode = self.env.episode
+            episode = self.env.get_wrapper_attr('episode')
         self.env.close()
         return episode
 
@@ -162,9 +169,10 @@ class RLTester:
         if self.has_stl_wrapper:
             res_rew_f_list = test_result.get('res_rew_f_list',[])
             res_eval_f_list = test_result.get('res_eval_f_list',[])
-            res, res_all_ep, res_rew_f_list, res_eval_f_list  = self.env.eval_specs_episode(res=res,
-                                                                                      res_rew_f_list= res_rew_f_list,
-                                                                                      res_eval_f_list= res_eval_f_list)
+            eval_specs_episode = self.env.get_wrapper_attr('eval_specs_episode')
+            res, res_all_ep, res_rew_f_list, res_eval_f_list  = eval_specs_episode(res=res,
+                                                                                res_rew_f_list= res_rew_f_list,
+                                                                                res_eval_f_list= res_eval_f_list)
         else: # only episode length and sum reward
             rewards = episode['rewards']
             ep_len = len(rewards)                    
@@ -209,7 +217,8 @@ class RLTester:
         #for f_name,_ in self.env.reward_formulas.items():
         #    print(f_name+':',f"{res_all_ep['reward_formulas'][f_name]['mean_sum']:.4g}",end=' | ')      
         if self.has_stl_wrapper:
-            for f_name,f_cfg in self.env.eval_formulas.items():
+            eval_formulas = self.env.get_wrapper_attr('eval_formulas')
+            for f_name,f_cfg in eval_formulas.items():
                 if f_cfg is None:
                     f_cfg = {}                
                 is_local_formula = f_cfg.get('eval_all_steps', False)
@@ -239,8 +248,8 @@ class RLTester:
             else:
                 test_result = self.test_results[test_result]
         episodes = test_result['episodes']
-        current_ep = episodes[ep_idx] 
-        cfg = self.cfg        
+        current_ep = episodes[ep_idx]         
+        #self.init_env(render_mode=None)
         self.init_env()
         self.env.set_episode_data(current_ep)
         num_ep = len(episodes)            
@@ -286,6 +295,6 @@ class RLTester:
                 except:
                      status = "Warning: error getting values for " + signal
         fig = gridplot(figs, sizing_mode='stretch_width')        
-
+        self.env.close()
         return fig, status
 

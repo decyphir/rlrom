@@ -1,4 +1,4 @@
 init_seeds: 1
 num_ep: 5
 num_steps: 100 
-render: true
+render_mode: 'human'
