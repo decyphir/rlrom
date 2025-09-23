@@ -202,7 +202,7 @@ class RLTester:
         res_rew_f_list = []
         res_eval_f_list = []            
         for episode in episodes:                                
-                res, res_all_ep, res_rew_f_list, res_eval_f_list  = self.env.eval_episode(episode=episode,
+                res, res_all_ep, res_rew_f_list, res_eval_f_list  = self.env.env.eval_episode(episode=episode,
                                                                                           res=res,
                                                                                           res_rew_f_list= res_rew_f_list,
                                                                                           res_eval_f_list= res_eval_f_list)
@@ -211,7 +211,7 @@ class RLTester:
         test_result['res_all_ep']= res_all_ep
         test_result['res_rew_f_list']= res_rew_f_list
         test_result['res_eval_f_list']= res_eval_f_list
-        return  test_result
+        return test_result
 
     def print_res_all_ep(self, test_result):
         res_all_ep = test_result['res_all_ep']

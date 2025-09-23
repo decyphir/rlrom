@@ -1,6 +1,7 @@
 signal push, x, x_dot, theta, theta_dot, reward
 
+cart_near_origin := abs(x[t]) < 0.1
 
 go_left := x_dot[t]>0
 far_left := x[t]<-0.1
-phi_far_left := ev_[0, 100] far_left
+phi_stable := alw_[0, 100] cart_near_origin

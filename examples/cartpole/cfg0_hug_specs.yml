@@ -16,7 +16,7 @@ cfg_specs:
     
 cfg_test: 
   init_seeds: 1
-  num_ep: 1
+  num_ep: 10
   num_steps: 100 
   #render_mode: 'None'
   render_mode: 'human'

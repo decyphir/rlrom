@@ -3,7 +3,7 @@ import rlrom.utils as utils
 from rlrom.testers import RLTester
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+from stable_baselines3.common.callbacks import EvalCallback,BaseCallback, CallbackList
 import numpy as np
 import yaml
 import time
@@ -13,6 +13,7 @@ from rlrom.wrappers.stl_wrapper import stl_wrap_env
 import os
 import sys
 import importlib
+import torch as th
 
 def make_env_train(cfg):
     print(f'currend folder: {os.getcwd()}')
@@ -40,42 +41,31 @@ def make_env_train(cfg):
     return env
 
 
-class STLWrapperCallback(BaseCallback):
+class RlromCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict()):
     super().__init__(verbose)
-    self.tester = RLTester(cfg_main)
-    self.tester.init_env(render_mode=None)    
+    self.cfg = utils.set_rec_cfg_field(cfg_main,render_mode=None)
+    
+    cfg_train = cfg_main.get('cfg_train')
+    n_envs = cfg_train.get('n_envs',1)
+    self.eval_freq = np.floor(cfg_train.get('eval_freq', 1000)/n_envs)
+    print(f'n_envs = {n_envs}, Eval freq: {self.eval_freq}')
   
 
   def _on_step(self):
+    #print("step:", self.n_calls)
+    if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
+      self.eval_policy()
+          
     return True
     
-  def _on_rollout_end(self):
-    # Access the rollout buffer
-    buffer = self.model.rollout_buffer
-    episodes = utils.get_episodes_from_rollout(buffer)
-    num_ep = len(episodes)
-                    
-    res_rew = dict()
-    res_rew_f_list = []    
-    res_eval_f_list = []
-    
-    ep_lens = []
-    for i in range(0,num_ep):        
-      #print('----------------------------------------------------')
-      #print('EPISODE', i, end=' ')            
-      self.tester.env.set_episode_data(episodes[i])      
-      # eval reward formulas and eval formulas
-      res_rew, res_all_ep, res_rew_f_list, res_eval_f_list = self.tester.env.env.eval_specs_episode(
-        episodes[i],res=res_rew,res_rew_f_list=res_rew_f_list, res_eval_f_list=res_eval_f_list)
-      rewards = episodes[i]['rewards']
-      ep_lens.append(len(rewards))
-      #print()
-    my_mean_ep_len = np.array(ep_lens).mean()
-    print('Number of episodes:', num_ep, 'mean ep len:', my_mean_ep_len )
-    self.logger.record('rollout/my_mean_ep_len', my_mean_ep_len)
-      
 
+  def eval_policy(self):
+        
+    self.tester = RLTester(self.cfg)
+    Tres = self.tester.run_cfg_test()                
+          
+    res_all_ep = Tres['res_all_ep']
     for metric_name, metric_value in res_all_ep['basics'].items():
       log_name = 'basics/'+metric_name    
       self.logger.record(log_name, metric_value)
@@ -87,6 +77,8 @@ class STLWrapperCallback(BaseCallback):
       for metric_name, metric_value in f_value.items():
         log_name = 'rew_f/'+f_name+'/'+metric_name 
         self.logger.record(log_name, metric_value)
+    
+    self.tester.print_res_all_ep(Tres)
 
     return True
 
@@ -109,9 +101,9 @@ class RLTrainer:
         s = self.cfg.get('cfg_specs')        
         has_cfg_specs = s != None
 
-    if has_cfg_specs and self.model_use_specs:   
+    if has_cfg_specs:   
       callbacks = CallbackList([        
-          STLWrapperCallback(verbose=1, cfg_main=self.cfg)        
+        RlromCallback(verbose=1, cfg_main=self.cfg)        
           ])
     else:
       callbacks = [] 
@@ -129,19 +121,20 @@ class RLTrainer:
 
     return model
 
-  def train_ppo(self,cfg, make_env,model_name, callbacks):
+  def train_ppo(self,cfg_algo, make_env,model_name, callbacks):
       
     # hyperparams, training configuration      
-    n_envs = cfg.get('n_envs',1)
-    batch_size = cfg.get('batch_size',128)
-    neurons = cfg.get('neurons',128)
-    learning_rate = float(cfg.get('learning_rate', '5e-4'))
-    total_timesteps = cfg.get('total_timesteps',1000)
-    cfg_tb = cfg.get('tensorboard',dict()) 
+    n_envs = self.cfg_train.get('n_envs',1)
+    batch_size = cfg_algo.get('batch_size',128)
+    neurons = cfg_algo.get('neurons',128)
+    learning_rate = float(cfg_algo.get('learning_rate', '5e-4'))
+    #learning_rate = cfg_algo.get('learning_rate', '5e-4')
+    total_timesteps = cfg_algo.get('total_timesteps',1000)
+    cfg_tb = cfg_algo.get('tensorboard',dict()) 
     tb_dir, tb_prefix= self.get_tb_dir(cfg_tb,model_name)
     
     policy_kwargs = dict(
-      #activation_fn=th.nn.ReLU,
+      activation_fn=th.nn.ReLU,
       net_arch=dict(pi=[neurons, neurons], qf=[neurons, neurons])
     )
     
@@ -156,9 +149,13 @@ class RLTrainer:
       policy_kwargs=policy_kwargs,
       n_steps=batch_size * 12 // n_envs,
       batch_size=batch_size,
-      n_epochs=10,
+      n_epochs=20,
       learning_rate=learning_rate,
-      gamma=0.9,
+      gamma=0.95,
+      gae_lambda=0.8,
+      clip_range=0.2,
+      vf_coef=0.5,
+      normalize_advantage=False,
       verbose=1,
       tensorboard_log=tb_dir
     )

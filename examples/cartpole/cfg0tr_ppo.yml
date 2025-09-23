@@ -1,0 +1,20 @@
+env_name: CartPole-v1
+model_path: ./models
+model_name: vanilla_ppo
+
+cfg_test: 
+  init_seeds: 1
+  num_ep: 5
+  num_steps: 500 
+  render_mode: 'human'
+
+cfg_train:
+  algo:
+    ppo:
+      batch_size: 256
+      n_envs: 12
+      neurons: 128
+      learning_rate: 1e-3
+      total_timesteps: 200_000
+      tensorboard:
+        tb_path: ./tb_logs

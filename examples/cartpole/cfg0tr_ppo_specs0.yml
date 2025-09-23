@@ -13,21 +13,23 @@ cfg_specs:
     theta_dot: "obs[3]"  
   specs: cartpole.stl
   eval_formulas:
-    phi_far_left:
+    phi_stable:
 
 cfg_test: 
   init_seeds: 1
-  num_ep: 5
+  num_ep: 10
   num_steps: 500 
   render_mode: 'human'
 
 cfg_train:
+  n_envs: 12  
+  eval_freq: 10000
+  
   algo:
     ppo:
       batch_size: 128
-      n_envs: 12
       neurons: 128
-      learning_rate: 1e-4
+      learning_rate: 5e-4
       total_timesteps: 200_000
       tensorboard:
         tb_path: ./tb_logs
