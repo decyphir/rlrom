@@ -4,3 +4,6 @@ events.out.*
 .vscode/settings.json
 *.whl
 *.tar.gz
+uv.lock
+examples/cartpole/models/vanilla_ppo.yml
+examples/cartpole/models/vanilla_ppo.zip

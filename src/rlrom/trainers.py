@@ -33,7 +33,9 @@ def make_env_train(cfg):
       
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
-        env = stl_wrap_env(env, cfg_specs)
+        model_use_spec = cfg.get('model_use_specs', False)
+        if model_use_spec:
+          env = stl_wrap_env(env, cfg_specs)
             
     return env
 
@@ -92,7 +94,8 @@ class RLTrainer:
   def __init__(self, cfg):    
     self.cfg = utils.load_cfg(cfg)    
     self.cfg_train = self.cfg.get('cfg_train', {})
-    pass   
+    self.model_use_specs = cfg.get('model_use_specs', False)
+    
 
   def train(self,make_en_train=make_env_train):
     
@@ -106,7 +109,7 @@ class RLTrainer:
         s = self.cfg.get('cfg_specs')        
         has_cfg_specs = s != None
 
-    if has_cfg_specs:   
+    if has_cfg_specs and self.model_use_specs:   
       callbacks = CallbackList([        
           STLWrapperCallback(verbose=1, cfg_main=self.cfg)        
           ])
@@ -117,6 +120,7 @@ class RLTrainer:
       cfg_ppo = cfg_algo.get('ppo')
       print('Training  with PPO...',cfg_ppo )          
       model = self.train_ppo(cfg_ppo, make_env, model_name,callbacks)
+    
     # Saving the agent
     model_name, cfg_name = utils.get_model_fullpath(self.cfg)
     model.save(model_name) #TODO try except 
@@ -140,6 +144,7 @@ class RLTrainer:
       #activation_fn=th.nn.ReLU,
       net_arch=dict(pi=[neurons, neurons], qf=[neurons, neurons])
     )
+    
     if n_envs>1:
        env = make_vec_env(make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:

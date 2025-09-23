@@ -1,6 +1,7 @@
 env_name: CartPole-v1
 model_path: ./models
 model_name: vanilla_ppo
+model_use_specs: false
 
 cfg_specs:
   action_names: 
