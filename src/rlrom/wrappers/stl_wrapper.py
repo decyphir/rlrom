@@ -44,6 +44,9 @@ def stl_wrap_env(env, cfg_specs):
                      eval_formulas=eval_formulas,
                      end_formulas=end_formulas,
                      BigM=BigM)
+    
+    env = gym.wrappers.FlattenObservation(env)
+
     return env
 
 class STLWrapper(gym.Wrapper): 
@@ -122,7 +125,7 @@ class STLWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)                
                         
         # collect the sample for monitoring 
-        s = self.get_sample(self.prev_obs, action, reward) 
+        s = self.get_sample(self.last_obs, action, reward) 
         
         # add sample and compute robustness
         self.stl_driver.add_sample(s)        
@@ -156,15 +159,14 @@ class STLWrapper(gym.Wrapper):
         new_obs = dict()
         new_obs['unwrapped'] = obs
         new_obs['obs_formulas'] = robs
-                                
-        self.prev_obs = new_obs
 
-        self.episode['observations'].append(new_obs)               
+        self.episode['observations'].append(self.last_obs)               
         self.episode['actions'].append(action)
         self.episode['rewards_wrapped'].append(reward)
         self.episode['rewards'].append(new_reward)
         self.episode['dones'].append(terminated)
-            
+        self.episode['last_obs'] = new_obs
+        self.last_obs = new_obs    
 
         if terminated: 
             self.env.reset()
@@ -196,8 +198,9 @@ class STLWrapper(gym.Wrapper):
         obs = dict()
         obs['unwrapped'] = obs0
         obs['obs_formulas'] = robs0
-        self.prev_obs = obs
-        self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[]}        
+        self.last_obs = obs
+        self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[], 'last_obs':[obs]}        
+        
         return obs, info
 
     def reset_monitor(self):        

@@ -1,0 +1,23 @@
+env_name: CartPole-v1
+model_path: huggingface
+model_name: sb3/ppo-CartPole-v1
+
+cfg_specs:
+  action_names: 
+    push: "action"
+  obs_names:
+    x: "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"  
+  specs: cartpole.stl
+  eval_formulas:
+    phi_stable:
+    
+cfg_test: 
+  init_seeds: 1
+  num_ep: 10
+  num_steps: 100 
+  #render_mode: 'None'
+  render_mode: 'human'
+

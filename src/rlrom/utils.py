@@ -11,6 +11,20 @@ import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
 
+def set_rec_cfg_field(cfg, **kargs):
+    def rec_set(cfg, key, value):
+        for item in cfg:
+            if item==key:
+                cfg[item]=value
+            elif isinstance(cfg[item], dict):
+                cfg[item]= rec_set(cfg[item],key,value)
+        return cfg    
+    for item in kargs:
+        cfg = rec_set(cfg,item,kargs[item])
+    return cfg
+
+
+
 # helper function to concat new values in a dict field array
 def append_to_field_array(res, metric, val):
     vals = res.get(metric,None)

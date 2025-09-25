@@ -1,6 +1,7 @@
 env_name: CartPole-v1
 model_path: ./models
-model_name: vanilla_ppo
+model_name: ppo_specs1
+model_use_specs: true
 
 cfg_specs:
   action_names: 
@@ -11,22 +12,25 @@ cfg_specs:
     theta: "obs[2]"
     theta_dot: "obs[3]"  
   specs: cartpole.stl
+    
+#  obs_formulas:
+#    cart_near_origin:
+#      obs_name: f1
+#      past_horizon: 0
+
+
   eval_formulas:
-    phi_far_left:
+    phi_stable:
 
 cfg_test: 
   init_seeds: 1
-  num_ep: 5
+  num_ep: 10
   num_steps: 500 
-  render: true
+  render_mode: 'human'
 
 cfg_train:
+  n_envs: 12 
+  eval_freq: 10000
+  
   algo:
-    ppo:
-      batch_size: 128
-      n_envs: 12
-      neurons: 128
-      learning_rate: 1e-4
-      total_timesteps: 200_000
-      tensorboard:
-        tb_path: ./tb_logs
+    ppo: cartpole_ppo.yml

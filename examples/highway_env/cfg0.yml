@@ -1,4 +1,7 @@
 env_name: highway-v0
+import_module: highway
+make_env_train: make_env_train
+make_env_test: make_env_test
 model_name: basic_new
 model_path: ./models
 

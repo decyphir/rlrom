@@ -4,21 +4,14 @@ This module integrates Robust Online Monitoring methods with Reinforcement Learn
 
 ## Install
 
-Those are needed for building some of the required python modules, in particular [stlrom](https://github.com/decyphir/stlrom) for STL monitoring.
-- CMake
-- swig 
-
-Then installing should be as simple as
+Make sure build tools are installed, e.g., with `apt`:
+```
+$ sudo apt install build-essential
+```
+Then install with pip: 
 ```
 pip install rlrom 
 ``` 
-
-Note that some environments still require an older version of Gym. It can be installed with 
-```
-pip install rlrom[old_gym]
-``` 
-
-
 ## Getting Started
 
 RLRom reads configuration files in the YAML format as inputs. Examples are provided in the examples folder. A command line interface is provided through the script `rlrom_run`. For instance, 
