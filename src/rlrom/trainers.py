@@ -16,7 +16,6 @@ import importlib
 import torch as th
 
 def make_env_train(cfg):
-    print(f'currend folder: {os.getcwd()}')
         
     if 'make_env_train' in cfg:
       # recover and execute the make_env_train custom function      
