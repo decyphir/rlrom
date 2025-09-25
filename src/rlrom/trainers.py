@@ -35,8 +35,9 @@ def make_env_train(cfg):
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         model_use_spec = cfg.get('model_use_specs', False)
-        if model_use_spec:
+        if model_use_spec:          
           env = stl_wrap_env(env, cfg_specs)
+          env = gym.wrappers.FlattenObservation(env)
             
     return env
 
@@ -48,7 +49,7 @@ class RlromCallback(BaseCallback):
     
     cfg_train = cfg_main.get('cfg_train')
     n_envs = cfg_train.get('n_envs',1)
-    self.eval_freq = np.floor(cfg_train.get('eval_freq', 1000)/n_envs)
+    self.eval_freq = cfg_train.get('eval_freq', 1000)//n_envs
     print(f'n_envs = {n_envs}, Eval freq: {self.eval_freq}')
   
 
@@ -63,7 +64,8 @@ class RlromCallback(BaseCallback):
   def eval_policy(self):
         
     self.tester = RLTester(self.cfg)
-    Tres = self.tester.run_cfg_test()                
+    self.tester.model = self.model
+    Tres = self.tester.run_cfg_test(reload_model=False)                
           
     res_all_ep = Tres['res_all_ep']
     for metric_name, metric_value in res_all_ep['basics'].items():
@@ -128,13 +130,20 @@ class RLTrainer:
     batch_size = cfg_algo.get('batch_size',128)
     neurons = cfg_algo.get('neurons',128)
     learning_rate = float(cfg_algo.get('learning_rate', '5e-4'))
-    #learning_rate = cfg_algo.get('learning_rate', '5e-4')
+    n_epoch = cfg_algo.get('n_epoch', 10)
+    gamma = cfg_algo.get('gamma', .99)
+    gae_lambda = cfg_algo.get('gae_gamma', .8)
+    clip_range = cfg_algo.get('clip_range', .2)
+    ent_coef = cfg_algo.get('ent_coef', 0.0)
+    vf_coef = cfg_algo.get('vf_coef', .5)
+    normalize_advantage = cfg_algo.get('normalize_advantage', False)
     total_timesteps = cfg_algo.get('total_timesteps',1000)
+            
     cfg_tb = cfg_algo.get('tensorboard',dict()) 
     tb_dir, tb_prefix= self.get_tb_dir(cfg_tb,model_name)
     
     policy_kwargs = dict(
-      activation_fn=th.nn.ReLU,
+      activation_fn=th.nn.Tanh,
       net_arch=dict(pi=[neurons, neurons], qf=[neurons, neurons])
     )
     
@@ -149,13 +158,14 @@ class RLTrainer:
       policy_kwargs=policy_kwargs,
       n_steps=batch_size * 12 // n_envs,
       batch_size=batch_size,
-      n_epochs=20,
+      n_epochs=n_epoch,
+      ent_coef=ent_coef,
       learning_rate=learning_rate,
-      gamma=0.95,
-      gae_lambda=0.8,
-      clip_range=0.2,
-      vf_coef=0.5,
-      normalize_advantage=False,
+      gamma=gamma,
+      gae_lambda=gae_lambda,
+      clip_range=clip_range,
+      vf_coef=vf_coef,
+      normalize_advantage=normalize_advantage,
       verbose=1,
       tensorboard_log=tb_dir
     )

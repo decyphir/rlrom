@@ -40,7 +40,7 @@ def make_env_test(cfg):
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         env = stl_wrap_env(env, cfg_specs)
-            
+        env = gym.wrappers.FlattenObservation(env)        
     return env
 
     
@@ -49,7 +49,7 @@ class RLTester:
         
         cfg = utils.load_cfg(cfg)
         self.cfg = cfg        
-        self.manual_control = True
+        self.manual_control = False
         self.env_name = cfg.get('env_name')
         self.env = None
         self.model = None
@@ -80,7 +80,6 @@ class RLTester:
                     model= utils.load_model(model_name)
             
         self.model = model
-
 
     def _get_action(self, obs):        
         
@@ -139,22 +138,22 @@ class RLTester:
         self.env.close()
         return episode
 
-    def run_cfg_test(self):
+    def run_cfg_test(self, reload_model=True):
         cfg_test = self.cfg.get('cfg_test') 
         test_result = dict({'cfg':self.cfg})                        
         if cfg_test is not None:
             init_seed = cfg_test.get('init_seed',0)
             num_ep = cfg_test.get('num_ep',1)            
             num_steps  = cfg_test.get('num_steps', 100)
-            reload_model = cfg_test.get('reload_model',False)
+            reload_model_every_ep = cfg_test.get('reload_model_every_ep',False)
                 
             test_result = {'episodes':[], 'res':{}}
             num_ep_so_far=0
-            if reload_model is False: # we load it here only, otherwise, reload inside run_seed every time
+            if reload_model: 
                 self.load_model() 
-
+            
             for seed in range(init_seed, init_seed+num_ep):
-                episode = self.run_seed(seed=seed, num_steps=num_steps, reload_model=False)
+                episode = self.run_seed(seed=seed, num_steps=num_steps, reload_model=reload_model_every_ep)
                 num_ep_so_far+=1
                 print('.', end='')
                 if num_ep_so_far%10==0:

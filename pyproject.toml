@@ -18,7 +18,9 @@ dependencies = [
     "tqdm (>=4.67.1,<5.0.0)",
     "rich (>=14.1.0,<15.0.0)",
     "shimmy (>=2.0.0,<3.0.0)",
-    "minigrid (>=3.0.0,<4.0.0)"    
+    "minigrid (>=3.0.0,<4.0.0)",
+    "tensorflow>=2.20.0",
+    "tensorboard>=2.20.0",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +35,7 @@ rlrom_train = "rlrom.rlrom_train:main"
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1,<2",
-    "jupyter-bokeh>=4.0.5,<5",
+    "jupyter-bokeh>=4.0.5,<5",    
 ]
 
 [tool.hatch.build.targets.sdist]
