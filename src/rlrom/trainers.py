@@ -135,38 +135,39 @@ class RLTrainer:
     clip_range = cfg_algo.get('clip_range', .2)
     ent_coef = cfg_algo.get('ent_coef', 0.0)
     vf_coef = cfg_algo.get('vf_coef', .5)
-    normalize_advantage = cfg_algo.get('normalize_advantage', False)
+    normalize_advantage = cfg_algo.get('normalize_advantage', True)
     total_timesteps = cfg_algo.get('total_timesteps',1000)
             
     cfg_tb = cfg_algo.get('tensorboard',dict()) 
     tb_dir, tb_prefix= self.get_tb_dir(cfg_tb,model_name)
     
     policy_kwargs = dict(
-      activation_fn=th.nn.Tanh,
+      activation_fn=th.nn.ReLU,
       net_arch=dict(pi=[neurons, neurons], qf=[neurons, neurons])
     )
     
     if n_envs>1:
-       env = make_vec_env(make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
+       env = make_vec_env(make_env, n_envs=n_envs)#, vec_env_cls=SubprocVecEnv)    
     else:
        env = make_env()
 
+    #model = PPO("MlpPolicy", env, verbose=1)
     # Instantiate model
     model = PPO("MlpPolicy",env,
-      device='cpu',
-      policy_kwargs=policy_kwargs,
-      n_steps=batch_size * 12 // n_envs,
-      batch_size=batch_size,
-      n_epochs=n_epoch,
-      ent_coef=ent_coef,
-      learning_rate=learning_rate,
-      gamma=gamma,
-      gae_lambda=gae_lambda,
-      clip_range=clip_range,
-      vf_coef=vf_coef,
-      normalize_advantage=normalize_advantage,
-      verbose=1,
-      tensorboard_log=tb_dir
+       device='cpu',
+#      policy_kwargs=policy_kwargs,
+#      n_steps=batch_size * 12 // n_envs,
+#      batch_size=batch_size,
+       n_epochs=n_epoch,
+       ent_coef=ent_coef,
+       learning_rate=learning_rate,
+       gamma=gamma,
+       gae_lambda=gae_lambda,
+       clip_range=clip_range,
+       vf_coef=vf_coef,
+       normalize_advantage=normalize_advantage,
+       verbose=1,
+       tensorboard_log=tb_dir
     )
  
     # Train the agent

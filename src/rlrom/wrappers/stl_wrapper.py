@@ -69,6 +69,7 @@ class STLWrapper(gym.Wrapper):
         self.eval_formulas = eval_formulas
         self.end_formulas= end_formulas
         self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
+        self.semantics= 'Boolean' 
 
         self.signals_map={}
         if signals_map=={}:
@@ -361,7 +362,7 @@ class STLWrapper(gym.Wrapper):
    
     def eval_formula_cfg(self, f_name, f_opt, res=dict()):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
-
+    # TODO option to choose lower or upper or time or bool robustness    
         if f_opt is None:
             f_opt={}
 
@@ -382,11 +383,23 @@ class STLWrapper(gym.Wrapper):
             sat = 1 if robs[0]>0 else 0
             res['sat'] = np.append(res['sat'],sat)
         
+
+        semantics = f_opt.get('semantics', 'rob')
+        if semantics == 'lower_rob':
+            val = robs[1]
+        elif semantics == 'upper_rob':
+            val = robs[2]
+        elif semantics == 'bool':
+            if robs[1]>0:
+                val=1
+            else:
+                val=0
+        
         upper_bound = f_opt.get('upper_bound',np.inf)
         lower_bound = f_opt.get('lower_bound',-np.inf)
         val = max(val, lower_bound)
         val = min(val, upper_bound)
-
+                
         return val, res
                
     def eval_specs_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
