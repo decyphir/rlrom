@@ -17,13 +17,13 @@ cfg_specs:
 
 cfg_test: 
   init_seeds: 1
-  num_ep: 3
+  num_ep: 100
   num_steps: 500 
   render_mode: 'human'
 
 cfg_train:
-  n_envs: 12  
-  eval_freq: 10000
+  n_envs: 8  
+  eval_freq: 20000
   
   algo:
     ppo: cartpole_ppo.yml

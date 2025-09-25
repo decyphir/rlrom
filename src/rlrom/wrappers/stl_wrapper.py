@@ -45,8 +45,6 @@ def stl_wrap_env(env, cfg_specs):
                      end_formulas=end_formulas,
                      BigM=BigM)
     
-    env = gym.wrappers.FlattenObservation(env)
-
     return env
 
 class STLWrapper(gym.Wrapper): 

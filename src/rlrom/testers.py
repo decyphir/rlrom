@@ -128,8 +128,8 @@ class RLTester:
                 episode['actions'].append(action)
                 episode['rewards'].append(reward)
                 episode['dones'].append(terminated)
-                last_obs= obs
-            
+                
+            last_obs=obs
             if terminated:                
                 break    
         

@@ -13,24 +13,28 @@ cfg_specs:
     theta_dot: "obs[3]"  
   specs: cartpole.stl
     
-#  obs_formulas:
-#    cart_near_origin:
-#      obs_name: f1
-#      past_horizon: 0
+  obs_formulas:
+    cart_near_origin:
+      obs_name: close_origin
+      past_horizon: 0
 
+  reward_formulas:
+    cart_near_origin:
+      past_horizon: 0
+      weight: 5
 
   eval_formulas:
     phi_stable:
 
 cfg_test: 
-  init_seeds: 1
-  num_ep: 10
+  init_seeds: 0
+  num_ep: 5
   num_steps: 500 
   render_mode: 'human'
 
 cfg_train:
-  n_envs: 12 
-  eval_freq: 10000
+  n_envs: 8 
+  eval_freq: 20000
   
   algo:
     ppo: cartpole_ppo.yml
