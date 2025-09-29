@@ -1,3 +1,0 @@
-signal obs, action, key, reward
-phi_action :=  alw_[0,10](action[t] > 2)
-phi_terminal :=  alw_[0, 100] (( not key ) or key => ev_[0,5] (not key)) # we don't want this

@@ -1,6 +1,0 @@
-#specs: minigrid_specs.stl
-
-action_names:
-  action: "action"
-obs_names:
-  obs0: "obs[0][0][0]"

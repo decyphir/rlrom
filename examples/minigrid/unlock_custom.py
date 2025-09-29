@@ -8,7 +8,7 @@ import numpy as np
 import pprint
 from gymnasium.envs.registration import register
 
-class UnlockEnv20(RoomGrid):
+class UnlockEnvV1(RoomGrid):
     """
     ## Description
 
@@ -57,7 +57,7 @@ class UnlockEnv20(RoomGrid):
     """
 
     def __init__(self, max_steps: int | None = None, **kwargs):
-        room_size = 5
+        room_size = 10
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         if max_steps is None:
@@ -93,10 +93,9 @@ class UnlockEnv20(RoomGrid):
         door, _ = self.add_door(0, 0, 0, locked=True)
         # Add a key to unlock the door
         self.add_object(0, 0, "key", door.color)
-
         self.place_agent(0, 0)
-
         self.door = door
+        self.key = False
         self.mission = "open the door"
 
     def _get_flat_obs(self, obs):
@@ -119,20 +118,15 @@ class UnlockEnv20(RoomGrid):
                 terminated = True
         # Flatten the observation
         obs = self._get_flat_obs(obs)
-        self.key = 1 if self.carrying and self.carrying.type == "key" else 0
-        # print()
-        # print("action", action)
-        print("key", self.key)
-        # print("obs[26]", obs[24:27])
-        #1 if len(obs) > 1 and obs[26] == 5 else 0
+        self.key = True if self.carrying and self.carrying.type == "key" else False
         return obs, reward, terminated, truncated, info
     
     def reset(self, **kwargs):
         obs, info = super().reset(**kwargs)
         flat_obs = self._get_flat_obs(obs).astype(np.uint8)
-        return {"observation": flat_obs}, info
+        return flat_obs, info
     
 register(
-    id="MiniGrid-CustomUnlock-20x20-v0",
-    entry_point=__name__ + ":UnlockEnv20",
+    id="MiniGrid-CustomUnlock-v1",
+    entry_point=__name__ + ":UnlockEnvV1",
 )

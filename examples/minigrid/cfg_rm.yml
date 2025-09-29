@@ -1,0 +1,29 @@
+reward_machine:
+  in_observation: True
+  states:
+    - id: "u0"
+      initial: True
+    - id: "u1"
+    - id: "u2"
+      final: True
+  transitions:
+    - from: "u0"
+      to: "u1"
+      condition: "has_key"
+      reward: 0 
+    - from: "u0"
+      to: "u0"
+      condition: "not has_key"
+      reward: 0
+    - from: "u1"
+      to: "u2"
+      condition: "open_door"
+      reward: 50
+    - from: "u1"
+      to: "u1"
+      condition: "has_key"
+      reward: 0
+    - from: "u1"
+      to: "u0"
+      condition: "not has_key"
+      reward: 0

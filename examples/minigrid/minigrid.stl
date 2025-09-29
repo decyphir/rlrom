@@ -1,0 +1,4 @@
+signal reward_machine_state, ego
+
+key:= ego[t]>4
+not_key := not key   
