@@ -1,6 +1,10 @@
 env_name: highway-v0
+import_module: highway
+make_env_train: make_env_train
+make_env_test: make_env_test
 model_path: ./models
 model_name: car_left
+model_use_specs: True
 
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_car_left.yml

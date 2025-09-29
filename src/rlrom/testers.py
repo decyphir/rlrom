@@ -62,7 +62,8 @@ class RLTester:
         cfg_env = self.cfg.get('cfg_env',dict())
         if cfg_env.get('manual_control', False):
             model = 'manual'
-            print("INFO: manual_control set to True, stay alert.")            
+            print("INFO: manual_control set to True, stay alert.")    
+            self.manual_control = True        
         else:
             self.manual_control = False
             model_path = self.cfg.get('model_path', './models')

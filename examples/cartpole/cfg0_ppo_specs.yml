@@ -12,18 +12,20 @@ cfg_specs:
     theta: "obs[2]"
     theta_dot: "obs[3]"  
   specs: cartpole.stl
+
   eval_formulas:
-    phi_stable:
+    phi_goal_keep_up:
+      t0: 0.
+      eval_all_steps: false
+    pole_up:
+      past_horizon: 0
+      eval_all_steps: true
 
 cfg_test: 
   init_seeds: 1
-  num_ep: 2
+  num_ep: 10
   num_steps: 500 
-  render_mode: 'human'
-
-cfg_train:
-  n_envs: 8  
-  eval_freq: 20000
+  render_mode: None
   
   algo:
     ppo: cartpole_ppo.yml

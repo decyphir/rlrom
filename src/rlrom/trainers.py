@@ -6,7 +6,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import EvalCallback,BaseCallback, CallbackList
 import numpy as np
 import yaml
-import time
+import time, datetime
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
@@ -70,6 +70,7 @@ class RlromCallback(BaseCallback):
     for metric_name, metric_value in res_all_ep['basics'].items():
       log_name = 'basics/'+metric_name    
       self.logger.record(log_name, metric_value)
+      
     for f_name, f_value in res_all_ep['eval_formulas'].items():    
       for metric_name, metric_value in f_value.items():
         log_name = 'eval_f/'+f_name+'/'+metric_name 
@@ -83,16 +84,20 @@ class RlromCallback(BaseCallback):
 
     return True
 
+
+
 class RLTrainer:
   def __init__(self, cfg):    
     self.cfg = utils.load_cfg(cfg)    
     self.cfg_train = self.cfg.get('cfg_train', {})
-    self.model_use_specs = cfg.get('model_use_specs', False)
-    
+    self.model_use_specs = self.cfg.get('model_use_specs', False)
+    self.env_name = self.cfg.get('env_name')
+    self.model_name = self.cfg.get('model_name')
+    self.make_env= lambda: make_env_train(self.cfg)
+    self.model = None
 
-  def train(self,make_en_train=make_env_train):
-    
-    make_env= lambda: make_env_train(self.cfg)
+  def train(self):
+        
     cfg_algo = self.cfg_train.get('algo')
     model_name = self.cfg.get('model_name')
     
@@ -109,10 +114,24 @@ class RLTrainer:
     else:
       callbacks = [] 
        
-    if cfg_algo.get('ppo') is not None:                     
-      cfg_ppo = cfg_algo.get('ppo')
-      print('Training  with PPO...',cfg_ppo )          
-      model = self.train_ppo(cfg_ppo, make_env, model_name,callbacks)
+    if self.model is None:   
+      if 'ppo' in cfg_algo:                           
+        model = self.init_PPO()
+    else:
+      model= self.model
+
+    # Training          
+    total_timesteps = self.cfg_train.get('total_timesteps',1000)    
+    progress_bar = self.cfg_train.get('progress_bar',True)    
+    tb_prefix =  self.get_model_name_now()    
+
+    # Train the agent
+    model.learn(
+      total_timesteps = total_timesteps,
+      callback = callbacks,
+      tb_log_name = tb_prefix,
+      progress_bar= progress_bar,
+    )
     
     # Saving the agent
     model_name, cfg_name = utils.get_model_fullpath(self.cfg)
@@ -122,65 +141,49 @@ class RLTrainer:
 
     return model
 
-  def train_ppo(self,cfg_algo, make_env,model_name, callbacks):
-      
-    # hyperparams, training configuration      
+
+  def init_PPO(self):
+    cfg_ppo = {}
+
+    # Get options for ppo    
+    cfg_algo = self.cfg_train.get('algo')    
+    if cfg_algo.get('ppo') is not None:                     
+      cfg_ppo = cfg_algo.get('ppo')
+
+    # Policy     
+    if 'policy' not in cfg_ppo:
+      cfg_ppo['policy']= 'MlpPolicy'
+
+    if 'policy_kwargs' in cfg_ppo:
+      cfg_ppo['policy_kwargs']= policy_cfg2kargs(cfg_ppo['policy_kwargs'])
+    
+    # Environments
     n_envs = self.cfg_train.get('n_envs',1)
-    batch_size = cfg_algo.get('batch_size',128)
-    neurons = cfg_algo.get('neurons',128)
-    learning_rate = float(cfg_algo.get('learning_rate', '5e-4'))
-    n_epoch = cfg_algo.get('n_epoch', 10)
-    gamma = cfg_algo.get('gamma', .99)
-    gae_lambda = cfg_algo.get('gae_gamma', .8)
-    clip_range = cfg_algo.get('clip_range', .2)
-    ent_coef = cfg_algo.get('ent_coef', 0.0)
-    vf_coef = cfg_algo.get('vf_coef', .5)
-    normalize_advantage = cfg_algo.get('normalize_advantage', True)
-    total_timesteps = cfg_algo.get('total_timesteps',1000)
-            
-    cfg_tb = cfg_algo.get('tensorboard',dict()) 
-    tb_dir, tb_prefix= self.get_tb_dir(cfg_tb,model_name)
-    
-    policy_kwargs = dict(
-      activation_fn=th.nn.ReLU,
-      net_arch=dict(pi=[neurons, neurons], qf=[neurons, neurons])
-    )
-    
     if n_envs>1:
-       env = make_vec_env(make_env, n_envs=n_envs)#, vec_env_cls=SubprocVecEnv)    
+       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
-       env = make_env()
+       env = self.make_env()
 
-    #model = PPO("MlpPolicy", env, verbose=1)
-    # Instantiate model
-    model = PPO("MlpPolicy",env,
-       device='cpu',
-#      policy_kwargs=policy_kwargs,
-#      n_steps=batch_size * 12 // n_envs,
-#      batch_size=batch_size,
-       n_epochs=n_epoch,
-       ent_coef=ent_coef,
-       learning_rate=learning_rate,
-       gamma=gamma,
-       gae_lambda=gae_lambda,
-       clip_range=clip_range,
-       vf_coef=vf_coef,
-       normalize_advantage=normalize_advantage,
-       verbose=1,
-       tensorboard_log=tb_dir
-    )
- 
-    # Train the agent
-    model.learn(
-      total_timesteps=total_timesteps,
-      callback = callbacks,
-      tb_log_name=tb_prefix,
-      progress_bar=True
-    )
-    
-    return model
+    self.model= PPO(env=env, **cfg_ppo )
 
-  def get_tb_dir(self, cfg, model_name):
-    tb_dir = cfg.get('tb_path','./tb_logs')
-    tb_prefix =  f"{model_name}_{int(time.time())}"
-    return tb_dir, tb_prefix
+    return self.model
+
+
+  
+  def get_model_name_now(self):
+    s = self.model_name
+    dd = datetime.datetime.now()
+    s_dd= dd.strftime("_%Y_%m_%d")
+    return s+s_dd
+
+
+
+def policy_cfg2kargs(cfg_policy):
+  act_fn =  {
+    "ReLU": th.nn.ReLU,
+    "Tanh": th.nn.Tanh,
+    "ELU": th.nn.ELU,
+  }
+  if 'activation_fn' in cfg_policy:
+    cfg_policy['activation_fn']= act_fn[cfg_policy['activation_fn']]
+

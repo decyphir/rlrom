@@ -9,5 +9,7 @@ cfg_test:
   render_mode: 'human'
 
 cfg_train:
+  n_envs: 4
+  total_timesteps: 100_000  
   algo:
     ppo: cartpole_ppo.yml

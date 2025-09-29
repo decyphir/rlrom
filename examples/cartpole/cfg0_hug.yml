@@ -4,7 +4,7 @@ model_name: sb3/ppo-CartPole-v1
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 2
+  num_ep: 5
   num_steps: 100 
   render_mode: 'human'
   

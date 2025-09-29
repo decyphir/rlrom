@@ -2,23 +2,26 @@ env_name: highway-v0
 import_module: highway
 make_env_train: make_env_train
 make_env_test: make_env_test
-model_name: basic_new
+model_name: basic
 model_path: ./models
+model_use_specs: True
 
 cfg_env: cfg_env.yml
-cfg_specs: cfg_specs0.yml
+cfg_specs: cfg_specs.yml
+
 cfg_train:
+  total_timesteps: 200_000      
+  freq_eval: 10_000
+  n_envs: 12
   algo:
     ppo:
-      batch_size: 128
-      n_envs: 12
-      neurons: 128
-      learning_rate: 5e-4
-      total_timesteps: 200_000
-      tensorboard:
-        tb_path: ./tb_logs
+      batch_size: 128            
+      learning_rate: !!float 5e-4
+      tensorboard_log: ./tb_logs
+
+
 cfg_test:
   init_seeds: 0
   num_ep: 2
   num_steps: 100
-  render: True
+  render_mode: 'human'

@@ -20,10 +20,9 @@ def make_env_test(cfg):
     
     # env configuration    
     cfg_env = cfg['cfg_env']                    
-    cfg_test = cfg.get('cfg_test',{})
-    
+    cfg_test = cfg.get('cfg_test',{})    
     if 'render_mode' in cfg_test:
-        render_mode = cfg.get('render_mode', 'human')
+        render_mode = cfg_test.get('render_mode', 'human')        
     else: 
         render_mode='human'
     env = gym.make("highway-v0", render_mode=render_mode)    

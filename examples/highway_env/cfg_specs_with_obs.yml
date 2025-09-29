@@ -1,7 +1,5 @@
+env_name: "highway-v0"
 specs: hw-env_specs.stl
-
-real_time_step: 1.0
-BigM: 10
 
 action_names:
   action: "action"
@@ -27,6 +25,14 @@ obs_names:
   car3_vx: "80*obs[3][3]"
   car3_vy: "80*obs[3][4]"
 
+real_time_step: 1.0
+BigM: 10
+ 
+obs_formulas: 
+  danger:
+    obs_name: 'obs_danger'
+    past_horizon: 0
+
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
 reward_formulas:
   ego_fast:
@@ -35,8 +41,6 @@ reward_formulas:
   danger:
     past_horizon: 0
     weight: -20
-    lower_bound: 0.0 # we don't want to reward safety too much
+    lower_bound: 0.0
 
-# Same for everybody
 eval_formulas: cfg_eval.yml
-
