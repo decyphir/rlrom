@@ -42,13 +42,17 @@ def make_env_train(cfg):
 
 
 class RlromCallback(BaseCallback):
-  def __init__(self, verbose=0, cfg_main=dict()):
+  def __init__(self, verbose=0, cfg_main=dict(),model_name_now=''):
     super().__init__(verbose)
     self.cfg = utils.set_rec_cfg_field(cfg_main,render_mode=None)
     
     cfg_train = cfg_main.get('cfg_train')
     n_envs = cfg_train.get('n_envs',1)
     self.eval_freq = cfg_train.get('eval_freq', 1000)//n_envs
+    
+    self.checkpoints_folder = ''
+    
+    
     print(f'n_envs = {n_envs}, Eval freq: {self.eval_freq}')
   
 
@@ -109,7 +113,7 @@ class RLTrainer:
 
     if has_cfg_specs:   
       callbacks = CallbackList([        
-        RlromCallback(verbose=1, cfg_main=self.cfg)        
+        RlromCallback(verbose=1, cfg_main=self.cfg, model_name_now=self.get_model_name_now())        
           ])
     else:
       callbacks = [] 
@@ -134,12 +138,15 @@ class RLTrainer:
     )
     
     # Saving the agent
-    model_name, cfg_name = utils.get_model_fullpath(self.cfg)
-    model.save(model_name) #TODO try except 
-    with open(cfg_name,'w') as f:
-         yaml.safe_dump(self.cfg, f)
+    self.save_model()
 
     return model
+
+  def save_model(self,path=None):
+    model_name, cfg_name = utils.get_model_fullpath(self.cfg)
+    self.model.save(model_name) #TODO try except 
+    with open(cfg_name,'w') as f:
+         yaml.safe_dump(self.cfg, f)
 
 
   def init_PPO(self):
@@ -155,6 +162,7 @@ class RLTrainer:
       cfg_ppo['policy']= 'MlpPolicy'
 
     if 'policy_kwargs' in cfg_ppo:
+      print('Reading policy_kwargs')
       cfg_ppo['policy_kwargs']= policy_cfg2kargs(cfg_ppo['policy_kwargs'])
     
     # Environments
@@ -164,19 +172,16 @@ class RLTrainer:
     else:
        env = self.make_env()
 
+    print(cfg_ppo)
     self.model= PPO(env=env, **cfg_ppo )
 
     return self.model
-
-
   
   def get_model_name_now(self):
     s = self.model_name
     dd = datetime.datetime.now()
     s_dd= dd.strftime("_%Y_%m_%d")
     return s+s_dd
-
-
 
 def policy_cfg2kargs(cfg_policy):
   act_fn =  {
@@ -185,5 +190,8 @@ def policy_cfg2kargs(cfg_policy):
     "ELU": th.nn.ELU,
   }
   if 'activation_fn' in cfg_policy:
-    cfg_policy['activation_fn']= act_fn[cfg_policy['activation_fn']]
+    if isinstance(cfg_policy['activation_fn'], str):
+      cfg_policy['activation_fn']= act_fn[cfg_policy['activation_fn']]
+  
+  return cfg_policy
 
