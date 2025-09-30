@@ -1,109 +1,42 @@
-env_name: "highway-v0"
+specs: hw-env_specs.stl
+
+real_time_step: 1.0
+BigM: 10
+
 action_names:
   action: "action"
 obs_names:
-  ego_presence: "obs[0]"
-  ego_x: "obs[1]"
-  ego_y: "obs[2]"
-  ego_vx: "80*obs[3]"
-  ego_vy: "80*obs[4]"
-  car1_presence: "obs[5]"
-  car1_x: "obs[6]"
-  car1_y: "obs[7]"
-  car1_vx: "80*obs[8]"
-  car1_vy: "80*obs[9]"
-  car2_presence: "obs[10]"
-  car2_x: "obs[11]"
-  car2_y: "obs[12]"
-  car2_vx: "80*obs[13]"
-  car2_vy: "80*obs[14]"
-  car3_presence: "obs[15]"
-  car3_x: "obs[16]"
-  car3_y: "obs[17]"
-  car3_vx: "80*obs[18]"
-  car3_vy: "80*obs[19]"
-  car4_presence: "obs[20]"
-  car4_x: "obs[21]"
-  car4_y: "obs[22]"
-  car4_vx: "80*obs[23]"
-  car4_vy: "80*obs[24]"
-  
-specs: |
-  signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy, 
-         car1_presence, car1_x, car1_y, car1_vx, car1_vy, 
-         car2_presence, car2_x, car2_y, car2_vx, car2_vy, 
-         car3_presence, car3_x, car3_y, car3_vx, car3_vy, 
-         car4_presence, car4_x, car4_y, car4_vx, car4_vy, 
-         reward
-
-  param v_slow=22, v_fast=25, d_close = .2, t1 = 5, t2 = 20, d_far = .3, malus = 10
-  
-  ego_speed := ego_vx[t] > 0 # used for evaluation
-  ego_slow := ego_vx[t] < v_slow
-  ego_fast := ego_vx[t] > v_fast
-  ev_slow := ev_[0,t1] ego_slow
-  
-  car1_too_far := car1_x[t] > d_far
-  car1_same_lane  := abs(car1_y[t]) < 0.1  
-  car1_too_close := abs(car1_x[t]) < 0.1 
-  car1_danger := car1_same_lane and car1_too_close
-
-  car2_same_lane  := abs(car2_y[t]) < 0.1
-  car2_too_close  := abs(car2_x[t]) < 0.1 
-  car2_danger := car2_same_lane and car2_too_close
-
-  car3_same_lane  := abs(car3_y[t]) < 0.1
-  car3_too_close  := abs(car3_x[t]) < 0.1 
-  car3_danger := car3_same_lane and car3_too_close
-
-  safe := not (car1_danger) and not (car2_danger)
-  danger := car1_danger or car2_danger or car3_danger
-  
-  car1_left := car1_y[t] > -.35 and car1_y[t] < -.15 and car1_too_close
-  car2_left := car2_y[t] > -.35 and car2_y[t] < -.15 and car2_too_close
-  car3_left := car3_y[t] > -.35 and car3_y[t] < -.15 and car3_too_close
-  car_left := car1_left or car2_left or car3_left
-  
-  ego_right_lane := ego_y[t] > 0.6
-  keep_right_lane := alw_[0,10] ego_right_lane  
-  ev_right_lane := ev_[0,10] ego_right_lane
-
-
-  phi_right_lane := alw_[0,80] ev_right_lane
-  
-BigM: 10
-real_time_step: 1.0
-
-# obs_formulas: # will add parameters for normalization in particular
-#   ego_right_lane:
-#     obs_name: 'obs_ego_right_lane'
-#     past_horizon: 0
-#   danger:
-#     obs_name: 'obs_danger'
-#     past_horizon: 0
+  ego_presence: "obs[0][0]"
+  ego_x: "obs[0][1]"
+  ego_y: "obs[0][2]"
+  ego_vx: "80*obs[0][3]"
+  ego_vy: "80*obs[0][4]"
+  car1_presence: "obs[1][0]"
+  car1_x: "obs[1][1]"
+  car1_y: "obs[1][2]"
+  car1_vx: "80*obs[1][3]"
+  car1_vy: "80*obs[1][4]"
+  car2_presence: "obs[2][0]"
+  car2_x: "obs[2][1]"
+  car2_y: "obs[2][2]"
+  car2_vx: "80*obs[2][3]"
+  car2_vy: "80*obs[2][4]"
+  car3_presence: "obs[3][0]"
+  car3_x: "obs[3][1]"
+  car3_y: "obs[3][2]"
+  car3_vx: "80*obs[3][3]"
+  car3_vy: "80*obs[3][4]"
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-
 reward_formulas:
-  ego_right_lane:
-    past_horizon: 0
-    weight: 1    
   ego_fast:
     past_horizon: 0
     weight: .1
   danger:
     past_horizon: 0
     weight: -20
-    lower_bound: 0.0
-#  phi_good_dist:
-#    past_horizon: 15
-#    weight: 2 
-#  car1_parallel_too_long:
-#    past_horizon: 10
-#    weight: -1
+    lower_bound: 0.0 # we don't want to reward safety too much
 
-eval_formulas: 
-  ego_speed:    
-    past_horizon: 0    
-    eval_all_steps: true
+# Same for everybody
+eval_formulas: cfg_eval.yml
 

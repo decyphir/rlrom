@@ -62,7 +62,8 @@ class RLTester:
         cfg_env = self.cfg.get('cfg_env',dict())
         if cfg_env.get('manual_control', False):
             model = 'manual'
-            print("INFO: manual_control set to True, stay alert.")            
+            print("INFO: manual_control set to True, stay alert.")    
+            self.manual_control = True        
         else:
             self.manual_control = False
             model_path = self.cfg.get('model_path', './models')
@@ -128,8 +129,8 @@ class RLTester:
                 episode['actions'].append(action)
                 episode['rewards'].append(reward)
                 episode['dones'].append(terminated)
-                last_obs= obs
-            
+                
+            last_obs=obs
             if terminated:                
                 break    
         
@@ -252,11 +253,11 @@ class RLTester:
         episodes = test_result['episodes']
         current_ep = episodes[ep_idx]         
         self.init_env(render_mode=None)
-        #self.init_env()
-        self.env.env.set_episode_data(current_ep)
-        num_ep = len(episodes)            
+        set_ep = self.env.get_wrapper_attr('set_episode_data')
+        set_ep(current_ep)
+        num_ep = len(episodes)
         lay = rlrom.plots.get_layout_from_string(signals_layout)
-        status = "Plot ok. Hit reset on top right if not visible."            
+        status = "Plot ok. Hit reset on top right if not visible."
 
         figs = []
         colors = itertools.cycle(palette)    
@@ -270,7 +271,7 @@ class RLTester:
                     if signal.strip().startswith("set_ep_idx(") or signal.strip().startswith("_ep("):            
                         ep_idx = int(signal.split('(')[1][:-1])
                         current_ep = episodes[ep_idx]                         
-                        self.env.set_episode_data(current_ep)
+                        set_ep(current_ep)
                     else: 
                         if f is None:
                             if figs == []:
