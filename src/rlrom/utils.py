@@ -11,6 +11,7 @@ from tensorboard.backend.event_processing import event_accumulator
 import importlib
 import datetime
 from ruamel.yaml import YAML
+import torch as th
 
 yaml = YAML(typ='safe')
 # Define a representer for NumPy arrays
