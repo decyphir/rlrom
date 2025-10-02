@@ -7,7 +7,7 @@ tensorboard_log: ./tb_logs
 #policy_kwargs:
 #  net_arch: [64, 64]
 #  activation_fn: "ReLU"
-#batch_size: 2048
+#batch_size: 64
 #clip_range: 0.2
 #ent_coef: 0.0
 #gae_lambda: 0.95

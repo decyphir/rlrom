@@ -1,11 +1,11 @@
 from stable_baselines3 import PPO #,A2C,SAC,TD3,DQN,DDPG
 import rlrom.utils as utils
+from rlrom.utils import policy_cfg2kargs, add_now_suffix
 from rlrom.testers import RLTester
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import EvalCallback,BaseCallback, CallbackList
 import numpy as np
-import yaml
 import time, datetime
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
@@ -14,6 +14,8 @@ import os
 import sys
 import importlib
 import torch as th
+from rlrom.utils import yaml
+
 
 def make_env_train(cfg):
         
@@ -42,24 +44,40 @@ def make_env_train(cfg):
 
 
 class RlromCallback(BaseCallback):
-  def __init__(self, verbose=0, cfg_main=dict(),model_name_now=''):
+  def __init__(self, verbose=0, cfg_main=dict(), chkpt_dir='', cfg_name=''):
     super().__init__(verbose)
     self.cfg = utils.set_rec_cfg_field(cfg_main,render_mode=None)
     
     cfg_train = cfg_main.get('cfg_train')
-    n_envs = cfg_train.get('n_envs',1)
-    self.eval_freq = cfg_train.get('eval_freq', 1000)//n_envs
+    self.n_envs = cfg_train.get('n_envs',1)
+    self.eval_freq = cfg_train.get('eval_freq', 1000)//self.n_envs        
+    self.chkpt_dir = chkpt_dir
+    self.chkpt_model_root_name = os.path.join(chkpt_dir, 'model_step_')
+    self.chkpt_res_root_name = os.path.join(chkpt_dir, 'res_step_')
     
-    self.checkpoints_folder = ''
+    cfg_filename= os.path.join(self.chkpt_dir,'cfg0.yml')
     
+    print(f'n_envs: {self.n_envs}, Eval freq: {self.eval_freq}, Checkpoints folder: {self.chkpt_dir}')
+    print(f'Saving configuration file to {cfg_filename}')
     
-    print(f'n_envs = {n_envs}, Eval freq: {self.eval_freq}')
-  
+    with open(cfg_filename,'w') as f:
+         yaml.dump(self.cfg, f)
+
 
   def _on_step(self):
     #print("step:", self.n_calls)
     if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-      self.eval_policy()
+      model_filename = self.chkpt_model_root_name+str(self.n_calls*self.n_envs)
+      print(f'saving model to {model_filename}...')
+      self.model.save(model_filename)
+      res_filename = self.chkpt_res_root_name+str(self.n_calls*self.n_envs)+'.yml'
+      
+      Tres = self.eval_policy()
+      Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
+      print(f'saving test results to {res_filename}...')
+      with open(res_filename,'w') as f:
+         yaml.dump(Tres, f)
+
           
     return True
     
@@ -74,21 +92,21 @@ class RlromCallback(BaseCallback):
     for metric_name, metric_value in res_all_ep['basics'].items():
       log_name = 'basics/'+metric_name    
       self.logger.record(log_name, metric_value)
-      
-    for f_name, f_value in res_all_ep['eval_formulas'].items():    
-      for metric_name, metric_value in f_value.items():
-        log_name = 'eval_f/'+f_name+'/'+metric_name 
-        self.logger.record(log_name, metric_value)
-    for f_name, f_value in res_all_ep['reward_formulas'].items():    
-      for metric_name, metric_value in f_value.items():
-        log_name = 'rew_f/'+f_name+'/'+metric_name 
-        self.logger.record(log_name, metric_value)
-    
+
+    if 'eval_formula' in res_all_ep:
+      for f_name, f_value in res_all_ep['eval_formulas'].items():    
+        for metric_name, metric_value in f_value.items():
+          log_name = 'eval_f/'+f_name+'/'+metric_name 
+          self.logger.record(log_name, metric_value)
+    if 'reward_formulas' in res_all_ep:
+      for f_name, f_value in res_all_ep['reward_formulas'].items():    
+        for metric_name, metric_value in f_value.items():
+          log_name = 'rew_f/'+f_name+'/'+metric_name 
+          self.logger.record(log_name, metric_value)
+
     self.tester.print_res_all_ep(Tres)
 
-    return True
-
-
+    return Tres
 
 class RLTrainer:
   def __init__(self, cfg):    
@@ -99,9 +117,9 @@ class RLTrainer:
     self.model_name = self.cfg.get('model_name')
     self.make_env= lambda: make_env_train(self.cfg)
     self.model = None
-
+    
   def train(self):
-        
+
     cfg_algo = self.cfg_train.get('algo')
     model_name = self.cfg.get('model_name')
     
@@ -111,12 +129,11 @@ class RLTrainer:
         s = self.cfg.get('cfg_specs')        
         has_cfg_specs = s != None
 
-    if has_cfg_specs:   
-      callbacks = CallbackList([        
-        RlromCallback(verbose=1, cfg_main=self.cfg, model_name_now=self.get_model_name_now())        
+    chkpt_dir, cfg_name = self.set_checkpoint_dir()
+
+    callbacks = CallbackList([        
+        RlromCallback(verbose=1, cfg_main=self.cfg, chkpt_dir=chkpt_dir, cfg_name=cfg_name)        
           ])
-    else:
-      callbacks = [] 
        
     if self.model is None:   
       if 'ppo' in cfg_algo:                           
@@ -124,10 +141,12 @@ class RLTrainer:
     else:
       model= self.model
 
+    # setup folder for checkpoints and saving the cfg
+
     # Training          
     total_timesteps = self.cfg_train.get('total_timesteps',1000)    
     progress_bar = self.cfg_train.get('progress_bar',True)    
-    tb_prefix =  self.get_model_name_now()    
+    tb_prefix =  utils.add_now_suffix(self.model_name)
 
     # Train the agent
     model.learn(
@@ -144,9 +163,35 @@ class RLTrainer:
 
   def save_model(self,path=None):
     model_name, cfg_name = utils.get_model_fullpath(self.cfg)
+    print(f'saving model to {model_name} trained with cfg {cfg_name}')
     self.model.save(model_name) #TODO try except 
     with open(cfg_name,'w') as f:
-         yaml.safe_dump(self.cfg, f)
+         yaml.dump(self.cfg, f)
+
+  def set_checkpoint_dir(self):
+    cfg= self.cfg
+    model_full_path, cfg_name = utils.get_model_fullpath(cfg)    
+    chkpt_dir_root = os.path.splitext(model_full_path)[0]        
+    chkpt_dir_root = utils.add_now_suffix(chkpt_dir_root)
+    i = -1
+    chkpt_dir_exists = True        
+    while chkpt_dir_exists:
+        i = i+1    
+        chkpt_dir = chkpt_dir_root+'__training'+str(i)
+        chkpt_dir_exists = os.path.exists(chkpt_dir)
+        if chkpt_dir_exists is True:
+          is_empty = not any(os.scandir(chkpt_dir))
+          if is_empty is True:
+            print(f'using empty folder for checkpoints: {chkpt_dir}')
+            break
+        else:
+          print(f'creating folder for checkpoints: {chkpt_dir}')
+          os.makedirs(chkpt_dir) # TODO catch exception if problem writing this folder    
+
+    
+    
+    cfg_name = os.path.join(chkpt_dir,'cfg0.yml')    
+    return chkpt_dir, cfg_name
 
 
   def init_PPO(self):
@@ -177,21 +222,4 @@ class RLTrainer:
 
     return self.model
   
-  def get_model_name_now(self):
-    s = self.model_name
-    dd = datetime.datetime.now()
-    s_dd= dd.strftime("_%Y_%m_%d")
-    return s+s_dd
-
-def policy_cfg2kargs(cfg_policy):
-  act_fn =  {
-    "ReLU": th.nn.ReLU,
-    "Tanh": th.nn.Tanh,
-    "ELU": th.nn.ELU,
-  }
-  if 'activation_fn' in cfg_policy:
-    if isinstance(cfg_policy['activation_fn'], str):
-      cfg_policy['activation_fn']= act_fn[cfg_policy['activation_fn']]
-  
-  return cfg_policy
 
