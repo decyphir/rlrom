@@ -1,9 +1,8 @@
 device: cpu
 verbose: 1
 tensorboard_log: ./tb_logs
-#policy_kwargs:
-#  net_arch: [128, 128, 128]
-#  activation_fn: "ReLU"
-#batch_size: 128            
-#learning_rate: !!float 5e-4
-
+policy_kwargs:
+  net_arch: [128, 128, 128]
+  activation_fn: "ReLU"
+batch_size: 128            
+learning_rate: !!float 5e-4

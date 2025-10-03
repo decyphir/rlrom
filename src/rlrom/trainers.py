@@ -4,16 +4,14 @@ from rlrom.utils import policy_cfg2kargs, add_now_suffix
 from rlrom.testers import RLTester
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.callbacks import EvalCallback,BaseCallback, CallbackList
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import numpy as np
-import time, datetime
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
 import os
 import sys
 import importlib
-import torch as th
 from rlrom.utils import yaml
 
 
@@ -38,7 +36,7 @@ def make_env_train(cfg):
         model_use_spec = cfg.get('model_use_specs', False)
         if model_use_spec:          
           env = stl_wrap_env(env, cfg_specs)
-          env = gym.wrappers.FlattenObservation(env)
+          env = FlattenObservation(env)
             
     return env
 
