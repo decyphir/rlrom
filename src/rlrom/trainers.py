@@ -13,7 +13,7 @@ import os
 import sys
 import importlib
 from rlrom.utils import yaml
-
+import copy
 
 def make_env_train(cfg):
         
@@ -185,20 +185,18 @@ class RLTrainer:
         else:
           print(f'creating folder for checkpoints: {chkpt_dir}')
           os.makedirs(chkpt_dir) # TODO catch exception if problem writing this folder    
-
-    
     
     cfg_name = os.path.join(chkpt_dir,'cfg0.yml')    
     return chkpt_dir, cfg_name
-
 
   def init_PPO(self):
     cfg_ppo = {}
 
     # Get options for ppo    
-    cfg_algo = self.cfg_train.get('algo')    
+    cfg_algo0 = self.cfg_train.get('algo')
+    cfg_algo  = cfg_algo0.copy()   
     if cfg_algo.get('ppo') is not None:                     
-      cfg_ppo = cfg_algo.get('ppo')
+      cfg_ppo = copy.deepcopy(cfg_algo.get('ppo'))
 
     # Policy     
     if 'policy' not in cfg_ppo:
