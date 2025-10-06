@@ -58,28 +58,17 @@ class RewardMachine(gym.Wrapper):
 
 
     def get_rm_transition(self, u_in):
-        #Check if the agent is in front and the door and can open the door
-
-        print("open", self.env.unwrapped.door.is_open)
-        conditions = {"open_door": self.env.unwrapped.door.is_open,
-                      "has_key": self.env.unwrapped.key,
-                      "not has_key": not self.env.unwrapped.key,
-                      }
-        
+        get_rob= self.env.get_wrapper_attr('get_rob') 
         transitions = self.rm['transitions']
         for t in transitions:
-            if u_in == t["from"] and conditions[t["condition"]]:
+            formula_name = t["condition"]
+            if u_in == t["from"] and get_rob(formula_name)[-1] > 0  :
                 u_out = t["to"]
                 reward = t["reward"]
-                for state in self.rm['states']:
-                    if state['id'] == u_out and 'final' in state and state['final'] == True:
-                        return u_out, reward
-        print("Current state", u_out, "reward",  reward)
         return u_out, reward
 
     def _augmented_obs(self, obs):
         rm_state = [int(self.u_in[1:])]  
-        print("rm_state", rm_state)
         return np.concatenate([obs, rm_state])
 
     def _load_reward_machine(self):

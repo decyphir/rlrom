@@ -1,4 +1,5 @@
-signal reward_machine_state, ego
+signal  ego, door, reward
 
-key:= ego[t]>4
-not_key := not key   
+has_key:= ego[t]>4
+not_has_key:= not has_key
+open_door:= door[t]>3 and door[t]<5
