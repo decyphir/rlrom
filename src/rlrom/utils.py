@@ -141,18 +141,38 @@ def load_cfg(cfg, verbose=1):
                 cfg[key]= recursive_load(value)
 
         return cfg
-
-    # we change dir to where the cfg file is, so that the file can use relative path        
-    if isinstance(cfg, str) and os.path.exists(cfg):
-        dirname, basename = os.path.split(cfg)
-        if dirname != '':
-            os.chdir(dirname)            
-        sys.path.append('')
-        with open(basename, 'r') as f:
+    
+    if isinstance(cfg, str) and os.path.exists(cfg):        
+        # here cfg is a path and we found it so we can already load it at the top level
+        cfg_file = cfg
+        with open(cfg_file, 'r') as f:
             cfg= yaml.load(f)
+
+        # now we should check if it has a path where we should be         
+        this_cfg_pathdir = cfg.get('this_cfg_pathdir', '')
+        if this_cfg_pathdir == '':
+            # no cfg_pathdir is explicitly specified. We try the folder of cfg file 
+            this_cfg_pathdir, _ = os.path.split(cfg_file)
+            if this_cfg_pathdir == '':  
+                this_cfg_pathdir ='.'            
+        
+        this_cfg_pathdir = os.path.abspath(this_cfg_pathdir)
+        cfg['this_cfg_pathdir'] = this_cfg_pathdir                        
     elif not isinstance(cfg, dict): 
         raise TypeError(f"Expected file name or dict.")
-    
+    else:
+        this_cfg_pathdir = cfg.get('this_cfg_pathdir', '.')
+    # now we have defined this_cfg_pathdir. Might be that it don't exist. We issue warning in that case
+    if os.path.exists(this_cfg_pathdir):        
+        os.chdir(this_cfg_pathdir)      
+    else:
+        print(f'WARNING: {this_cfg_pathdir} does not exist, assume current folder for working directory.')
+              
+    if '' not in sys.path:
+        sys.path.append('')
+    if '.' not in sys.path:
+        sys.path.append('.')
+        
     return recursive_load(cfg)
 
 def get_model_fullpath(cfg):
@@ -463,4 +483,6 @@ def list_trained_models(folder='./models'):
             if ext=='.yml': 
                 list_models.append(m)
     return list_models
-    
+
+def get_sys_info():
+    os.sys    

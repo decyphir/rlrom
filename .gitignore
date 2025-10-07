@@ -4,5 +4,4 @@ events.out.*
 .vscode/settings.json
 *.whl
 *.tar.gz
-uv.lock
 *_training*

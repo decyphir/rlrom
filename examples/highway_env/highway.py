@@ -10,7 +10,7 @@ def make_env_train(cfg):
         print("WARNING: manual_control was set to True. I'm setting it back to False")
         cfg_env['manual_control'] = False    
     
-    env = gym.make("highway-fast-v0")    
+    env = gym.make("highway-fast-v0",render_mode=None)    
     env.unwrapped.configure(cfg_env)
                     
     return env

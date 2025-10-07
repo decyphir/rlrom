@@ -29,7 +29,7 @@ old_gym = ["gym (>=0.26.2,<0.27.0)"]
 highway-env = ["highway-env (>=1.10.1,<2.0.0)"]
 
 [project.scripts]
-rlrom_run = "rlrom.rlrom_run:main"
+rlr = "rlrom.rlrom_run:main"
 rlrom_test = "rlrom.rlrom_test:main"
 rlrom_train = "rlrom.rlrom_train:main"
 

@@ -1,7 +1,5 @@
 specs: hw-env_specs.stl
-
-real_time_step: 1.0
-BigM: 10
+eval_formulas: cfg_eval.yml
 
 action_names:
   action: "action"
@@ -37,6 +35,5 @@ reward_formulas:
     weight: -20
     lower_bound: 0.0 # we don't want to reward safety too much
 
-# Same for everybody
-eval_formulas: cfg_eval.yml
-
+real_time_step: 1.0
+BigM: 10

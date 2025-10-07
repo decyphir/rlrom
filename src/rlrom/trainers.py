@@ -13,7 +13,7 @@ import os
 import sys
 import importlib
 from rlrom.utils import yaml
-import copy
+import copy #for deep copy of dicts (*not* default !)
 
 def make_env_train(cfg):
         
@@ -65,20 +65,23 @@ class RlromCallback(BaseCallback):
   def _on_step(self):
     #print("step:", self.n_calls)
     if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-      model_filename = self.chkpt_model_root_name+str(self.n_calls*self.n_envs)
-      print(f'saving model to {model_filename}...')
-      self.model.save(model_filename)
-      res_filename = self.chkpt_res_root_name+str(self.n_calls*self.n_envs)+'.yml'
-      
-      Tres = self.eval_policy()
-      Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
-      print(f'saving test results to {res_filename}...')
-      with open(res_filename,'w') as f:
-         yaml.dump(Tres, f)
-
-          
+      self.eval_and_save_model()           
     return True
     
+  def  eval_and_save_model(self):
+    Tres = self.eval_policy()
+    model_filename = self.chkpt_model_root_name+str(self.n_calls*self.n_envs)
+    print(f'saving model to {model_filename}...')
+    self.model.save(model_filename)      
+    res_filename = self.chkpt_res_root_name+str(self.n_calls*self.n_envs)+'.yml'            
+    Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
+    print(f'saving test results to {res_filename}...')
+    with open(res_filename,'w') as f:
+       yaml.dump(Tres, f)
+
+  def _on_training_end(self):
+    self.eval_and_save_model()
+    return super()._on_training_end()
 
   def eval_policy(self):
         
@@ -126,7 +129,8 @@ class RLTrainer:
       if has_cfg_specs:
         s = self.cfg.get('cfg_specs')        
         has_cfg_specs = s != None
-
+    
+    # setup folder for checkpoints and saving the cfg
     chkpt_dir, cfg_name = self.set_checkpoint_dir()
 
     callbacks = CallbackList([        
@@ -138,8 +142,6 @@ class RLTrainer:
         model = self.init_PPO()
     else:
       model= self.model
-
-    # setup folder for checkpoints and saving the cfg
 
     # Training          
     total_timesteps = self.cfg_train.get('total_timesteps',1000)    

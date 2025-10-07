@@ -2,12 +2,12 @@ env_name: highway-v0
 import_module: highway
 make_env_train: make_env_train
 make_env_test: make_env_test
+model_name: right_lane
 model_path: ./models
-model_name: basic_with_obs
 model_use_specs: True
 
 cfg_env: cfg_env.yml
-cfg_specs: cfg_specs_with_obs.yml
+cfg_specs: cfg_specs_right_lane_with_obs.yml
 
 cfg_train: 
   total_timesteps: 200_000
@@ -15,7 +15,7 @@ cfg_train:
   n_envs: 4      
   algo:    
     ppo: highway_env_ppo.yml      
-
+  
 cfg_test: 
   init_seeds: 0
   num_ep: 10
