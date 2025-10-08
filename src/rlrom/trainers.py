@@ -10,6 +10,7 @@ import time, datetime
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
+from rlrom.wrappers.reward_machine import RewardMachine
 import os
 import sys
 import importlib
@@ -37,6 +38,11 @@ def make_env_train(cfg):
         if model_use_spec:          
           env = stl_wrap_env(env, cfg_specs)
           env = gym.wrappers.FlattenObservation(env)
+
+        cfg_rm = cfg_specs.get('cfg_rm', None)            
+        if cfg_rm is not None:
+            env = RewardMachine(env, cfg_rm)  
+            print("env", env)
             
     return env
 

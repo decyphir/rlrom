@@ -4,6 +4,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import rlrom.utils as utils
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
+from rlrom.wrappers.reward_machine import RewardMachine
 from rlrom.utils import append_to_field_array as add_metric
 
 import rlrom.plots
@@ -40,7 +41,11 @@ def make_env_test(cfg):
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         env = stl_wrap_env(env, cfg_specs)
-        env = gym.wrappers.FlattenObservation(env)        
+        env = gym.wrappers.FlattenObservation(env)    
+
+        cfg_rm = cfg_specs.get('cfg_rm', None)            
+        if cfg_rm is not None:
+            env = RewardMachine(env, cfg_rm)  
     return env
 
     
@@ -55,6 +60,7 @@ class RLTester:
         self.model = None
         self.test_results = []
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
+        self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
         self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
         
     def load_model(self):
@@ -90,7 +96,8 @@ class RLTester:
             if self.has_stl_wrapper:  
                 if self.model_use_specs is False:
                     # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action                    
-                    obs = self.env.env.last_obs['unwrapped'] # TODO might break with more than one layer of wrapper
+                    last_obs= self.env.get_wrapper_attr('last_obs')
+                    obs = last_obs['unwrapped']
                 else:
                     pass # use the obs that we were given                
             action, _ = self.model.predict(obs)
@@ -136,8 +143,12 @@ class RLTester:
         
         if self.has_stl_wrapper:
             episode = self.env.get_wrapper_attr('episode')
+            
         self.env.close()
         return episode
+    
+        
+
 
     def run_cfg_test(self, reload_model=True):
         cfg_test = self.cfg.get('cfg_test') 
@@ -201,8 +212,9 @@ class RLTester:
         res = dict()        
         res_rew_f_list = []
         res_eval_f_list = []            
+        eval_episode_fn= self.env.get_wrapper_attr('eval_episode')
         for episode in episodes:                                
-                res, res_all_ep, res_rew_f_list, res_eval_f_list  = self.env.env.eval_episode(episode=episode,
+                res, res_all_ep, res_rew_f_list, res_eval_f_list  = eval_episode_fn(episode=episode,
                                                                                           res=res,
                                                                                           res_rew_f_list= res_rew_f_list,
                                                                                           res_eval_f_list= res_eval_f_list)
@@ -261,7 +273,8 @@ class RLTester:
 
         figs = []
         colors = itertools.cycle(palette)    
-
+        get_time_fn= self.env.get_wrapper_attr('get_time')
+        get_values_from_str_fn = self.env.get_wrapper_attr('get_values_from_str')
         for signal_list in enumerate(lay):
             f=None
             for signal in signal_list[1]:                
@@ -280,12 +293,12 @@ class RLTester:
                                 f = figure(height=200, x_range=figs[0][0].x_range)
                             figs.append([f])
 
-                        ttime = self.env.env.get_time()                        
+                        ttime = get_time_fn()                        
                         labl = signal                                                
                         if num_ep>1:                                                            
                             labl += ', ep '+str(ep_idx)
 
-                        sig_values, sig_type = self.env.env.get_values_from_str(signal)
+                        sig_values, sig_type = get_values_from_str_fn(signal)
                         if sig_type == 'val':
                             f.scatter(ttime, sig_values, legend_label=labl, color=color)
                             f.line(ttime, sig_values, legend_label=labl, color=color)

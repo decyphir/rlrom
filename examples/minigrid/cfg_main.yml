@@ -1,18 +1,21 @@
 #env_name: MiniGrid-Unlock-v0
 env_name: MiniGrid-CustomUnlock-v1
+model_path: ./models
+model_name: vanilla_ppo
+model_use_specs: True
 
-#cfg_env: cfg_env.yml
 cfg_specs:
   obs_names:
     ego: "obs[81]"
-    door: "obs[78]"
+    obj_front: "obs[78]"
   specs: minigrid.stl
   
   eval_formulas:
-    key:
+    has_key:
       past_horizon: 0.
       eval_all_steps: True
-    
+
+  cfg_rm: cfg_rm.yml
 
 cfg_train:
  algo:
@@ -21,7 +24,7 @@ cfg_train:
   ppo:
     batch_size: 128
     learning_rate: !!float 5e-4
-    tensorboard: ./tb_logs
+    tensorboard_log: ./tb_logs
 
 
 cfg_test:

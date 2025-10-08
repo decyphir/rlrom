@@ -1,5 +1,6 @@
-signal  ego, door, reward
+signal  ego, obj_front, reward
 
 has_key:= ego[t]>4
-not_has_key:= not has_key
-open_door:= door[t]>3 and door[t]<5
+not_has_key:= not_has_key
+door_in_front:= obj_front[t]>3 and obj_front[t]<5
+

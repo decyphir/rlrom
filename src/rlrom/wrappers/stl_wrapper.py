@@ -337,6 +337,7 @@ class STLWrapper(gym.Wrapper):
             t0 = max(0,step*self.real_time_step-horizon)
             if online:
                 monitor.add_sample(s)
+
             rob[step] = monitor.eval_rob(t0)
             step= step+1
         return rob

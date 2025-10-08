@@ -11,14 +11,15 @@ class RewardMachine(gym.Wrapper):
 
     """
 
-    def __init__(self, env):
+    def __init__(self, env, cfg_rm):
         """Initialize the :class:`RewardMachine` wrapper with an environment and the file that contains the reward machine.
         Args:
             env: The environment to apply the wrapper
         """
         super().__init__(env)
         self.env = env
-        self.rm, self.num_states, self.u_0, self.u_t = self._load_reward_machine()
+        self.rm = cfg_rm
+        self.num_states, self.u_0, self.u_t = self._load_reward_machine()
         if self.rm['in_observation']:
             old_shape = env.observation_space.shape[0]
             new_shape = old_shape + 1  # add RM feature
@@ -29,7 +30,6 @@ class RewardMachine(gym.Wrapper):
                 shape=(new_shape,),
                 dtype=env.observation_space.dtype)
         
-
     def step(self, action):
         """Modify the step function
         :param action: same as the original step
@@ -72,13 +72,10 @@ class RewardMachine(gym.Wrapper):
         return np.concatenate([obs, rm_state])
 
     def _load_reward_machine(self):
-        cfg = utils.load_cfg("cfg_rm.yml")
-        rm = cfg.get("reward_machine")
-        rm = cfg["reward_machine"]
-        num_states = len(rm['states'])
+        num_states = len(self.rm['states'])
 
-        u_0 = next((s['id'] for s in rm['states'] if s.get('initial')), None)
-        u_t = next((s['id'] for s in rm['states'] if s.get('final')), None)
+        u_0 = next((s['id'] for s in self.rm['states'] if s.get('initial')), None)
+        u_t = next((s['id'] for s in self.rm['states'] if s.get('final')), None)
 
         #returns a list of all possible transitions and the number of states of the reward machine
-        return rm, num_states, u_0, u_t
+        return num_states, u_0, u_t
