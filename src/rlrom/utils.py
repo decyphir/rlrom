@@ -4,12 +4,22 @@ from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
 import re
-import yaml
 import os
 import sys
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
+import datetime
+from ruamel.yaml import YAML
+import torch as th
+
+yaml = YAML(typ='safe')
+# Define a representer for NumPy arrays
+yaml.representer.add_representer(np.ndarray, lambda dumper, data: dumper.represent_list(data.tolist()))
+
+# Define a representer for NumPy floats
+yaml.representer.add_representer(np.float64, lambda dumper, data: dumper.represent_float(float(data)))
+
 
 def set_rec_cfg_field(cfg, **kargs):
     def rec_set(cfg, key, value):
@@ -112,7 +122,7 @@ def load_cfg(cfg, verbose=1):
                 if verbose>=1:
                     print('loading field [', key, '] from YAML file [', value, ']')
                     with open(value, 'r') as f:                        
-                        cfg[key] = recursive_load(yaml.safe_load(f))                
+                        cfg[key] = recursive_load(yaml.load(f))                
                 else:
                     cfg[key] = value
                     print('WARNING: file', value,'not found!')
@@ -131,18 +141,38 @@ def load_cfg(cfg, verbose=1):
                 cfg[key]= recursive_load(value)
 
         return cfg
+    
+    if isinstance(cfg, str) and os.path.exists(cfg):        
+        # here cfg is a path and we found it so we can already load it at the top level
+        cfg_file = cfg
+        with open(cfg_file, 'r') as f:
+            cfg= yaml.load(f)
 
-    # we change dir to where the cfg file is, so that the file can use relative path        
-    if isinstance(cfg, str) and os.path.exists(cfg):
-        dirname, basename = os.path.split(cfg)
-        if dirname != '':
-            os.chdir(dirname)            
-        sys.path.append('')
-        with open(basename, 'r') as f:
-            cfg= yaml.safe_load(f)
+        # now we should check if it has a path where we should be         
+        this_cfg_pathdir = cfg.get('this_cfg_pathdir', '')
+        if this_cfg_pathdir == '':
+            # no cfg_pathdir is explicitly specified. We try the folder of cfg file 
+            this_cfg_pathdir, _ = os.path.split(cfg_file)
+            if this_cfg_pathdir == '':  
+                this_cfg_pathdir ='.'            
+        
+        this_cfg_pathdir = os.path.abspath(this_cfg_pathdir)
+        cfg['this_cfg_pathdir'] = this_cfg_pathdir                        
     elif not isinstance(cfg, dict): 
         raise TypeError(f"Expected file name or dict.")
-    
+    else:
+        this_cfg_pathdir = cfg.get('this_cfg_pathdir', '.')
+    # now we have defined this_cfg_pathdir. Might be that it don't exist. We issue warning in that case
+    if os.path.exists(this_cfg_pathdir):        
+        os.chdir(this_cfg_pathdir)      
+    else:
+        print(f'WARNING: {this_cfg_pathdir} does not exist, assume current folder for working directory.')
+              
+    if '' not in sys.path:
+        sys.path.append('')
+    if '.' not in sys.path:
+        sys.path.append('.')
+        
     return recursive_load(cfg)
 
 def get_model_fullpath(cfg):
@@ -427,3 +457,32 @@ def load_trpo_model(env_name, repo_id, filename=None):
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
     model = TRPO.load(checkpoint, print_system_info=True)
     return model
+
+def add_now_suffix(s):
+  dd = datetime.datetime.now()
+  s_dd= dd.strftime("_%Y_%m_%d")
+  return s+s_dd
+
+def policy_cfg2kargs(cfg_policy):
+  act_fn =  {
+    "ReLU": th.nn.ReLU,
+    "Tanh": th.nn.Tanh,
+    "ELU": th.nn.ELU,
+  }
+  if 'activation_fn' in cfg_policy:
+    if isinstance(cfg_policy['activation_fn'], str):
+      cfg_policy['activation_fn']= act_fn[cfg_policy['activation_fn']]
+  
+  return cfg_policy
+
+def list_trained_models(folder='./models'):
+    list_models = []
+    with os.scandir(folder) as d:
+        for e in d:
+            m, ext=  os.path.splitext(e.name)
+            if ext=='.yml': 
+                list_models.append(m)
+    return list_models
+
+def get_sys_info():
+    os.sys    

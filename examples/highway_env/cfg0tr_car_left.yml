@@ -2,24 +2,22 @@ env_name: highway-v0
 import_module: highway
 make_env_train: make_env_train
 make_env_test: make_env_test
+model_name: right_lane
 model_path: ./models
-model_name: car_left
 model_use_specs: True
 
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_car_left.yml
+
 cfg_train: 
-  algo:
-    ppo:  
-      batch_size: 128
-      n_envs: 12
-      neurons: 128
-      learning_rate: 5e-4    
-      total_timesteps: 200_000
-      tensorboard:
-        tb_path: ./tb_logs    
+  total_timesteps: 300_000
+  eval_freq: 15_000
+  n_envs: 4      
+  algo:    
+    ppo: highway_env_ppo.yml      
+  
 cfg_test: 
   init_seeds: 0
-  num_ep: 5
+  num_ep: 10
   num_steps: 100 
-  render: true
+  render_mode: 'human'

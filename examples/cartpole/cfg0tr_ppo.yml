@@ -3,13 +3,14 @@ model_path: ./models
 model_name: vanilla_ppo
 
 cfg_test: 
-  init_seeds: 1
-  num_ep: 5
+  init_seeds: 0
+  num_ep: 10
   num_steps: 500 
   render_mode: 'human'
 
 cfg_train:
   n_envs: 4
-  total_timesteps: 100_000  
+  total_timesteps: 100_000
+  eval_freq: 15_000  
   algo:
     ppo: cartpole_ppo.yml
