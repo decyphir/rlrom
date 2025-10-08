@@ -17,7 +17,7 @@ transitions:
     reward: 0
   - from: "u1"
     to: "u2"
-    condition: "open_door"
+    condition: "door_in_front"
     reward: 50
   - from: "u1"
     to: "u1"

@@ -38,9 +38,8 @@ def make_env_train(cfg):
         if model_use_spec:          
           env = stl_wrap_env(env, cfg_specs)
           env = FlattenObservation(env)
-
-        cfg_rm = cfg_specs.get('cfg_rm', None)            
-        if cfg_rm is not None:
+          cfg_rm = cfg_specs.get('cfg_rm', None)            
+          if cfg_rm is not None:
             env = RewardMachine(env, cfg_rm)  
             print("env", env)
             

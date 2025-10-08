@@ -1,0 +1,41 @@
+#env_name: MiniGrid-Unlock-v0
+env_name: MiniGrid-CustomUnlock-v1
+model_path: ./models
+model_name: ppo_specs
+import_module: unlock_custom
+model_use_specs: True # Here we train without specs
+
+cfg_specs:
+  obs_names:
+    ego: "obs[81]"
+    obj_front: "obs[78]"
+  specs: minigrid.stl
+  
+  eval_formulas:
+    find_key:
+      t0: 0
+      eval_all_steps: False
+    find_key_and_door:
+      t0: 0
+      eval_all_steps: False
+
+  cfg_rm: cfg_rm.yml
+
+cfg_train:
+  total_timesteps: 200_000
+  n_envs: 1
+  eval_freq: 15_000  
+
+  algo:
+    ppo:
+      device: cpu    
+      verbose: 1
+      batch_size: 128
+      learning_rate: !!float 3e-4
+      tensorboard_log: ./tb_logs
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 100
+  render_mode: 'human'
