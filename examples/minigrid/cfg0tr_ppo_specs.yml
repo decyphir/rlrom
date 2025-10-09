@@ -26,7 +26,6 @@ cfg_train:
   n_envs: 1
   eval_freq: 15_000  
   
-
   algo:
     ppo:
       device: cpu    

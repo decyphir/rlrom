@@ -140,16 +140,13 @@ class RLTester:
             last_obs=obs
             if terminated:                
                 break    
-        
+                        
         if self.has_stl_wrapper:
             episode = self.env.get_wrapper_attr('episode')
-            
+
         self.env.close()
         return episode
     
-        
-
-
     def run_cfg_test(self, reload_model=True):
         cfg_test = self.cfg.get('cfg_test') 
         test_result = dict({'cfg':self.cfg})                        

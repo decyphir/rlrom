@@ -122,7 +122,7 @@ class STLWrapper(gym.Wrapper):
     
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
-                        
+
         # collect the sample for monitoring 
         s = self.get_sample(self.last_obs, action, reward) 
         
@@ -166,9 +166,6 @@ class STLWrapper(gym.Wrapper):
         self.episode['dones'].append(terminated)
         self.episode['last_obs'] = new_obs
         self.last_obs = new_obs    
-
-        if terminated: 
-            self.env.reset()
 
         return new_obs, new_reward, terminated, truncated, info
 
@@ -472,7 +469,6 @@ class STLWrapper(gym.Wrapper):
             res_rew_f_list.append(res_f)            
 
         # eval formulas - for those, we evaluate off-line, after the trace has been completely computed
-            
         if self.eval_formulas != dict():
                         
             self.current_time=0
