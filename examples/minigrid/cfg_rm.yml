@@ -2,27 +2,20 @@ in_observation: True
 states:
   - id: "u0"
     initial: True
+    reward: 0
   - id: "u1"
+    reward: 0
   - id: "u2"
     final: True
-
 transitions:
   - from: "u0"
     to: "u1"
     condition: "has_key"
     reward: 0 
-  - from: "u0"
-    to: "u0"
-    condition: "not_has_key"
-    reward: 0
   - from: "u1"
     to: "u2"
     condition: "door_in_front"
     reward: 50
-  - from: "u1"
-    to: "u1"
-    condition: "has_key"
-    reward: 0
   - from: "u1"
     to: "u0"
     condition: "not_has_key"

@@ -43,11 +43,10 @@ class RewardMachine(gym.Wrapper):
         if self.u_in == self.u_t:
             terminated = True
             self.env.reset()
-        if reward == 0:
-            reward = 1
         if self.rm['in_observation']:
-            obs = self._augmented_obs(obs)
-        return obs, rm_reward*reward, terminated, truncated, info
+            obs = self._augmented_obs(obs)   
+        if rm_reward > 0: print("rm_reward", rm_reward)
+        return obs, rm_reward, terminated, truncated, info
 
     def reset(self, *, seed=None, options=None):
         self.u_in = self.u_0
@@ -58,13 +57,25 @@ class RewardMachine(gym.Wrapper):
 
 
     def get_rm_transition(self, u_in):
+        print()
+        print("u_in", u_in)
         get_rob= self.env.get_wrapper_attr('get_rob') 
         transitions = self.rm['transitions']
+        u_out = u_in
+        states = self.rm['states']
+        for s in states:
+            if u_in == s['id']:
+                reward = s['reward']
+                break
+        priority = 0
         for t in transitions:
             formula_name = t["condition"]
-            if u_in == t["from"] and get_rob(formula_name)[-1] > 0  :
-                u_out = t["to"]
-                reward = t["reward"]
+            if u_out == t["from"] and get_rob(formula_name)[-1] > 0 :
+                this_priority = t.get('priority', 0)
+                if this_priority >= priority:
+                    u_out = t['to']
+                    reward = t["reward"]
+        print("u_out", u_out)
         return u_out, reward
 
     def _augmented_obs(self, obs):

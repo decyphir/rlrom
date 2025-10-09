@@ -1,7 +1,7 @@
 #env_name: MiniGrid-Unlock-v0
 env_name: MiniGrid-CustomUnlock-v1
 model_path: ./models
-model_name: vanilla_ppo
+model_name: model_step_200704
 import_module: unlock_custom
 model_use_specs: False # Here we train without specs
 
@@ -30,8 +30,15 @@ cfg_train:
     ppo:
       device: cpu    
       verbose: 1
-      batch_size: 128
-      learning_rate: !!float 3e-4
+      batch_size: 64
+      clip_range: 0.2
+      ent_coef: 0.0
+      gae_lambda: 0.95
+      gamma: 0.99
+      learning_rate: 0.00025
+      n_epochs: 10
+      n_steps: 128
+      policy: 'MlpPolicy'
       tensorboard_log: ./tb_logs
 
 cfg_test:
