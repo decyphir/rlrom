@@ -167,9 +167,6 @@ class STLWrapper(gym.Wrapper):
         self.episode['last_obs'] = new_obs
         self.last_obs = new_obs    
 
-        if terminated: 
-            self.env.reset()
-
         return new_obs, new_reward, terminated, truncated, info
 
     def get_sample(self,obs_dict,action,reward):        
