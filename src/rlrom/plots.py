@@ -77,14 +77,16 @@ def get_fig(envs, signals_layout, tr_idx=0):
     return fig, status
 
 def plot_enveloppe(steps, mean_val, min_val, max_val, 
-                      ax=None, label=None, color='gray', linestyle='-'):
+                      ax=None, label=None, color='blue', linestyle='-'):
+    linestyle_mean = '-'
+
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.grid(True)
     if label is None:    
-        ax.plot(steps, mean_val, color=color,linestyle=linestyle)
+        ax.plot(steps, mean_val, color=color,linestyle=linestyle_mean)
     else:
-        ax.plot(steps, mean_val,label=label, color=color,linestyle=linestyle)
+        ax.plot(steps, mean_val,label=label, color=color,linestyle=linestyle_mean)
 
     ax.plot(steps, min_val, color=color, linestyle=linestyle)
     ax.plot(steps, max_val, color=color,linestyle=linestyle)
@@ -97,7 +99,7 @@ def plot_enveloppe(steps, mean_val, min_val, max_val,
 
     return ax
 
-def plot_df_enveloppe(df, feature, ax=None, label=None, color='gray', linestyle='--'):
+def plot_df_enveloppe(df, feature, ax=None, label=None, color='gray', linestyle='-'):
 # assumes df is a a dataframe df of (steps,feature) concat vertically with label
     df_enveloppe = utils.get_df_mean_min_max_val(df, feature)
     steps = df_enveloppe['steps'].to_numpy()

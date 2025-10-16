@@ -5,6 +5,7 @@ from gymnasium import spaces
 import rlrom.utils as utils
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
 from rlrom.utils import append_to_field_array as add_metric
+from rlrom.utils import yaml
 
 import rlrom.plots
 from bokeh.models.annotations import Title
@@ -14,7 +15,7 @@ from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
 import sys
-
+import copy 
 
 def make_env_test(cfg):
 
@@ -57,30 +58,34 @@ class RLTester:
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
         self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
         
-    def load_model(self):
+    def load_model(self, model_file=None):
         
         cfg_env = self.cfg.get('cfg_env',dict())
         if cfg_env.get('manual_control', False):
             model = 'manual'
             print("INFO: manual_control set to True, stay alert.")    
             self.manual_control = True        
-        else:
+        else:            
             self.manual_control = False
             model_path = self.cfg.get('model_path', './models')
             model_name = self.cfg.get('model_name', 'random')
+                
             if model_path=='huggingface':
                 repo_id = model_name
                 env_name = self.cfg.get('env_name')
                 model = utils.load_model(env_name, repo_id)
+            elif model_file is not None:
+                print("INFO: Loading model file ", model_file)
+                model= utils.load_model(model_file)           
             else:
                 model_name, _ = utils.get_model_fullpath(self.cfg)
                 if model_name=='random':
                     model='random'
                 else:
                     print("INFO: Loading model ", model_name)
-                    model= utils.load_model(model_name)
-            
+                    model= utils.load_model(model_name)            
         self.model = model
+        return model
 
     def _get_action(self, obs):        
         
@@ -140,18 +145,20 @@ class RLTester:
         return episode
 
     def run_cfg_test(self, reload_model=True):
+        
         cfg_test = self.cfg.get('cfg_test') 
         test_result = dict({'cfg':self.cfg})                        
+        
         if cfg_test is not None:
             init_seed = cfg_test.get('init_seed',0)
             num_ep = cfg_test.get('num_ep',1)            
             num_steps  = cfg_test.get('num_steps', 100)
             reload_model_every_ep = cfg_test.get('reload_model_every_ep',False)
-                
+            model_file = cfg_test.get('model_file')    
             test_result = {'episodes':[], 'res':{}}
             num_ep_so_far=0
             if reload_model: 
-                self.load_model() 
+                self.load_model(model_file=model_file) 
             
             for seed in range(init_seed, init_seed+num_ep):
                 episode = self.run_seed(seed=seed, num_steps=num_steps, reload_model=reload_model_every_ep)
@@ -160,8 +167,17 @@ class RLTester:
                 if num_ep_so_far%10==0:
                     print('|')
                 test_result = self.eval_episode(episode, test_result)
+                        
             print()
             self.test_results.append(test_result)
+
+            # Saving if requested
+            res_file = cfg_test.get('res_file')
+            if res_file is not None:
+                Tres = copy.deepcopy(test_result) #TODO could do better surely, should make option to keep traces or not
+                Tres.pop('episodes', []) 
+                with open(res_file,'w') as f:
+                   yaml.dump(Tres, f)
             
         return test_result
     

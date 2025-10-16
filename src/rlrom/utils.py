@@ -89,13 +89,17 @@ def tb_extract_from_tag(file_path_list, tag='rollout/ep_rew_mean'):
 # load cfg recursively 
 def load_cfg(cfg, verbose=1):
     def recursive_load(cfg):
+        exclude_load_file = ['res_file']
         for key, value in cfg.items():
             #print('reading', key, 'with value', value)
             if isinstance(value, str) and value.endswith('.yml'):
                 if verbose>=1:
-                    print('loading field [', key, '] from YAML file [', value, ']')
-                    with open(value, 'r') as f:                        
-                        cfg[key] = recursive_load(yaml.load(f))                
+                    if  key not in exclude_load_file:
+                        print('loading field [', key, '] from YAML file [', value, ']')
+                        with open(value, 'r') as f:                        
+                            cfg[key] = recursive_load(yaml.load(f))                
+                    else:
+                        cfg[key] = value
                 else:
                     cfg[key] = value
                     print('WARNING: file', value,'not found!')
@@ -525,7 +529,7 @@ def get_df_all_training_files(cfg):
                 step = f.name.removesuffix('.yml').removeprefix('res_step_')
                 steps.append(int(step))
                 res_files.append(os.path.join(fd,f.name))
-                model_files.append(f.name.replace('res','model'))
+                model_files.append(f.name.replace('res','model').replace('.yml','.zip'))
 
         if len(steps)>0:    
             dict_cp = { 'steps':steps, 

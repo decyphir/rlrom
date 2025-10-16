@@ -35,5 +35,9 @@ reward_formulas:
     weight: -20
     lower_bound: 0.0 # we don't want to reward safety too much
 
+end_formulas:
+  ego_fast:
+    past_horizon: 0
+
 real_time_step: 1.0
 BigM: 10
