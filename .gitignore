@@ -5,3 +5,5 @@ events.out.*
 *.whl
 *.tar.gz
 *_training*
+examples/minigrid/test.py
+examples/minigrid/models/
