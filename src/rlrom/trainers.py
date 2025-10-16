@@ -3,7 +3,7 @@ import rlrom.utils as utils
 from rlrom.utils import policy_cfg2kargs, add_now_suffix
 from rlrom.testers import RLTester
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import numpy as np
 import gymnasium as gym
@@ -15,6 +15,7 @@ import sys
 import importlib
 from rlrom.utils import yaml
 import copy #for deep copy of dicts (*not* default !)
+import functools
 
 def make_env_train(cfg):
         
@@ -41,10 +42,33 @@ def make_env_train(cfg):
           cfg_rm = cfg_specs.get('cfg_rm', None)            
           if cfg_rm is not None:
             env = RewardMachine(env, cfg_rm)  
+            obs, _ = env.reset()
             print("env", env)
             
     return env
 
+def make_vec_envs(cfg, n_envs=8, use_subproc=False):
+    """
+    Create a vectorized environment with n_envs copies of make_env_train(cfg).
+    Works for STL + RM wrappers.
+    """
+    def _make_env_fn():
+        def _init():
+            return make_env_train(cfg)
+        return _init
+
+    env_fns = [_make_env_fn() for _ in range(n_envs)]
+    
+    if n_envs == 1:
+        # Just return a single env (not vectorized)
+        env = make_env_train(cfg)
+        env = VecMonitor(DummyVecEnv([lambda: env]))  # Wrap single env for logging
+        return env
+    else:
+        vec_env_cls = SubprocVecEnv if use_subproc else DummyVecEnv
+        vec_env = vec_env_cls(env_fns)
+        vec_env = VecMonitor(vec_env) 
+        return vec_env
 
 class RlromCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict(), chkpt_dir='', cfg_name=''):
@@ -121,7 +145,7 @@ class RLTrainer:
     self.model_use_specs = self.cfg.get('model_use_specs', False)
     self.env_name = self.cfg.get('env_name')
     self.model_name = self.cfg.get('model_name')
-    self.make_env= lambda: make_env_train(self.cfg)
+    self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
     self.model = None
     
   def train(self):

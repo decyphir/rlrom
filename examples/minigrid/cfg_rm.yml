@@ -11,11 +11,11 @@ transitions:
   - from: "u0"
     to: "u1"
     condition: "has_key"
-    reward: 0 
+    reward: 0
   - from: "u1"
     to: "u2"
     condition: "door_in_front"
-    reward: 50
+    reward: 1
   - from: "u1"
     to: "u0"
     condition: "not_has_key"

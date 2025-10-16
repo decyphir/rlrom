@@ -1,7 +1,0 @@
-env_name: MiniGrid-CustomUnlock-v1
-
-cfg_test:
-  init_seeds: 0
-  num_ep: 1
-  num_steps: 100
-  render_mode: 'human'
