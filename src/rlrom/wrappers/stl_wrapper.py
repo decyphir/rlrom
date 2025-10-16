@@ -358,7 +358,7 @@ class STLWrapper(gym.Wrapper):
             self.time_step +=1
             self.current_time += self.real_time_step
    
-    def eval_formula_cfg(self, f_name, f_opt, res=dict()):
+    def eval_formula_cfg(self, f_name, f_opt, res=None):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
     # TODO option to choose lower or upper or time or bool robustness    
         if f_opt is None:
@@ -368,7 +368,8 @@ class STLWrapper(gym.Wrapper):
         t0 = f_opt.get('t0',max(0, self.current_time-f_hor))
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
-        if res==dict():
+        if res is None:
+            res = dict()
             res['estimate_rob'] = np.array(robs[0])
             res['lower_rob'] = np.array(robs[1])
             res['upper_rob'] = np.array(robs[2])                        
