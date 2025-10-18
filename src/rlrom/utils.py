@@ -514,6 +514,11 @@ def get_date_num_training(cfg, training_folder):
     
     return dt, int(training)
 
+def get_df_last_training(cfg):
+    dfallt= get_df_all_training_files(cfg)
+    df_files_lastt = dfallt.collect()['training_files'][-1]
+    return get_df_load_training_res(df_files_lastt)
+
 def get_df_all_training_files(cfg):
     # returns a dataframe with all non empty folders containing checkpoints models and tests
     list_folders = get_training_folders(cfg)    

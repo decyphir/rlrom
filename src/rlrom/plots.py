@@ -81,7 +81,7 @@ def plot_enveloppe(steps, mean_val, min_val, max_val,
     linestyle_mean = '-'
 
     if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 4))
+        _, ax = plt.subplots(figsize=(8, 4))
         ax.grid(True)
     if label is None:    
         ax.plot(steps, mean_val, color=color,linestyle=linestyle_mean)
@@ -125,3 +125,21 @@ def plot_tb_training_logs(data, ax=None, label=None, color='gray', linestyle='-'
 
     return plot_enveloppe(steps, mean_val, min_val, max_val, 
                       ax=ax, label=label, color=color, linestyle=linestyle)
+
+
+def plot_df_training(df, formula=None, metric='mean_ep_rew', 
+                     ax=None, label=None, linestyle='-'):
+    
+    steps = df.collect()['steps'].to_numpy()
+    metric_values = df.collect()[metric].to_numpy()
+
+    if ax is None:
+       _, ax = plt.subplots(figsize=(8, 4))
+       ax.grid(True)
+
+    if label is None:    
+        ax.plot(steps, metric_values,linestyle=linestyle)
+    elif label=='auto':
+        ax.plot(steps, metric_values,label=metric,linestyle=linestyle)
+
+    return  ax
