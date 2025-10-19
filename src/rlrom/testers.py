@@ -14,8 +14,7 @@ from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
-import sys
-import copy 
+import os,sys,copy
 
 def make_env_test(cfg):
 
@@ -317,3 +316,19 @@ class RLTester:
         self.env.close()
         return fig, status
 
+    def retest_checkoints_models(self,df_idx=-1, **kargs):
+        df = utils.get_df_training(self.cfg, idx=df_idx)
+
+        cfg_tmp = copy.deepcopy(self.cfg)  
+        cfg_test = cfg_tmp['cfg_test']
+        for r in df.collect().iter_rows(named=True):
+            print(f'Retesting for step {r['steps']}, i.e., model {r['res_files']}')
+            cfg_test['model_file']= os.path.join(r['path'],r['model_files'])
+            cfg_test['res_file'] = r['res_files']        
+            
+            cfg_tmp = utils.set_rec_cfg_field(cfg_tmp,cfg_test=cfg_test)
+            cfg_tmp = utils.set_rec_cfg_field(cfg_tmp,render_mode=None,**kargs)
+            T = RLTester(cfg_tmp)
+            T.run_cfg_test()        
+
+    

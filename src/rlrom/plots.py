@@ -128,18 +128,33 @@ def plot_tb_training_logs(data, ax=None, label=None, color='gray', linestyle='-'
 
 
 def plot_df_training(df, formula=None, metric='mean_ep_rew', 
-                     ax=None, label=None, linestyle='-'):
+                     label='auto',ax=None,**kargs):
     
     steps = df.collect()['steps'].to_numpy()
-    metric_values = df.collect()[metric].to_numpy()
+    
+    if formula is None:
+        metric_values = df.collect()[metric].to_numpy()
+    else:
+        df_phi = df.select('label', #training id 
+                           'steps',
+                            formula).unnest(formula)        
+        metric_values = df_phi.collect()[metric].to_numpy()
+
+
 
     if ax is None:
        _, ax = plt.subplots(figsize=(8, 4))
        ax.grid(True)
 
     if label is None:    
-        ax.plot(steps, metric_values,linestyle=linestyle)
+        ax.plot(steps, metric_values,**kargs)
     elif label=='auto':
-        ax.plot(steps, metric_values,label=metric,linestyle=linestyle)
+        ax.plot(steps, metric_values,label=metric,**kargs)
+    else:
+        ax.plot(steps, metric_values,label=label,**kargs)
+    
+    ax.legend()
+    ax.set_xlabel('Training Steps')
+    ax.set_ylabel('Value')
 
     return  ax

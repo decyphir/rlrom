@@ -500,31 +500,40 @@ def get_training_folders(cfg):
     folders = []
     for d in globs:
         if os.path.isdir(d):
-            folders.append(d)
+            pattern = patt+r"_\d{4}_\d{2}_\d{2}__training\d+"
+            if re.match(pattern, d) is not None:
+                folders.append(d)
     return folders 
 
 def get_date_num_training(cfg, training_folder):
     mpath,_ = get_model_fullpath(cfg)    
     mpath = os.path.splitext(mpath)[0]
-    if mpath is not None:                        
-        s = training_folder.removeprefix(mpath+'_')        
-        ds,training  = s.split('__training')            
+    if mpath is not None:
+        s = training_folder.removeprefix(mpath+'_')                
+        ds,training  = s.split('__training')
         y, m, d = ds.split('_')
         dt = date(int(y), int(m), int(d))     
     
     return dt, int(training)
 
-def get_df_last_training(cfg):
+
+def get_df_training(cfg, idx=-1):
     dfallt= get_df_all_training_files(cfg)
-    df_files_lastt = dfallt.collect()['training_files'][-1]
+    df_files_lastt = dfallt.collect()['training_files'][idx]
     return get_df_load_training_res(df_files_lastt)
+
+
+def get_df_all_trainings(cfg):
+    dfallt= get_df_all_training_files(cfg)
+    return get_df_load_all_training_res(dfallt)
+
 
 def get_df_all_training_files(cfg):
     # returns a dataframe with all non empty folders containing checkpoints models and tests
     list_folders = get_training_folders(cfg)    
     dict_trainings = dict({'date':[], 'num':[], 'training_files':[], 'path':[]})
 
-    for fd in list_folders:    
+    for fd in list_folders:             
         l = os.scandir(fd)
         steps = []
         res_files = []
@@ -578,7 +587,7 @@ def get_df_load_training_res(df_training_files, label='Training0'):
     )
     out = out.unnest('results').unnest('res_all_ep').unnest('basics').unnest('eval_formulas')
 
-    return out.select(pl.exclude('res_files')).with_columns(pl.lit(label).alias('label'))
+    return out.with_columns(pl.lit(label).alias('label'))
 
 def get_df_load_all_training_res(df_all_trainings):
 # load res files for trainings found by get_df_all_trainings, concat them vertically

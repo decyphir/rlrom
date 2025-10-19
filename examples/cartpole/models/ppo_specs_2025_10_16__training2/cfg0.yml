@@ -1,0 +1,39 @@
+cfg_specs:
+  action_names: {push: action}
+  eval_formulas:
+    cart_on_left: {eval_all_steps: true, past_horizon: 0}
+    phi_left_goal: {eval_all_steps: false, t0: 0}
+  obs_names: {theta: 'obs[2]', theta_dot: 'obs[3]', x: 'obs[0]', x_dot: 'obs[1]'}
+  reward_formulas:
+    cart_on_left: {lower_bound: 0, past_horizon: 0, weight: 10}
+  specs: 'signal push,x,x_dot,theta,theta_dot,reward
+
+
+    param epsi= 0.03
+
+    pole_up := abs(theta[t]) < epsi
+
+    keep_up := alw_[0,100] pole_up
+
+    phi_goal_keep_up := ev_[0, 400] keep_up
+
+
+    go_left := x_dot[t] < 0
+
+    cart_on_left := x[t] < -0.5 and x[t]> -0.7
+
+    phi_left_goal := ev_[0,400] alw_[0, 100] cart_on_left
+
+    '
+cfg_test: {init_seeds: 0, num_ep: 100, num_steps: 500, render_mode: null}
+cfg_train:
+  algo:
+    ppo: {device: cpu, tensorboard_log: ./tb_logs, verbose: 0}
+  eval_freq: 10000
+  n_envs: 4
+  total_timesteps: 200000
+env_name: CartPole-v1
+model_name: ppo_specs
+model_path: ./models
+model_use_specs: true
+this_cfg_pathdir: /home/alex/workspace/rlrom/examples/cartpole

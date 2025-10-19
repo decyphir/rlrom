@@ -1,0 +1,45 @@
+res:
+  car_left:
+    mean: [-0.14360718809017267]
+    num_sat: [9]
+    sum: [-5.744287523606907]
+  danger:
+    mean: [-0.023184163868427282]
+    num_sat: [2]
+    sum: [-0.9273665547370913]
+  ego_fast:
+    mean: [0.4835929727554321, 4.835929727554321]
+    num_sat: [39, 39]
+    sum: [19.343718910217287, 193.43718910217285]
+  ego_moves:
+    mean: [29.835929727554323]
+    num_sat: [40]
+    sum: [1193.4371891021729]
+  ego_right_lane:
+    mean: [-0.32840339271336005]
+    num_sat: [7]
+    sum: [-13.136135708534402]
+  ep_len: [40]
+  ep_rew: [8.416352355480193]
+  phi_car_left:
+    init_rob: [0.15000000297895955]
+    init_sat: [1]
+  phi_right_lane:
+    init_rob: [-0.6000000029789593]
+    init_sat: [0]
+  phi_speed:
+    init_rob: [5.0]
+    init_sat: [1]
+res_all_ep:
+  basics: {mean_ep_len: 40.0, mean_ep_rew: 8.416352355480193}
+  eval_formulas:
+    car_left: {mean_mean: -0.14360718809017267, mean_num_sat: 9.0, mean_sum: -5.744287523606907}
+    ego_fast: {mean_mean: 2.6597613501548767, mean_num_sat: 39.0, mean_sum: 106.39045400619507}
+    ego_moves: {mean_mean: 29.835929727554323, mean_num_sat: 40.0, mean_sum: 1193.4371891021729}
+    ego_right_lane: {mean_mean: -0.32840339271336005, mean_num_sat: 7.0, mean_sum: -13.136135708534402}
+    phi_car_left: {mean_init_rob: 0.15000000297895955, ratio_init_sat: 1.0}
+    phi_right_lane: {mean_init_rob: -0.6000000029789593, ratio_init_sat: 0.0}
+    phi_speed: {mean_init_rob: 5.0, ratio_init_sat: 1.0}
+  reward_formulas:
+    danger: {mean_num_sat: 2.0, mean_rob: -0.023184163868427282, mean_sum: -0.9273665547370913}
+    ego_fast: {mean_num_sat: 39.0, mean_rob: 2.6597613501548767, mean_sum: 106.39045400619507}

@@ -1,0 +1,7 @@
+res:
+  ep_len: [256, 173, 309, 468, 301, 223, 234, 228, 311, 316]
+  ep_rew: [256.0, 173.0, 309.0, 468.0, 301.0, 223.0, 234.0, 228.0, 311.0, 316.0]
+res_all_ep:
+  basics: {mean_ep_len: 281.9, mean_ep_rew: 281.9}
+  eval_formulas: {}
+  reward_formulas: {}

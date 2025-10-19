@@ -1,0 +1,10 @@
+cfg_test: {init_seeds: 0, num_ep: 10, num_steps: 500, render_mode: null}
+cfg_train:
+  algo:
+    ppo: {batch_size: 2048, device: cpu, tensorboard_log: ./tb_logs, verbose: 0}
+  eval_freq: 20000
+  n_envs: 8
+  total_timesteps: 100000
+env_name: CartPole-v1
+model_name: vanilla_ppo
+model_path: ./models
