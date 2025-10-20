@@ -7,7 +7,7 @@ cfg_specs:
   action_names: 
     push: "action"
   obs_names:
-    x:         "obs[0]"
+    x:     "obs[0]"
     x_dot: "obs[1]"
     theta: "obs[2]"
     theta_dot: "obs[3]"  

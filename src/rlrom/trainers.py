@@ -99,10 +99,12 @@ class RlromCallback(BaseCallback):
     
   def  eval_and_save_model(self):
     Tres = self.eval_policy()
+    
     model_filename = self.chkpt_model_root_name+str(self.n_calls*self.n_envs)
     print(f'saving model to {model_filename}...')
     self.model.save(model_filename)      
     res_filename = self.chkpt_res_root_name+str(self.n_calls*self.n_envs)+'.yml'            
+    
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
     with open(res_filename,'w') as f:
@@ -113,7 +115,7 @@ class RlromCallback(BaseCallback):
     return super()._on_training_end()
 
   def eval_policy(self):
-        
+  # This might go eventually - log stuff from Tres into tensorboard      
     self.tester = RLTester(self.cfg)
     self.tester.model = self.model
     Tres = self.tester.run_cfg_test(reload_model=False)                

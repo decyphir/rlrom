@@ -4,14 +4,14 @@ from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
 import re
-import os
-import sys
+import os, sys, glob
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
-import datetime
+from datetime import datetime, date
 from ruamel.yaml import YAML
 import torch as th
+import polars as pl
 
 yaml = YAML(typ='safe')
 # Define a representer for NumPy arrays
@@ -86,43 +86,20 @@ def tb_extract_from_tag(file_path_list, tag='rollout/ep_rew_mean'):
 
     return all_data    
 
-def get_upper_values(all_data):
-    # Assumes all_data in sync (i.e. same steps)
-
-    all_values = []
-    for v in all_data:
-        all_values.append(v.get('values'))
-
-    return np.max(all_values,axis=0)        
-
-def get_lower_values(all_data):
-# Assumes all_data in sync (i.e. same steps)
-
-    all_values = []
-    for v in all_data:
-        all_values.append(v.get('values'))
-
-    return np.min(all_values, axis=0)        
-
-def get_mean_values(all_data):
-    # Assumes all_data in sync (i.e. same steps)
-
-    all_values = []
-    for v in all_data:
-        all_values.append(v.get('values'))
-
-    return np.mean(all_values,axis=0)        
-
 # load cfg recursively 
 def load_cfg(cfg, verbose=1):
     def recursive_load(cfg):
+        exclude_load_file = ['res_file']
         for key, value in cfg.items():
             #print('reading', key, 'with value', value)
             if isinstance(value, str) and value.endswith('.yml'):
                 if verbose>=1:
-                    print('loading field [', key, '] from YAML file [', value, ']')
-                    with open(value, 'r') as f:                        
-                        cfg[key] = recursive_load(yaml.load(f))                
+                    if  key not in exclude_load_file:
+                        print('loading field [', key, '] from YAML file [', value, ']')
+                        with open(value, 'r') as f:                        
+                            cfg[key] = recursive_load(yaml.load(f))                
+                    else:
+                        cfg[key] = value
                 else:
                     cfg[key] = value
                     print('WARNING: file', value,'not found!')
@@ -311,6 +288,34 @@ def load_model(env_name, repo_id=None, filename=None):
             model = None
     return model
 
+def get_upper_values(all_data):
+    # Assumes all_data in sync (i.e. same steps)
+
+    all_values = []
+    for v in all_data:
+        all_values.append(v.get('values'))
+
+    return np.max(all_values,axis=0)        
+
+def get_lower_values(all_data):
+# Assumes all_data in sync (i.e. same steps)
+
+    all_values = []
+    for v in all_data:
+        all_values.append(v.get('values'))
+
+    return np.min(all_values, axis=0)        
+
+def get_mean_values(all_data):
+    # Assumes all_data in sync (i.e. same steps)
+
+    all_values = []
+    for v in all_data:
+        all_values.append(v.get('values'))
+
+    return np.mean(all_values,axis=0)        
+
+
 def get_episodes_from_rollout(buffer):
 # Takes a rollout buffer as produced by PPO and returns a list of complete episodes     
     episodes = []
@@ -459,7 +464,7 @@ def load_trpo_model(env_name, repo_id, filename=None):
     return model
 
 def add_now_suffix(s):
-  dd = datetime.datetime.now()
+  dd = datetime.now()
   s_dd= dd.strftime("_%Y_%m_%d")
   return s+s_dd
 
@@ -486,3 +491,120 @@ def list_trained_models(folder='./models'):
 
 def get_sys_info():
     os.sys    
+
+def get_training_folders(cfg):
+    cfg= load_cfg(cfg)
+    mpath,_ = get_model_fullpath(cfg)
+    patt = os.path.splitext(mpath)[0]
+    globs = glob.glob(patt+'*')
+    folders = []
+    for d in globs:
+        if os.path.isdir(d):
+            folders.append(d)
+    return folders 
+
+def get_date_num_training(cfg, training_folder):
+    mpath,_ = get_model_fullpath(cfg)    
+    mpath = os.path.splitext(mpath)[0]
+    if mpath is not None:                        
+        s = training_folder.removeprefix(mpath+'_')        
+        ds,training  = s.split('__training')            
+        y, m, d = ds.split('_')
+        dt = date(int(y), int(m), int(d))     
+    
+    return dt, int(training)
+
+def get_df_last_training(cfg):
+    dfallt= get_df_all_training_files(cfg)
+    df_files_lastt = dfallt.collect()['training_files'][-1]
+    return get_df_load_training_res(df_files_lastt)
+
+def get_df_all_training_files(cfg):
+    # returns a dataframe with all non empty folders containing checkpoints models and tests
+    list_folders = get_training_folders(cfg)    
+    dict_trainings = dict({'date':[], 'num':[], 'training_files':[], 'path':[]})
+
+    for fd in list_folders:    
+        l = os.scandir(fd)
+        steps = []
+        res_files = []
+        model_files = []
+        for f in l:
+            if f.name.startswith('res_step_'):                
+                step = f.name.removesuffix('.yml').removeprefix('res_step_')
+                steps.append(int(step))
+                res_files.append(os.path.join(fd,f.name))
+                model_files.append(f.name.replace('res','model').replace('.yml','.zip'))
+
+        if len(steps)>0:    
+            dict_cp = { 'steps':steps, 
+                        'res_files':res_files,
+                        'model_files':model_files,
+                        'path': fd}
+            df_cp = pl.LazyFrame(dict_cp)
+            
+            dt, num = get_date_num_training(cfg,fd)
+            dict_trainings['date'].append(dt)
+            dict_trainings['num'].append(num)            
+            dict_trainings['training_files'].append(df_cp.sort('steps'))                        
+            dict_trainings['path'].append(fd)
+
+    df = pl.LazyFrame(dict_trainings)
+    df= df.sort('date', 'num')
+    
+    return df
+
+def get_df_load_training_res(df_training_files, label='Training0'):
+# load res files from a df_training_files (dataframe with list of res and model files)
+
+    def load_result_fn(p):                    
+        with open(p,'r') as f:
+            res = yaml.load(f)    
+        return res
+
+    def get_dtype_from_res(res):
+        df_res = pl.DataFrame(res)
+        res_typ = df_res['res'].dtype
+        res_all_ep_typ = df_res['res_all_ep'].dtype
+        typ= pl.Struct([pl.Field('res', res_typ), pl.Field('res_all_ep', res_all_ep_typ)])
+        return typ
+
+    p = df_training_files.collect()['res_files'][-1]
+    res = load_result_fn(p)
+    typ = get_dtype_from_res(res)
+    expr = pl.col('res_files').map_elements(load_result_fn, return_dtype=typ)
+    out = df_training_files.with_columns(
+         expr.alias('results')
+    )
+    out = out.unnest('results').unnest('res_all_ep').unnest('basics').unnest('eval_formulas')
+
+    return out.select(pl.exclude('res_files')).with_columns(pl.lit(label).alias('label'))
+
+def get_df_load_all_training_res(df_all_trainings):
+# load res files for trainings found by get_df_all_trainings, concat them vertically
+
+    df_all_training_res = None
+    idx =0
+    for r in df_all_trainings.collect()['training_files']:
+        r = get_df_load_training_res(r,f'Training{idx}')
+        if df_all_training_res is None:
+            df_all_training_res = r
+        else:
+            df_all_training_res = pl.concat([   df_all_training_res,
+                                                r])
+        idx = idx+1
+    return df_all_training_res
+        
+def get_df_mean_min_max_val(df, feature):
+# returns mean, min and max values for a dataframe df of (steps,feature) concat vertically with label
+    expr_min =  pl.col(feature).list.min().name.suffix('_min')
+    expr_max =  pl.col(feature).list.max().name.suffix('_max')
+    expr_mean = pl.col(feature).list.mean().name.suffix('_mean')
+
+    df = df.select('label','steps',feature)
+    df_enveloppe = df.group_by(pl.col('steps')).agg(pl.col(feature)
+                            ).sort(pl.col('steps'))                        
+    df_enveloppe = df_enveloppe.collect().select('steps',expr_mean, expr_min, expr_max)
+
+    
+    return df_enveloppe

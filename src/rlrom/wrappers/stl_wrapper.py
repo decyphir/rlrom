@@ -119,7 +119,7 @@ class STLWrapper(gym.Wrapper):
             idx_obs_f +=1
 
     def step(self, action):
-    
+        
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
 
@@ -131,20 +131,20 @@ class STLWrapper(gym.Wrapper):
         
         idx_formula = 0
         robs = [0]*len(self.obs_formulas)
-        for f_name, f_opt in self.obs_formulas.items():             
+        for f_name, f_opt in self.obs_formulas.items():                         
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
             robs[idx_formula] = robs_f # forget about low and high robs for now
             idx_formula+=1     
          
-        for f_name, f_opt in self.end_formulas.items():             
-            _, res = self.eval_formula_cfg(f_name,f_opt)          
-            if res['lower_rob'] > 0:
+        for f_name, f_opt in self.end_formulas.items():                     
+            _, eval_res = self.eval_formula_cfg(f_name,f_opt)          
+            if eval_res['lower_rob'] > 0:
                 print('Episode terminated because of formula', f_name)
                 terminated = True
 
         new_reward = reward                         
         # add stl robustness to reward
-        for f_name, f_opt in self.reward_formulas.items():             
+        for f_name, f_opt in self.reward_formulas.items():                         
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)
             w = f_opt.get('weight',1)        
             new_reward += w*robs_f   
@@ -358,7 +358,7 @@ class STLWrapper(gym.Wrapper):
             self.time_step +=1
             self.current_time += self.real_time_step
    
-    def eval_formula_cfg(self, f_name, f_opt, res=None):
+    def eval_formula_cfg(self, f_name, f_opt, res=dict()):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
     # TODO option to choose lower or upper or time or bool robustness    
         if f_opt is None:
@@ -368,19 +368,18 @@ class STLWrapper(gym.Wrapper):
         t0 = f_opt.get('t0',max(0, self.current_time-f_hor))
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
-        if res is None:
-            res = dict()
+        if res==dict():
             res['estimate_rob'] = np.array(robs[0])
             res['lower_rob'] = np.array(robs[1])
             res['upper_rob'] = np.array(robs[2])                        
             sat = 1 if robs[0]>0 else 0
-            res['sat'] = np.array(sat)
-        else:
-            res['estimate_rob'] = np.append(res['estimate_rob'],robs[0])
-            res['lower_rob'] = np.append(res['lower_rob'],robs[1])
-            res['upper_rob'] = np.append(res['upper_rob'],robs[2])                        
+            eval_res['sat'] = np.array(sat)
+        else:            
+            eval_res['estimate_rob'] = np.append(eval_res['estimate_rob'],robs[0])
+            eval_res['lower_rob'] = np.append(eval_res['lower_rob'],robs[1])
+            eval_res['upper_rob'] = np.append(eval_res['upper_rob'],robs[2])                        
             sat = 1 if robs[0]>0 else 0
-            res['sat'] = np.append(res['sat'],sat)
+            eval_res['sat'] = np.append(eval_res['sat'],sat)
         
 
         semantics = f_opt.get('semantics', 'rob')
@@ -398,8 +397,7 @@ class STLWrapper(gym.Wrapper):
         lower_bound = f_opt.get('lower_bound',-np.inf)
         val = max(val, lower_bound)
         val = min(val, upper_bound)
-                
-        return val, res
+        return val, eval_res
                
     def eval_specs_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
     # computes different metrics to evaluate an episode. If res contains values already, concatenate
