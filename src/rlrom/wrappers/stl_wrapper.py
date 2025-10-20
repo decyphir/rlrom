@@ -122,7 +122,7 @@ class STLWrapper(gym.Wrapper):
         
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
-
+                        
         # collect the sample for monitoring 
         s = self.get_sample(self.last_obs, action, reward) 
         
@@ -166,6 +166,9 @@ class STLWrapper(gym.Wrapper):
         self.episode['dones'].append(terminated)
         self.episode['last_obs'] = new_obs
         self.last_obs = new_obs    
+
+        if terminated: 
+            self.env.reset()
 
         return new_obs, new_reward, terminated, truncated, info
 
@@ -334,7 +337,6 @@ class STLWrapper(gym.Wrapper):
             t0 = max(0,step*self.real_time_step-horizon)
             if online:
                 monitor.add_sample(s)
-
             rob[step] = monitor.eval_rob(t0)
             step= step+1
         return rob
@@ -358,7 +360,7 @@ class STLWrapper(gym.Wrapper):
             self.time_step +=1
             self.current_time += self.real_time_step
    
-    def eval_formula_cfg(self, f_name, f_opt, res=dict()):
+    def eval_formula_cfg(self, f_name, f_opt, eval_res=None):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
     # TODO option to choose lower or upper or time or bool robustness    
         if f_opt is None:
@@ -368,10 +370,11 @@ class STLWrapper(gym.Wrapper):
         t0 = f_opt.get('t0',max(0, self.current_time-f_hor))
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
-        if res==dict():
-            res['estimate_rob'] = np.array(robs[0])
-            res['lower_rob'] = np.array(robs[1])
-            res['upper_rob'] = np.array(robs[2])                        
+        if eval_res is None:
+            eval_res= dict()
+            eval_res['estimate_rob'] = np.array(robs[0])
+            eval_res['lower_rob'] = np.array(robs[1])
+            eval_res['upper_rob'] = np.array(robs[2])                        
             sat = 1 if robs[0]>0 else 0
             eval_res['sat'] = np.array(sat)
         else:            
@@ -468,6 +471,7 @@ class STLWrapper(gym.Wrapper):
             res_rew_f_list.append(res_f)            
 
         # eval formulas - for those, we evaluate off-line, after the trace has been completely computed
+            
         if self.eval_formulas != dict():
                         
             self.current_time=0
