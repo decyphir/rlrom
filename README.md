@@ -15,16 +15,16 @@ pip install rlrom
 ## Getting Started
 
 ### Command Line Interface
-RLRom reads configuration files in the YAML format as inputs. Examples are provided in the examples folder. A command line interface is provided. For instance, the `rlrom_test` command reads a configuration file and runs tests:
+RLRom reads configuration files in the YAML format as inputs. Examples are provided in the examples folder. A command line interface is provided through command `rlr` which can be called with various arguments. For instance, the `rlr test` command reads a configuration file and runs tests:
 ```bash
-$ rlrom_test examples/cartpole/cfg0_hug.cfg
+$ rlr test examples/cartpole/cfg0_hug.cfg
 ```
 will run a few episode of the cartpole classic environment, fetching a model on huggingface and monitor a formula on these episodes. 
 
-For training with or without STL specifications, use the `rlrom_train` command, e.g.:
+For training with or without STL specifications, use the `rlr train` command, e.g.:
 
 ```bash
-$ rlrom_train examples/cartpole/cfg0tr_ppo_specs.cfg
+$ rlr train examples/cartpole/cfg0tr_ppo_specs.cfg
 ```
 More details are provided in the notebooks (see below.)
 

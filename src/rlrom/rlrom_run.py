@@ -1,24 +1,22 @@
 import os
 import sys
 import argparse
-
-from rlrom.testers import RLTester
-from rlrom import utils
-from rlrom.trainers import RLTrainer
+from rlrom.utils import load_cfg, set_rec_cfg_field
+from rlrom.rlrom_test import main_test
+from rlrom.rlrom_train import main_train
 from pprint import pprint
-import numpy as np
 
 def main():
-    # rlrom_run [test|train] cfg_main.yml [--cfg-train cfg_train.yml]    
+    # rlr [test|train|show] cfg_main.yml [--cfg-train cfg_train.yml] [--cfg-test cfg_test.yml]    
     
     parser = argparse.ArgumentParser(description='Run a configuration file in YAML format for testing or training.')
     parser.add_argument('action', type=str, help='action should be either "test" or "train"')
     parser.add_argument('main_cfg', type=str, default='cfg_main.yml', help='Path to main configuration file in YAML format.')
-    parser.add_argument('--cfg_train', type=str, help='Override cfg_train section in main with content of a YAML file.')
-    parser.add_argument('--cfg_test', type=str, help='Override cfg_test with content of a YAML file.')
-    parser.add_argument('--cfg_specs', type=str, help='Override cfg_specs with content of a YAML file.')
+    parser.add_argument('--cfg-train', type=str, help='Override cfg_train section in main with content of a YAML file.')
+    parser.add_argument('--cfg-test', type=str, help='Override cfg_test with content of a YAML file.')
+    parser.add_argument('--cfg-specs', type=str, help='Override cfg_specs with content of a YAML file.')
+    parser.add_argument('--set-params',nargs='*', action=ParseKwargs, help='list of key=value overriding keys existing in the cfg file.')
     parser.add_argument('--verbose', type=int, default=0, help='Verbosity level') 
-    parser.add_argument('--num-trainings',type=int, default=1, help='Number of repeats of training') #TODO 
     args = parser.parse_args()
     
     # Start with default configuration
@@ -26,7 +24,7 @@ def main():
     
     # Load main config file
     if os.path.exists(args.main_cfg):
-        custom_cfg = utils.load_cfg(args.main_cfg)
+        custom_cfg = load_cfg(args.main_cfg)
     else:        
         print(f"Error: Config file {args.main_cfg} was not found.")
         sys.exit(1)
@@ -55,31 +53,32 @@ def main():
         else:
             print(f"Warning: Training config file {args.cfg_specs} not found.")
 
-
+    if args.set_params is not None:
+        custom_cfg = set_rec_cfg_field(custom_cfg, **args.set_params)
+        
     if args.verbose>=1:
         pprint(custom_cfg)
-            
-    if args.num_trainings:
-        num_trainings= args.num_trainings
-    else:
-        num_trainings = 1
-        
+                    
     if args.action=='test':
         main_test(custom_cfg)    
     elif args.action=='train':    
         main_train(custom_cfg)
+    elif args.action=='show':
+        main_show(custom_cfg)
     else: 
-        print(f'Unrecognized action {args.action}. Should be either "test" or "train"')
+        print(f'Unrecognized action {args.action}. It has to be "test", "train" or "show".')
+
+class ParseKwargs(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, dict())
+        for value in values:
+            key, value = value.split('=')
+            getattr(namespace, self.dest)[key] = value
 
 
-def main_test(custom_cfg):
-    tester = RLTester(custom_cfg)
-    Tres= tester.run_cfg_test()
-    tester.print_res_all_ep(Tres)
 
-def main_train(custom_cfg):
-    trainer = RLTrainer(custom_cfg)
-    trainer.train()
+def main_show(custom_cfg):
+    pprint(custom_cfg)
 
 if __name__ == "__main__":
     main()
