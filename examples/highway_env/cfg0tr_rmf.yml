@@ -10,8 +10,8 @@ cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_rmf.yml
 
 cfg_train:
-  total_timesteps: 300_000      
-  eval_freq: 15_000
+  total_timesteps: 200_000      
+  eval_freq: 10_000
   n_envs: 4
   algo:
     ppo: highway_env_ppo.yml

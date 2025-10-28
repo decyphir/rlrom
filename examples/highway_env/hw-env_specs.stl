@@ -39,3 +39,10 @@ car_left := car1_left or car2_left or car3_left
 phi_speed := alw_[0,50] ev_[0,15] ego_fast 
 phi_right_lane := alw_[0,50] ev_[0,15] ego_right_lane
 phi_car_left := alw_[0,50] ev_[0,15] (not car_left)
+
+# Reward formulas, shorter
+
+Gda := alw_[0,5] danger
+fa_da := danger and ego_fast
+fa_n_da := (not danger) and ego_fast
+n_fa_n_da := not (ego_fast or danger)

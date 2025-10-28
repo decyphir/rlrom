@@ -46,9 +46,30 @@ obs_formulas: # will add parameters for normalization in particular
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
 reward_formulas:
-  ego_fast:
+  fa_n_da: # faut aller vite qud ya personne
     past_horizon: 0
-    weight: 2
+    weight: 1
+    semantics: bool
+
+  Gda:  # faut pas coller
+    past_horizon: 5
+    weight: -1
+    semantics: bool
+  
+  fa_da: # faut pas foncer vers la mort
+    past_horizon: 0
+    weight: -5
+    semantics: bool
+
+
+  n_fa_n_da: # faut pas traîner derrière
+    past_horizon: 0
+    weight: -1
+    semantics: bool
+
+  not_right_too_long:
+    past_horizon: 10
+    weight: -1
     semantics: bool
   
   ego_right_lane:
@@ -56,20 +77,6 @@ reward_formulas:
     weight: 1
     semantics: bool
   
-  not_right_too_long:
-    past_horizon: 10
-    weight: -1
-    semantics: bool
 
-  danger:
-    past_horizon: 0
-    weight: -2
-    semantics: bool
-  
-
-#  car_left:
-#    past_horizon: 0
-#    weight: -25
-#    lower_bound: 0
 
 eval_formulas: cfg_eval.yml
