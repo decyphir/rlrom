@@ -1,0 +1,12 @@
+env_name: highway-v0
+import_module: highway
+make_env_test: make_env_test
+cfg_env: cfg_env_manual.yml
+cfg_specs: cfg_specs_rmf.yml
+
+cfg_test: 
+  init_seeds: 1
+  num_ep: 1
+  num_steps: 50 
+  render_mode: 'human'
+  
