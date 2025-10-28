@@ -149,9 +149,9 @@ class RLTester:
         test_result = dict({'cfg':self.cfg})                        
         
         if cfg_test is not None:
-            init_seed = cfg_test.get('init_seed',0)
-            num_ep = cfg_test.get('num_ep',1)            
-            num_steps  = cfg_test.get('num_steps', 100)
+            init_seed = int(cfg_test.get('init_seed',0))
+            num_ep = int(cfg_test.get('num_ep',1))            
+            num_steps  = int(cfg_test.get('num_steps', 100))
             reload_model_every_ep = cfg_test.get('reload_model_every_ep',False)
             model_file = cfg_test.get('model_file')    
             test_result = {'episodes':[], 'res':{}}

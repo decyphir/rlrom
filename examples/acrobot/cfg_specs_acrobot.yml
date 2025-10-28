@@ -1,0 +1,12 @@
+action_names:
+  torque: 'action'
+obs_names: 
+  cos_theta1: 'obs[0]'
+  sin_theta1: 'obs[1]'
+  cos_theta2: 'obs[2]'
+  sin_theta2: 'obs[3]'
+  theta1_dot: 'obs[4]'
+  theta2_dot: 'obs[5]'
+
+real_time_step: 0.05
+
