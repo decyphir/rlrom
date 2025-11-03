@@ -63,7 +63,7 @@ reward_formulas:
   
   fa_da: # faut pas foncer vers la mort
     past_horizon: 0
-    weight: -5
+    weight: -2
     semantics: bool
 
   n_fa_n_da: # faut pas traîner derrière
