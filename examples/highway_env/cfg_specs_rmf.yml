@@ -51,6 +51,11 @@ reward_formulas:
     weight: 1
     semantics: bool
 
+  ego_right_lane:
+    past_horizon: 0
+    weight: .5
+    semantics: bool
+
   Gda:  # faut pas coller
     past_horizon: 5
     weight: -1
@@ -61,10 +66,9 @@ reward_formulas:
     weight: -5
     semantics: bool
 
-
   n_fa_n_da: # faut pas traîner derrière
-    past_horizon: 0
-    weight: -1
+    past_horizon: 2
+    weight: -.5
     semantics: bool
 
   not_right_too_long:
@@ -72,11 +76,4 @@ reward_formulas:
     weight: -1
     semantics: bool
   
-  ego_right_lane:
-    past_horizon: 0
-    weight: 1
-    semantics: bool
-  
-
-
 eval_formulas: cfg_eval.yml
