@@ -45,4 +45,5 @@ phi_car_left := alw_[0,50] ev_[0,15] (not car_left)
 Gda := alw_[0,5] danger
 fa_da := danger and ego_fast
 fa_n_da := (not danger) and ego_fast
-n_fa_n_da := alw_[0,5] not (ego_fast or danger)
+n_fa_n_da :=  not (ego_fast or danger)
+Gn_fa_n_da := alw_[0,5] n_fa_n_da

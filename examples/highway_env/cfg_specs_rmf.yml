@@ -53,7 +53,7 @@ reward_formulas:
 
   ego_right_lane:
     past_horizon: 0
-    weight: .5
+    weight: .1
     semantics: bool
 
   Gda:  # faut pas coller
@@ -63,15 +63,20 @@ reward_formulas:
   
   fa_da: # faut pas foncer vers la mort
     past_horizon: 0
-    weight: -2
+    weight: -1
     semantics: bool
 
   n_fa_n_da: # faut pas traîner derrière
-    past_horizon: 2
-    weight: -.5
+    past_horizon: 0
+    weight: -1
     semantics: bool
 
-  not_right_too_long:
+  Gn_fa_n_da: # faut vraiment pas traîner derrière
+    past_horizon: 5
+    weight: -5
+    semantics: bool
+
+  not_right_too_long: # faut pas rester à gauche trop longtemps
     past_horizon: 10
     weight: -1
     semantics: bool

@@ -10,7 +10,7 @@ cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_rmf.yml
 
 cfg_train:
-  total_timesteps: 200_000      
+  total_timesteps: 250_000      
   eval_freq: 10_000
   n_envs: 4
   algo:
