@@ -7,7 +7,7 @@ from rlrom.wrappers.stl_wrapper import stl_wrap_env
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.utils import yaml
 
-import rlrom.plots
+import rlrom.plots as rlp
 from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
@@ -15,6 +15,7 @@ from bokeh.palettes import Dark2_5 as palette
 # itertools handles the cycling
 import itertools
 import os,sys,copy
+import time
 
 def make_env_test(cfg):
 
@@ -53,8 +54,11 @@ class RLTester:
         self.env_name = cfg.get('env_name')
         self.env = None
         self.model = None
+        self.callbacks = []
+        self.fig_layout = None
         self.test_results = []
-        self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
+
+        self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None        
         self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
         
     def load_model(self, model_file=None):
@@ -108,7 +112,13 @@ class RLTester:
     def run_seed(self, seed=None, num_steps=100, reload_model=False):
 
         self.init_env()
-        
+
+        if self.fig_layout is not None:
+            rl_fig = rlp.RLFig(self, self.fig_layout)
+            rl_fig.fig.show()
+            time.sleep(.1)
+        else:
+            rl_fig = None
         # We actually might want to reload every time to enforce determinism     
         if reload_model:
              self.load_model()
@@ -135,6 +145,14 @@ class RLTester:
                 episode['dones'].append(terminated)
                 
             last_obs=obs
+
+            # callbacks
+            for c in self.callbacks:
+                c()
+
+            if rl_fig is not None:
+                rl_fig.update()
+
             if terminated:                
                 break    
         
