@@ -78,7 +78,7 @@ reward_formulas:
 
   not_right_too_long: # faut pas rester à gauche trop longtemps
     past_horizon: 10
-    weight: -1
+    weight: -2
     semantics: bool
   
 eval_formulas: cfg_eval.yml
