@@ -20,6 +20,18 @@ yaml.representer.add_representer(np.ndarray, lambda dumper, data: dumper.represe
 # Define a representer for NumPy floats
 yaml.representer.add_representer(np.float64, lambda dumper, data: dumper.represent_float(float(data)))
 
+def disp_df_metric(df, m): 
+    metric_values = df.collect()[m].to_numpy()
+    print(m+':', metric_values)
+
+def disp_df_formula_metrics(df, f):
+    dff = df.select(f).unnest(f)
+    print(f)
+    metrics= dff.collect_schema().names()
+    for m in metrics:
+        print(' - ', end='')
+        disp_df_metric(dff,m)
+
 
 def set_rec_cfg_field(cfg, **kargs):
     def rec_set(cfg, key, value):

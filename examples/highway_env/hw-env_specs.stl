@@ -9,7 +9,7 @@ ego_moves := ego_vx[t] > 0 # used for evaluation
 ego_slow  := ego_vx[t] < 22
 ego_fast  := ego_vx[t] > 25
 
-# Danger formmulas
+# Danger formulas
 car1_same_lane  := abs(car1_y[t]) < 0.1  
 car1_too_close := abs(car1_x[t]) < 0.1 
 car1_danger := car1_same_lane and car1_too_close

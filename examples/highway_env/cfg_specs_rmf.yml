@@ -51,7 +51,7 @@ reward_formulas:
     weight: 1
     semantics: bool
 
-  ego_right_lane:
+  ego_right_lane: # faut rester à droite
     past_horizon: 0
     weight: .1
     semantics: bool

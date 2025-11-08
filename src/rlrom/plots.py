@@ -38,7 +38,7 @@ class RLFig:
         self.tester = T
         self.layout = get_layout_from_string(layout)        
         N = len(self.layout)
-        fig, axs = plt.subplots(N, 1, sharex=True, figsize=(12, 2*N))
+        fig, axs = plt.subplots(N, 1, sharex=True, figsize=(9, 2*N))
                 
         self.live_lines = []
         iax = 0
