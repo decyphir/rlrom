@@ -1,0 +1,16 @@
+env_name: MountainCarContinuous-v0
+model_path: ./models
+model_name: vanilla_sac
+
+cfg_test: 
+  init_seeds: 1
+  num_ep: 5
+  num_steps: 500 
+  render_mode: human
+
+cfg_train:
+  n_envs: 4
+  total_timesteps: 100_000
+  eval_freq: 15_000  
+  algo:
+    sac: 

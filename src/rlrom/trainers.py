@@ -1,4 +1,4 @@
-from stable_baselines3 import PPO #,A2C,SAC,TD3,DQN,DDPG
+from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
 import rlrom.utils as utils
 from rlrom.utils import policy_cfg2kargs, add_now_suffix
 from rlrom.testers import RLTester
@@ -171,8 +171,19 @@ class RLTrainer:
     if self.model is None:   
       if 'ppo' in cfg_algo:                           
         model = self.init_PPO()
+      elif 'dqn' in cfg_algo:
+        model = self.init_DQN()
+      elif 'a2c' in cfg_algo:
+        model = self.init_A2C()
+      elif 'sac' in cfg_algo:
+        model = self.init_SAC()
+      elif 'td3' in cfg_algo:
+        model = self.init_TD3()
+      elif 'ddpg' in cfg_algo:
+        model = self.init_DDPG()
     else:
       model= self.model
+
 
     # Training          
     total_timesteps = self.cfg_train.get('total_timesteps',1000)    
@@ -222,10 +233,126 @@ class RLTrainer:
     cfg_name = os.path.join(chkpt_dir,'cfg0.yml')    
     return chkpt_dir, cfg_name
 
+  def init_A2C(self):
+    cfg_a2c = {}
+
+    # Get options  
+    cfg_algo0 = self.cfg_train.get('algo')
+    cfg_algo  = cfg_algo0.copy()   
+    if cfg_algo.get('a2c') is not None:                     
+      cfg_a2c = copy.deepcopy(cfg_algo.get('a2c'))
+
+    # Policy     
+    if 'policy' not in cfg_a2c:
+      cfg_a2c['policy']= 'MlpPolicy'
+
+    if 'policy_kwargs' in cfg_a2c:
+      print('Reading policy_kwargs')
+      cfg_a2c['policy_kwargs']= policy_cfg2kargs(cfg_a2c['policy_kwargs'])
+    
+    # Environments
+    n_envs = self.cfg_train.get('n_envs',1)
+    if n_envs>1:
+       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
+    else:
+       env = self.make_env()
+
+    print(cfg_a2c)
+    self.model= A2C(env=env, **cfg_a2c )
+
+    return self.model
+
+  def init_SAC(self):
+    cfg_sac = {}
+
+    # Get options  
+    cfg_algo0 = self.cfg_train.get('algo')
+    cfg_algo  = cfg_algo0.copy()   
+    if cfg_algo.get('sac') is not None:                     
+      cfg_sac = copy.deepcopy(cfg_algo.get('sac'))
+
+    # Policy     
+    if 'policy' not in cfg_sac:
+      cfg_sac['policy']= 'MlpPolicy'
+
+    if 'policy_kwargs' in cfg_sac:
+      print('Reading policy_kwargs')
+      cfg_sac['policy_kwargs']= policy_cfg2kargs(cfg_sac['policy_kwargs'])
+    
+    # Environments
+    n_envs = self.cfg_train.get('n_envs',1)
+    if n_envs>1:
+       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
+    else:
+       env = self.make_env()
+
+    print(cfg_sac)
+    self.model= SAC(env=env, **cfg_sac )
+
+    return self.model
+
+  def init_TD3(self):
+    cfg_td3 = {}
+
+    # Get options  
+    cfg_algo0 = self.cfg_train.get('algo')
+    cfg_algo  = cfg_algo0.copy()   
+    if cfg_algo.get('td3') is not None:                     
+      cfg_td3 = copy.deepcopy(cfg_algo.get('td3'))
+
+    # Policy     
+    if 'policy' not in cfg_td3:
+      cfg_td3['policy']= 'MlpPolicy'
+
+    if 'policy_kwargs' in cfg_td3:
+      print('Reading policy_kwargs')
+      cfg_td3['policy_kwargs']= policy_cfg2kargs(cfg_td3['policy_kwargs'])
+    
+    # Environments
+    n_envs = self.cfg_train.get('n_envs',1)
+    if n_envs>1:
+       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
+    else:
+       env = self.make_env()
+
+    print(cfg_td3)
+    self.model= TD3(env=env, **cfg_td3 )
+
+    return self.model
+
+  def init_DQN(self):
+    cfg_dqn = {}
+
+    # Get options  
+    cfg_algo0 = self.cfg_train.get('algo')
+    cfg_algo  = cfg_algo0.copy()   
+    if cfg_algo.get('dqn') is not None:                     
+      cfg_dqn = copy.deepcopy(cfg_algo.get('dqn'))
+
+    # Policy     
+    if 'policy' not in cfg_dqn:
+      cfg_dqn['policy']= 'MlpPolicy'
+
+    if 'policy_kwargs' in cfg_dqn:
+      print('Reading policy_kwargs')
+      cfg_dqn['policy_kwargs']= policy_cfg2kargs(cfg_dqn['policy_kwargs'])
+    
+    # Environments
+    n_envs = self.cfg_train.get('n_envs',1)
+    if n_envs>1:
+       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
+    else:
+       env = self.make_env()
+
+    print(cfg_dqn)
+    self.model= DQN(env=env, **cfg_dqn )
+
+    return self.model
+
   def init_PPO(self):
     cfg_ppo = {}
 
-    # Get options for ppo    
+    # Get options  
     cfg_algo0 = self.cfg_train.get('algo')
     cfg_algo  = cfg_algo0.copy()   
     if cfg_algo.get('ppo') is not None:                     
@@ -248,6 +375,35 @@ class RLTrainer:
 
     print(cfg_ppo)
     self.model= PPO(env=env, **cfg_ppo )
+
+    return self.model
+  
+  def init_DDPG(self):
+    cfg_ddpg = {}
+
+    # Get options  
+    cfg_algo0 = self.cfg_train.get('algo')
+    cfg_algo  = cfg_algo0.copy()   
+    if cfg_algo.get('ddpg') is not None:                     
+      cfg_ddpg = copy.deepcopy(cfg_algo.get('ddpg'))
+
+    # Policy     
+    if 'policy' not in cfg_ddpg:
+      cfg_ddpg['policy']= 'MlpPolicy'
+
+    if 'policy_kwargs' in cfg_ddpg:
+      print('Reading policy_kwargs')
+      cfg_ddpg['policy_kwargs']= policy_cfg2kargs(cfg_ddpg['policy_kwargs'])
+    
+    # Environments
+    n_envs = self.cfg_train.get('n_envs',1)
+    if n_envs>1:
+       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
+    else:
+       env = self.make_env()
+
+    print(cfg_ddpg)
+    self.model= DDPG(env=env, **cfg_ddpg )
 
     return self.model
   

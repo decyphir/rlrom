@@ -1,16 +1,21 @@
 import os
 import sys
 import argparse
+from rlrom.trainers import RLTrainer
 from rlrom import rlrom_run, utils
 from pprint import pprint
 
+def main_train(custom_cfg):
+    trainer = RLTrainer(custom_cfg)
+    trainer.train()
+
 def main():
-    # rlrom_test cfg_main.yml [--cfg_test cfg_test.yml]    [--cfg_specs cfg_specs.yml]    
+    # rlrom_test cfg_main.yml [--cfg-test cfg_test.yml]    [--cfg-specs cfg_specs.yml]    
     
     parser = argparse.ArgumentParser(description='Run a configuration file in YAML format for testing.')
     parser.add_argument('main_cfg', type=str, default='cfg_main.yml', help='Path to main configuration file in YAML format.')
-    parser.add_argument('--cfg_specs', type=str, help='Override cfg_specs with content of a YAML file.')
-    parser.add_argument('--cfg_train', type=str, help='Override cfg_train section in main with content of a YAML file.')
+    parser.add_argument('--cfg-specs', type=str, help='Override cfg_specs with content of a YAML file.')
+    parser.add_argument('--cfg-train', type=str, help='Override cfg_train section in main with content of a YAML file.')
     parser.add_argument('--verbose', type=int, default=0, help='Verbosity level') 
     args = parser.parse_args()
     
