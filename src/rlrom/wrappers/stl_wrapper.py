@@ -7,8 +7,8 @@ from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
-
 from rlrom.utils import append_to_field_array as add_metric
+from rlrom import my_env
 
 def stl_wrap_env(env, cfg_specs):
     driver= stlrom.STLDriver()
@@ -70,6 +70,7 @@ class STLWrapper(gym.Wrapper):
         self.end_formulas= end_formulas
         self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
         self.semantics= 'Boolean' 
+        self.my_env = my_env
 
         self.signals_map={}
         if signals_map=={}:
@@ -122,13 +123,11 @@ class STLWrapper(gym.Wrapper):
         
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
-                        
         # collect the sample for monitoring 
-        s = self.get_sample(self.last_obs, action, reward) 
+        s = self.get_sample(self.last_obs, action, reward)
         
         # add sample and compute robustness
         self.stl_driver.add_sample(s)        
-        
         idx_formula = 0
         robs = [0]*len(self.obs_formulas)
         for f_name, f_opt in self.obs_formulas.items():                         
@@ -165,10 +164,7 @@ class STLWrapper(gym.Wrapper):
         self.episode['rewards'].append(new_reward)
         self.episode['dones'].append(terminated)
         self.episode['last_obs'] = new_obs
-        self.last_obs = new_obs    
-
-        if terminated: 
-            self.env.reset()
+        self.last_obs = new_obs   
 
         return new_obs, new_reward, terminated, truncated, info
 
@@ -183,7 +179,7 @@ class STLWrapper(gym.Wrapper):
             i_sig = i_sig+1
             if i_sig>len(s)-1:
                 break
-            #print(key, value)
+            #print("key", key, "value", value)
             s[i_sig] = eval(value)
 
         return s

@@ -8,6 +8,9 @@ from rlrom.wrappers.reward_machine import RewardMachine
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.utils import yaml
 
+from minigrid.wrappers import ImgObsWrapper
+from gymnasium.wrappers import FlattenObservation
+
 import rlrom.plots
 from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
@@ -36,14 +39,14 @@ def make_env_test(cfg):
             render_mode=None
       else: 
         render_mode=None
-      
       env = gym.make(env_name, render_mode=render_mode)
-    
+      if env_name.lower().startswith("minigrid"):  
+        #env = ImgObsWrapper(env)
+        env = FlattenObservation(env) 
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         env = stl_wrap_env(env, cfg_specs)
-        env = gym.wrappers.FlattenObservation(env)    
-
+        
         cfg_rm = cfg_specs.get('cfg_rm', None)            
         if cfg_rm is not None:
             env = RewardMachine(env, cfg_rm)  
@@ -129,11 +132,14 @@ class RLTester:
         else:
             last_obs, info = self.env.reset()        
         
-        for _ in range(num_steps):    
+        #for _ in range(num_steps):    
+        terminated = False
+        truncated = False
+        step = 0
+        while not (terminated or truncated):    
 
             action = self._get_action(last_obs)
-            obs, reward, terminated, truncated, info = self.env.step(action)    
-
+            obs, reward, terminated, truncated, info = self.env.step(action)
             # we collect episode here if no stl_wrapper
             if self.has_stl_wrapper is False:
                 episode['observations'].append(last_obs)               
@@ -143,8 +149,11 @@ class RLTester:
                 episode['dones'].append(terminated)
                 
             last_obs=obs
-            if terminated:                
-                break    
+            step += 1
+            if step >= num_steps :
+                truncated = True
+            # if terminated:                
+            #     break    
                         
         if self.has_stl_wrapper:
             episode = self.env.get_wrapper_attr('episode')

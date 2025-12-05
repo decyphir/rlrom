@@ -21,14 +21,14 @@ class RewardMachine(gym.Wrapper):
         self.rm = cfg_rm
         self.num_states, self.u_0, self.u_t = self._load_reward_machine()
         if self.rm['in_observation']:
-            old_shape = env.observation_space.shape[0]
+            old_shape = env.observation_space["unwrapped"].shape[0]
             new_shape = old_shape + 1  # add RM feature
 
             self.observation_space = gym.spaces.Box(
                 low=0,
                 high=255, 
                 shape=(new_shape,),
-                dtype=env.observation_space.dtype)
+                dtype=env.observation_space["unwrapped"].dtype)
         
     def step(self, action):
         """Modify the step function
@@ -37,18 +37,26 @@ class RewardMachine(gym.Wrapper):
         reward machine, terminated, truncated, info.
         """
         obs, reward, terminated, truncated, info = self.env.step(action)
+        obs = obs["unwrapped"]
         u_in = self.u_in
+        
         # Update the values of the reward machine
+        print()
+        print("carrying", self.env.unwrapped.carrying)
+        print("obs[81]", obs[81])
         self.u_in, rm_reward = self.get_rm_transition(u_in)
         if self.u_in == self.u_t:
             terminated = True
         if self.rm['in_observation']:
             obs = self._augmented_obs(obs)
+        print("reward in the reward machine", rm_reward*self.unwrapped._reward() )
+        print("reward machine state", obs[-1])
         return obs, rm_reward*self.unwrapped._reward(), terminated, truncated, info
 
     def reset(self, *, seed=None, options=None):
         self.u_in = self.u_0
         obs, info = self.env.reset(seed=seed, options=options)
+        obs = obs["unwrapped"]        
         if self.rm['in_observation']:
             obs = self._augmented_obs(obs)
         return obs, info
@@ -66,11 +74,10 @@ class RewardMachine(gym.Wrapper):
         priority = 0
         for t in transitions:
             formula_name = t["condition"]
+            print("has box", get_rob("has_box")[-1])
             if u_out == t["from"] and get_rob(formula_name)[-1] > 0 :
-                this_priority = t.get('priority', 0)
-                if this_priority >= priority:
-                    u_out = t['to']
-                    reward = t["reward"]
+                u_out = t['to']
+                reward = t["reward"]
         return u_out, reward
 
     def _augmented_obs(self, obs):

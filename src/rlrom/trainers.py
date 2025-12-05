@@ -8,6 +8,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import numpy as np
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
+from minigrid.wrappers import ImgObsWrapper
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
 from rlrom.wrappers.reward_machine import RewardMachine
 import os
@@ -32,13 +33,14 @@ def make_env_train(cfg):
       # default
       env_name = cfg.get('env_name','')                           
       env = gym.make(env_name, render_mode=None)
-      
+      #env = ImgObsWrapper(env)
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         model_use_spec = cfg.get('model_use_specs', False)
         if model_use_spec:          
-          env = stl_wrap_env(env, cfg_specs)
           env = FlattenObservation(env)
+          env = stl_wrap_env(env, cfg_specs)
+          
           cfg_rm = cfg_specs.get('cfg_rm', None)            
           if cfg_rm is not None:
             env = RewardMachine(env, cfg_rm)  
@@ -98,13 +100,12 @@ class RlromCallback(BaseCallback):
     return True
     
   def  eval_and_save_model(self):
-    Tres = self.eval_policy()
-    
     model_filename = self.chkpt_model_root_name+str(self.n_calls*self.n_envs)
     print(f'saving model to {model_filename}...')
     self.model.save(model_filename)      
     res_filename = self.chkpt_res_root_name+str(self.n_calls*self.n_envs)+'.yml'            
     
+    Tres = self.eval_policy()
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
     with open(res_filename,'w') as f:
