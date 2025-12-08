@@ -10,6 +10,11 @@ from gymnasium.spaces import Box
 from minigrid.core.world_object import Key
 import numpy as np
 
+# For manual control
+import pygame
+from minigrid.core.actions import Actions
+
+
 class BlockedUnlockPickupBoxEnv(RoomGrid):
     """
 
@@ -160,11 +165,38 @@ class BlockedUnlockPickupBoxEnv(RoomGrid):
         # Flatten the observation
         obs = self._get_flat_obs(obs)
         self.p_obs = obs
-        if action == self.actions.pickup and self.carrying is not None and self.carrying.type == "box" and prev_obs[78] == 7: #prev_obs[78] == 7 and 
+        if  action == self.actions.pickup and self.carrying is not None and self.carrying.type == "box" and prev_obs[78] == 7: #prev_obs[78] == 7 and 
             reward = self._reward()
             terminated = True   
         return obs, reward, terminated, truncated, info
     
+    def manual_control(self, obs):
+        action=None
+        for event in pygame.event.get():                        
+            if event.type == pygame.KEYDOWN:                
+                if event.key == pygame.K_LEFT:
+                    action = Actions.left
+                    break
+                elif event.key == pygame.K_RIGHT:
+                    action = Actions.right
+                    break
+                elif event.key == pygame.K_UP:
+                    action = Actions.forward
+                    break
+                elif event.key == pygame.K_SPACE:
+                    action = Actions.toggle       # open door / pickup / drop
+                    break
+                elif event.key == pygame.K_p or event.key == pygame.K_RSHIFT:
+                    action = Actions.pickup
+                    break
+                elif event.key == pygame.K_d or event.key == pygame.K_RCTRL:
+                    action = Actions.drop
+                    break
+                elif event.key == pygame.K_b:
+                    action = Actions.done                    
+                    break
+        return action
+   
 register(
     id="MiniGrid-BlockedUnlockPickup-v4",
     entry_point=__name__ + ":BlockedUnlockPickupBoxEnv",

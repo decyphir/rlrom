@@ -98,7 +98,12 @@ class RLTester:
 
     def _get_action(self, obs):        
         
-        if self.manual_control is True or self.model=='random':
+        if self.manual_control is True:
+            manual_control = self.env.get_wrapper_attr('manual_control')
+            action = None 
+            while action==None: # wait for action to come (note: we'll want to change that for real time control)
+                action = manual_control(obs)           
+        elif self.model=='random':
             action = self.env.action_space.sample()
         else:
             if self.has_stl_wrapper:  
