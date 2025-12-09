@@ -26,7 +26,7 @@ def make_env_test(cfg):
     if 'make_env_test' in cfg:
       # recover and execute the make_env_test custom function
       context = sys.modules[cfg['import_module']]
-      custom_make_env = getattr(context, cfg['make_env_test'])        
+      custom_make_env = getattr(context, cfg['make_env_test'])
       env = custom_make_env(cfg)      
     else:  
       # default
@@ -45,7 +45,7 @@ def make_env_test(cfg):
         env = FlattenObservation(env) 
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
-        env = stl_wrap_env(env, cfg_specs)
+        env = stl_wrap_env(env, cfg)
         
         cfg_rm = cfg_specs.get('cfg_rm', None)            
         if cfg_rm is not None:
@@ -151,17 +151,17 @@ class RLTester:
                 episode['last_obs'] = obs
                 episode['actions'].append(action)
                 episode['rewards'].append(reward)
-                episode['dones'].append(terminated)
+                episode['dones'].append(terminated)            
                 
             last_obs=obs
             step += 1
             if step >= num_steps :
                 truncated = True
-            # if terminated:                
-            #     break    
                         
         if self.has_stl_wrapper:
             episode = self.env.get_wrapper_attr('episode')
+
+
 
         self.env.close()
         return episode
@@ -170,7 +170,7 @@ class RLTester:
         
         cfg_test = self.cfg.get('cfg_test') 
         test_result = dict({'cfg':self.cfg})                        
-        
+
         if cfg_test is not None:
             init_seed = int(cfg_test.get('init_seed',0))
             num_ep = int(cfg_test.get('num_ep',1))            

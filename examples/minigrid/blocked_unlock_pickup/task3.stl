@@ -1,0 +1,6 @@
+signal  ego, obj_front, test_import, reward, action
+
+has_key:= ego[t]>4
+not_has_key:= not has_key
+door_in_front:= obj_front[t]>3 and obj_front[t]<5
+

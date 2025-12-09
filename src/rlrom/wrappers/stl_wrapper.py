@@ -8,10 +8,15 @@ from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
 from rlrom.utils import append_to_field_array as add_metric
-from rlrom import my_env
+import importlib
 
-def stl_wrap_env(env, cfg_specs):
+def stl_wrap_env(env, cfg):
     driver= stlrom.STLDriver()
+    
+    to_import = cfg.get('import_module')                
+    if to_import is not None:
+        import_module = importlib.import_module(to_import)
+    cfg_specs = cfg.get('cfg_specs',{})
     stl_specs_str = cfg_specs.get('specs','')
     if stl_specs_str=='':
         stl_specs_str = 'signal'
@@ -35,6 +40,7 @@ def stl_wrap_env(env, cfg_specs):
     reward_formulas = cfg_specs.get('reward_formulas',{})
     eval_formulas = cfg_specs.get('eval_formulas',{})
     end_formulas = cfg_specs.get('end_formulas',{})
+    debug_signals=  cfg_specs.get('debug_signals',False)
     BigM = cfg_specs.get('BigM')
 
     env = STLWrapper(env,driver,
@@ -43,8 +49,12 @@ def stl_wrap_env(env, cfg_specs):
                      reward_formulas = reward_formulas,
                      eval_formulas=eval_formulas,
                      end_formulas=end_formulas,
+                     import_module=import_module,
+                     debug_signals=debug_signals,
                      BigM=BigM)
     
+
+
     return env
 
 class STLWrapper(gym.Wrapper): 
@@ -56,7 +66,9 @@ class STLWrapper(gym.Wrapper):
                  reward_formulas={},
                  eval_formulas={},
                  end_formulas={},
-                 BigM=None
+                 import_module=None, 
+                 debug_signals=False,
+                 BigM=None,                 
                  ):
         gym.Wrapper.__init__(self, env)
         self.env = env
@@ -70,7 +82,8 @@ class STLWrapper(gym.Wrapper):
         self.end_formulas= end_formulas
         self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
         self.semantics= 'Boolean' 
-        self.my_env = my_env
+        self.debug_signals= debug_signals
+        self.import_module= import_module
 
         self.signals_map={}
         if signals_map=={}:
@@ -174,14 +187,19 @@ class STLWrapper(gym.Wrapper):
         obs_formulas= obs_dict['obs_formulas']
         s = np.zeros(len(self.signals_map)+1-len(self.obs_formulas))
         s[0] = self.current_time
+        if self.debug_signals is True:
+                print(f't:{s[0]}',end=' ')
         i_sig = 0
         for key, value in self.signals_map.items():
             i_sig = i_sig+1
             if i_sig>len(s)-1:
                 break
-            #print("key", key, "value", value)
+            
             s[i_sig] = eval(value)
-
+            if self.debug_signals is True:
+                print(f'{key}: {s[i_sig]}', end=' ')
+        if self.debug_signals is True:
+            print()
         return s
 
     def reset(self, **kwargs):        
@@ -535,5 +553,4 @@ class STLWrapper(gym.Wrapper):
                         
 
         return res, res_all_ep, res_rew_f_list, res_eval_f_list
-    
     

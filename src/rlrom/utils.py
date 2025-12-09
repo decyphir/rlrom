@@ -1,4 +1,4 @@
-from stable_baselines3 import PPO#,A2C,SAC,TD3,DQN,DDPG
+from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
 from sb3_contrib import TRPO, QRDQN
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
@@ -488,9 +488,6 @@ def list_trained_models(folder='./models'):
             if ext=='.yml': 
                 list_models.append(m)
     return list_models
-
-def get_sys_info():
-    os.sys    
 
 def get_training_folders(cfg):
     cfg= load_cfg(cfg)

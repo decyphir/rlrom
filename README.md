@@ -15,6 +15,7 @@ pip install rlrom
 ## Getting Started
 
 ### Command Line Interface
+
 RLRom reads configuration files in the YAML format as inputs. Examples are provided in the examples folder. A command line interface is provided through command `rlr` which can be called with various arguments. For instance, the `rlr test` command reads a configuration file and runs tests:
 ```bash
 $ rlr test examples/cartpole/cfg0_hug.cfg
