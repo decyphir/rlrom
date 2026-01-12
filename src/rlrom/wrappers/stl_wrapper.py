@@ -18,7 +18,7 @@ def stl_wrap_env(env, cfg):
         import_module = importlib.import_module(to_import)
     cfg_specs = cfg.get('cfg_specs',{})
     stl_specs_str = cfg_specs.get('specs','')
-    if stl_specs_str=='':
+    if stl_specs_str=='':    # default stl signals declaration. Not sure why it is here.
         stl_specs_str = 'signal'
         first = True
         for a in cfg_specs.get('action_names',{}):
@@ -34,27 +34,27 @@ def stl_wrap_env(env, cfg):
             else:
                 stl_specs_str += ','+ o
         stl_specs_str += ',reward'                                 
-
+    
     driver.parse_string(stl_specs_str)
     obs_formulas = cfg_specs.get('obs_formulas',{})        
     reward_formulas = cfg_specs.get('reward_formulas',{})
     eval_formulas = cfg_specs.get('eval_formulas',{})
     end_formulas = cfg_specs.get('end_formulas',{})
     debug_signals=  cfg_specs.get('debug_signals',False)
+    debug_formulas= cfg_specs.get('debug_formulas',False)
     BigM = cfg_specs.get('BigM')
 
     env = STLWrapper(env,driver,
-                     signals_map=cfg_specs, 
-                     obs_formulas = obs_formulas,
-                     reward_formulas = reward_formulas,
-                     eval_formulas=eval_formulas,
-                     end_formulas=end_formulas,
-                     import_module=import_module,
-                     debug_signals=debug_signals,
-                     BigM=BigM)
+                    signals_map=cfg_specs, 
+                    obs_formulas = obs_formulas,
+                    reward_formulas = reward_formulas,
+                    eval_formulas=eval_formulas,
+                    end_formulas=end_formulas,
+                    import_module=import_module,
+                    debug_signals=debug_signals,
+                    debug_formulas=debug_formulas,
+                    BigM=BigM)
     
-
-
     return env
 
 class STLWrapper(gym.Wrapper): 
@@ -68,6 +68,7 @@ class STLWrapper(gym.Wrapper):
                  end_formulas={},
                  import_module=None, 
                  debug_signals=False,
+                 debug_formulas=False,
                  BigM=None,                 
                  ):
         gym.Wrapper.__init__(self, env)
@@ -83,12 +84,14 @@ class STLWrapper(gym.Wrapper):
         self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
         self.semantics= 'Boolean' 
         self.debug_signals= debug_signals
+        self.debug_formulas= debug_formulas
         self.import_module= import_module
-
-        self.signals_map={}
+        
+        # define signals_map
+        self.signals_map={}        
         if signals_map=={}:
             # assumes 1 action and n obs
-            signals = stl_driver.get_signals_names().split()
+            signals = stl_driver.get_signals_names().split()            
             i_sig=0
 
             for sig in signals:
@@ -100,7 +103,7 @@ class STLWrapper(gym.Wrapper):
                     self.signals_map[sig] = 'reward'
                 i_sig+=1
 
-        elif type(signals_map)==dict: 
+        elif type(signals_map)==dict:             
             if 'action_names' in signals_map:
                 for a_name,a_ref in signals_map['action_names'].items():                    
                     self.signals_map[a_name]=a_ref            
@@ -113,8 +116,12 @@ class STLWrapper(gym.Wrapper):
 
             self.signals_map['reward'] = 'reward'
         else: # assumes all is fine (TODO? catch bad signals_map here)    
+            
             self.signals_map=signals_map
-        
+
+        # signals in specs
+        self.signals_specs = stl_driver.get_signals_names().split()       
+
         num_obs_formulas = len(self.obs_formulas)
         if BigM is None:
             BigM = stlrom.Signal.get_BigM()
@@ -124,7 +131,9 @@ class STLWrapper(gym.Wrapper):
         self.observation_space =  spaces.Dict(dict_obs)        
 
         idx_obs_f = 0 # adding mapping from stl signal to obs array, now flat 
-        for f_name, f_opt in obs_formulas.items():             
+        for f_name, f_opt in obs_formulas.items():                                     
+            if f_opt is None:
+                f_opt=dict()    
             f_hor = f_opt.get('past_horizon',0)
             obs_name = 'obs_'+f_name+'_hor_'+str(f_hor)
             obs_name = f_opt.get('obs_name', obs_name)
@@ -142,11 +151,21 @@ class STLWrapper(gym.Wrapper):
         # add sample and compute robustness
         self.stl_driver.add_sample(s)        
         idx_formula = 0
-        robs = [0]*len(self.obs_formulas)
-        for f_name, f_opt in self.obs_formulas.items():                         
+        num_obs_formulas= len(self.obs_formulas)
+        robs = [0]*num_obs_formulas
+        for f_name, f_opt in self.obs_formulas.items():                                     
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
-            robs[idx_formula] = robs_f # forget about low and high robs for now
+            robs[idx_formula] = robs_f # forget about low and high robs for now            
             idx_formula+=1     
+            if self.debug_formulas is True:
+                if idx_formula==1:
+                    print('obs formulas', end='  --  ')
+                print(f_name+f': {robs_f}', end=' ')
+                if idx_formula==num_obs_formulas:
+                    print('')
+
+        
+
          
         for f_name, f_opt in self.end_formulas.items():                     
             _, eval_res = self.eval_formula_cfg(f_name,f_opt)          
@@ -185,19 +204,20 @@ class STLWrapper(gym.Wrapper):
         # get a sample for stl driver, converts obs, action,reward into (t, signals_values)
         obs = obs_dict['unwrapped']
         obs_formulas= obs_dict['obs_formulas']
-        s = np.zeros(len(self.signals_map)+1-len(self.obs_formulas))
+        #s = np.zeros(len(self.signals_specs)+1-len(self.obs_formulas))
+        s = np.zeros(len(self.signals_specs)+1)
         s[0] = self.current_time
         if self.debug_signals is True:
                 print(f't:{s[0]}',end=' ')
         i_sig = 0
-        for key, value in self.signals_map.items():
+        #for key, value in self.signals_map.items():
+        for sig in self.signals_specs:
+            value= self.signals_map[sig]
             i_sig = i_sig+1
-            if i_sig>len(s)-1:
-                break
             
             s[i_sig] = eval(value)
             if self.debug_signals is True:
-                print(f'{key}: {s[i_sig]}', end=' ')
+                print(f'{sig}: {s[i_sig]}', end=' ')
         if self.debug_signals is True:
             print()
         return s

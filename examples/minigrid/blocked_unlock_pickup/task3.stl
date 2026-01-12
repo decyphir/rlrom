@@ -1,4 +1,4 @@
-signal  ego, obj_front, test_import, reward, action
+signal ego, obj_front, distance, door_open
 
 has_key:= ego[t]>4
 not_has_key:= not has_key

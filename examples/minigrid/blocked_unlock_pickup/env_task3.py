@@ -229,10 +229,6 @@ def _door_open(env):
                 else: return 0
     return None
 
-def test_import(obs):
-    # print('test_import is working')
-    return 66
-
 register(
     id="MiniGrid-BlockedUnlockPickup-v4",
     entry_point=__name__ + ":BlockedUnlockPickupBoxEnv",
