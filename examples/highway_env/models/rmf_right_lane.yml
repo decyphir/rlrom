@@ -53,14 +53,14 @@ cfg_specs:
     Gn_fa_n_da: {past_horizon: 5, semantics: bool, weight: -5}
     ego_right_lane: {past_horizon: 0, semantics: bool, weight: 0.1}
     fa_da: {past_horizon: 0, semantics: bool, weight: -1}
-    fa_n_da: {past_horizon: 0, semantics: bool, weight: 1}
+    fa_n_da: {past_horizon: 0, semantics: bool, weight: 0.5}
     n_fa_n_da: {past_horizon: 0, semantics: bool, weight: -1}
-    not_right_too_long: {past_horizon: 10, semantics: bool, weight: -2}
+    not_right_too_long: {past_horizon: 10, semantics: bool, weight: -1}
   specs: "signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy, \n       car1_presence,
     car1_x, car1_y, car1_vx, car1_vy, \n       car2_presence, car2_x, car2_y, car2_vx,
     car2_vy, \n       car3_presence, car3_x, car3_y, car3_vx, car3_vy, \n       reward\n\n#
     Speed formulas\nego_moves := ego_vx[t] > 0 # used for evaluation\nego_slow  :=
-    ego_vx[t] < 22\nego_fast  := ego_vx[t] > 25\n\n# Danger formmulas\ncar1_same_lane
+    ego_vx[t] < 22\nego_fast  := ego_vx[t] > 25\n\n# Danger formulas\ncar1_same_lane
     \ := abs(car1_y[t]) < 0.1  \ncar1_too_close := abs(car1_x[t]) < 0.1 \ncar1_danger
     := car1_same_lane and car1_too_close\n\ncar2_same_lane  := abs(car2_y[t]) < 0.1\ncar2_too_close
     \ := abs(car2_x[t]) < 0.1 \ncar2_danger := car2_same_lane and car2_too_close\n\ncar3_same_lane
