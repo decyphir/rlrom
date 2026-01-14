@@ -18,9 +18,12 @@ class RewardMachine(gym.Wrapper):
         """
         super().__init__(env)
         self.env = env
-        self.rm = cfg_rm
+        self.cfg_rm = cfg_rm        
+        self.states_idx_map={}
         self.num_states, self.u_0, self.u_t = self._load_reward_machine()
-        if self.rm['in_observation']:
+        
+
+        if self.cfg_rm['in_observation']:
             old_shape = env.observation_space["unwrapped"].shape[0]
             new_shape = old_shape + 1  # add RM feature
 
@@ -40,55 +43,60 @@ class RewardMachine(gym.Wrapper):
         obs = obs["unwrapped"]
         u_in = self.u_in
         
-        # Update the values of the reward machine
-        print()
-        print("carrying", self.env.unwrapped.carrying)
-        print("obs[81]", obs[81])
-        self.u_in, rm_reward = self.get_rm_transition(u_in)
-        if self.u_in == self.u_t:
+        # Update the values of the reward machine        
+        u_out, rm_reward = self.get_rm_transition(u_in)
+
+        if u_out == self.u_t:
             terminated = True
-        if self.rm['in_observation']:
+        if self.cfg_rm['in_observation']:
             obs = self._augmented_obs(obs)
-        print("reward in the reward machine", rm_reward*self.unwrapped._reward() )
-        print("reward machine state", obs[-1])
+        
+        if self.cfg_rm.get('debug_rm',False):
+            rm_id = self.cfg_rm.get('rm_id','rm_doe')
+            print(f'Machine {rm_id}: u_in: {u_in} u_out: {u_out} reward: {rm_reward}')
+
+        self.u_in= u_out
+        
         return obs, rm_reward*self.unwrapped._reward(), terminated, truncated, info
 
     def reset(self, *, seed=None, options=None):
         self.u_in = self.u_0
         obs, info = self.env.reset(seed=seed, options=options)
         obs = obs["unwrapped"]        
-        if self.rm['in_observation']:
+        if self.cfg_rm['in_observation']:
             obs = self._augmented_obs(obs)
         return obs, info
 
-
     def get_rm_transition(self, u_in):
-        get_rob= self.env.get_wrapper_attr('get_rob') 
-        transitions = self.rm['transitions']
+        get_rob= self.env.get_wrapper_attr('get_rob')
+        transitions = self.cfg_rm['transitions']
         u_out = u_in
-        states = self.rm['states']
+        states = self.cfg_rm['states']
         for s in states:
             if u_in == s['id']:
                 reward = s['reward']
                 break
         priority = 0
         for t in transitions:
-            formula_name = t["condition"]
-            print("has box", get_rob("has_box")[-1])
+            formula_name = t["condition"]            
             if u_out == t["from"] and get_rob(formula_name)[-1] > 0 :
                 u_out = t['to']
                 reward = t["reward"]
         return u_out, reward
 
     def _augmented_obs(self, obs):
-        rm_state = [int(self.u_in[1:])]  
+        rm_state = [self.states_idx_map[self.u_in]]  
         return np.concatenate([obs, rm_state])
 
     def _load_reward_machine(self):
-        num_states = len(self.rm['states'])
-
-        u_0 = next((s['id'] for s in self.rm['states'] if s.get('initial')), None)
-        u_t = next((s['id'] for s in self.rm['states'] if s.get('final')), None)
-
+        num_states = len(self.cfg_rm['states'])
+        u_0 = next((s['id'] for s in self.cfg_rm['states'] if s.get('initial')), None)
+        u_t = next((s['id'] for s in self.cfg_rm['states'] if s.get('final')), None)
+        
+        i_state=0
+        for s in self.cfg_rm['states']:
+            self.states_idx_map[s['id']] = i_state
+            self.states_idx_map[i_state] = s['id']
+            i_state += 1
         #returns a list of all possible transitions and the number of states of the reward machine
         return num_states, u_0, u_t

@@ -161,8 +161,6 @@ class RLTester:
         if self.has_stl_wrapper:
             episode = self.env.get_wrapper_attr('episode')
 
-
-
         self.env.close()
         return episode
     

@@ -1,0 +1,19 @@
+in_observation: True
+debug_rm: True
+rm_id: test0
+states:
+  - id: "has_key"    
+    initial: True
+    reward: 0
+  - id: "not_has_key"
+    reward: 0
+  
+transitions:
+  - from: "not_has_key"
+    to: "has_key"
+    condition: "has_key" 
+    reward: -1
+  - from: "has_key"
+    to: "not_has_key"
+    condition: "not_has_key" 
+    reward: 2  

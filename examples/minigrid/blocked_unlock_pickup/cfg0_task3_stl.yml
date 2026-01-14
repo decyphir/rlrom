@@ -7,7 +7,7 @@ cfg_env:
 
 cfg_test:  
   num_ep: 1
-  num_steps: 50 # max number of moves 
+  num_steps: 15 # max number of moves 
   render_mode: 'human'
 
 cfg_specs: 
@@ -16,7 +16,6 @@ cfg_specs:
   obs_names:
     ego: obs[81]
     obj_front: obs[78] 
-#   test_import: 'self.import_module.test_import(obs)'
     distance:  "self.import_module.distance(self.env)"
     door_open: "self.import_module._door_open(self.env)"
   action_names:
@@ -25,8 +24,9 @@ cfg_specs:
   
   obs_formulas:
     has_key:
-      
+      eval_all_steps: True
+  
   eval_formulas:
     has_key:
-      t0: 0 
       eval_all_steps: True
+      t0: 0

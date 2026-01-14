@@ -81,7 +81,7 @@ class STLWrapper(gym.Wrapper):
         self.reward_formulas = reward_formulas
         self.eval_formulas = eval_formulas
         self.end_formulas= end_formulas
-        self.episode={'observations':[], 'actions':[],'rewards':[], 'dones':[]}
+        self.episode={}
         self.semantics= 'Boolean' 
         self.debug_signals= debug_signals
         self.debug_formulas= debug_formulas
@@ -102,7 +102,6 @@ class STLWrapper(gym.Wrapper):
                 else:
                     self.signals_map[sig] = 'reward'
                 i_sig+=1
-
         elif type(signals_map)==dict:             
             if 'action_names' in signals_map:
                 for a_name,a_ref in signals_map['action_names'].items():                    
@@ -115,8 +114,7 @@ class STLWrapper(gym.Wrapper):
                     self.signals_map[o_name]=o_ref
 
             self.signals_map['reward'] = 'reward'
-        else: # assumes all is fine (TODO? catch bad signals_map here)    
-            
+        else: # assumes all is fine (TODO? catch bad signals_map here)                
             self.signals_map=signals_map
 
         # signals in specs
@@ -146,7 +144,8 @@ class STLWrapper(gym.Wrapper):
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)                
         # collect the sample for monitoring 
-        s = self.get_sample(self.last_obs, action, reward)
+        s = self.get_sample(obs, action, reward)
+        self.episode['stl_data'].append(s)               
         
         # add sample and compute robustness
         self.stl_driver.add_sample(s)        
@@ -157,14 +156,12 @@ class STLWrapper(gym.Wrapper):
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
             robs[idx_formula] = robs_f # forget about low and high robs for now            
             idx_formula+=1     
-            if self.debug_formulas is True:
+            if self.debug_formulas is True:                
                 if idx_formula==1:
-                    print('obs formulas', end='  --  ')
+                    print('obs formulas', end='  --  ')                
                 print(f_name+f': {robs_f}', end=' ')
                 if idx_formula==num_obs_formulas:
                     print('')
-
-        
 
          
         for f_name, f_opt in self.end_formulas.items():                     
@@ -200,14 +197,13 @@ class STLWrapper(gym.Wrapper):
 
         return new_obs, new_reward, terminated, truncated, info
 
-    def get_sample(self,obs_dict,action,reward):        
+    def get_sample(self,obs,action,reward):        
         # get a sample for stl driver, converts obs, action,reward into (t, signals_values)
-        obs = obs_dict['unwrapped']
-        obs_formulas= obs_dict['obs_formulas']
-        #s = np.zeros(len(self.signals_specs)+1-len(self.obs_formulas))
+   
         s = np.zeros(len(self.signals_specs)+1)
         s[0] = self.current_time
         if self.debug_signals is True:
+                print()
                 print(f't:{s[0]}',end=' ')
         i_sig = 0
         #for key, value in self.signals_map.items():
@@ -232,7 +228,7 @@ class STLWrapper(gym.Wrapper):
         obs['unwrapped'] = obs0
         obs['obs_formulas'] = robs0
         self.last_obs = obs
-        self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[], 'last_obs':[obs]}        
+        self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[], 'last_obs':[obs], 'stl_data':[]}        
         
         return obs, info
 
@@ -378,18 +374,14 @@ class STLWrapper(gym.Wrapper):
     def set_episode_data(self, episode):
         self.reset_monitor()
         self.episode = episode
+        stl_data = self.episode['stl_data']
         observations = self.episode['observations']
-        actions = self.episode['actions']
-        rewards = self.episode['rewards']            
-        rewards_wrapped = self.episode.get('rewards_wrapped',rewards) 
         self.time_step = 0
         self.current_time=0
         
         while self.time_step<len(observations):
-            obs = observations[self.time_step]
-            action = actions[self.time_step]
-            reward_wrapped = rewards_wrapped[self.time_step]                
-            s = self.get_sample(obs, action, reward_wrapped)            
+            i_step = self.time_step
+            s = stl_data[i_step]
             self.stl_driver.add_sample(s)            
             self.time_step +=1
             self.current_time += self.real_time_step
@@ -401,7 +393,12 @@ class STLWrapper(gym.Wrapper):
             f_opt={}
 
         f_hor = f_opt.get('past_horizon',0)            
-        t0 = f_opt.get('t0',max(0, self.current_time-f_hor))
+
+        t0 = f_opt.get('t0',0.)
+        if f_opt.get('eval_all_steps') is True:
+            t0 = max(t0, self.current_time-f_hor)
+            
+        
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
         if eval_res is None:
@@ -418,7 +415,6 @@ class STLWrapper(gym.Wrapper):
             sat = 1 if robs[0]>0 else 0
             eval_res['sat'] = np.append(eval_res['sat'],sat)
         
-
         semantics = f_opt.get('semantics', 'rob')
         if semantics == 'lower_rob':
             val = robs[1]
@@ -434,6 +430,10 @@ class STLWrapper(gym.Wrapper):
         lower_bound = f_opt.get('lower_bound',-np.inf)
         val = max(val, lower_bound)
         val = min(val, upper_bound)
+        
+        if self.debug_formulas>=2:
+            print(f'{f_name} at t0={t0} (current_time:{self.current_time}, f_hor:{f_hor}): [ {lower_bound}  <=  {val} <= {lower_bound}]')
+        
         return val, eval_res
                
     def eval_specs_episode(self, episode=None, res=dict(), res_rew_f_list=[], res_eval_f_list=[]):
@@ -462,32 +462,33 @@ class STLWrapper(gym.Wrapper):
         res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
         res_all_ep['basics']['mean_ep_rew'] = res['ep_rew'].mean()
         # maybe a mean mean reward ?
-
-        observations = episode['observations']
-        actions = episode['actions']            
+        
+        # rewards formulas
+        stl_data = episode['stl_data']            
+        len_episode = len(stl_data)
         if self.reward_formulas != dict():
             self.reset_monitor()
             self.current_time=0
             self.time_step = 0
-
             
             res_f = dict()
             for f_name,f_cfg in self.reward_formulas.items():
                 res_f[f_name] = []
             
-            while self.time_step<len(observations):
-                obs = observations[self.time_step]
-                action = actions[self.time_step]
-                rew_wrapped = rewards_wrapped[self.time_step]                
-                s = self.get_sample(obs, action, rew_wrapped)            
+            while self.time_step<len_episode:                
+                s = stl_data[self.time_step]
                 self.stl_driver.add_sample(s)
 
                 for f_name,f_cfg in self.reward_formulas.items():
-                    v, _ = self.eval_formula_cfg(f_name,f_cfg)    
-                    res_f[f_name] = np.append(res_f[f_name],v)                                        
+                    
+                    # if formula is new, create field in res for global evaluation
                     if f_name not in res:
-                        res[f_name] = dict() 
-
+                        res[f_name] = dict()
+                    
+                    # compute and append formula eval for this step 
+                    v, _ = self.eval_formula_cfg(f_name,f_cfg)     # TODO why not using eval_res here (second output of eval_formula_cfg) ?                                    
+                    res_f[f_name] = np.append(res_f[f_name],v)                    
+                    
                 self.time_step +=1
                 self.current_time += self.real_time_step
             
@@ -504,8 +505,7 @@ class STLWrapper(gym.Wrapper):
 
             res_rew_f_list.append(res_f)            
 
-        # eval formulas - for those, we evaluate off-line, after the trace has been completely computed
-            
+        # eval formulas - for those, we evaluate off-line, after the trace has been completely computed            
         if self.eval_formulas != dict():
                         
             self.current_time=0
@@ -515,14 +515,19 @@ class STLWrapper(gym.Wrapper):
             for f_name,f_cfg in self.eval_formulas.items():
                 res_f[f_name] = []
             
-            while self.time_step<len(observations):
+            # eval formulas at all steps 
+            while self.time_step<len_episode:
                 
+                # eval all formulas for this step - possible optimization here is to do only first step when eval_all_steps is false
                 for f_name,f_cfg in self.eval_formulas.items():
+                    # if formula is new, create field in res for global evaluation
+                    if f_name not in res:                        
+                        res[f_name] = dict() 
+                    
+                    # compute and append formula eval for this step 
                     v, _ = self.eval_formula_cfg(f_name,f_cfg)    
                     res_f[f_name] = np.append(res_f[f_name],v)                                        
-                    if f_name not in res:
-                        res[f_name] = dict() 
-
+                    
                 self.time_step +=1
                 self.current_time += self.real_time_step
             
