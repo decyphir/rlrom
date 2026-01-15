@@ -11,8 +11,8 @@ cfg_test:
   render_mode: 'human'
 
 cfg_specs: 
-  debug_signals: True
-  debug_formulas: True
+#  debug_signals: True
+#  debug_formulas: 2
   obs_names:
     ego: obs[81]
     obj_front: obs[78] 

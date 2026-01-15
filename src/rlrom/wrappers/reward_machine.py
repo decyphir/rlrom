@@ -17,10 +17,11 @@ class RewardMachineWrapper(gym.Wrapper):
         
         super().__init__(env)
         self.env = env
-        self.cfg_rm = cfg_rm        
+        self.cfg_rm =cfg_rm         
         self.states_idx_map={}
         self.num_states, self.u_0, self.u_t = self._load_reward_machine()
         
+        self.current_time=0
         if self.cfg_rm['in_observation']:
             old_shape = env.observation_space["unwrapped"].shape[0]
             new_shape = old_shape+1 # add RM feature
@@ -31,6 +32,9 @@ class RewardMachineWrapper(gym.Wrapper):
                 shape=(new_shape,),
                 dtype=env.observation_space["unwrapped"].dtype)
         
+        # assumes this wraps an STLWrapper TODO: make a simpler STL-less version
+        self.eval_stl_cond = self.env.get_wrapper_attr('eval_formula_cfg')
+
     def step(self, action):
 
         obs, reward, terminated, truncated, info = self.env.step(action)
@@ -48,13 +52,15 @@ class RewardMachineWrapper(gym.Wrapper):
         if self.cfg_rm.get('debug_rm',False):
             rm_id = self.cfg_rm.get('rm_id','rm_doe')
             print(f'Machine {rm_id}: u_in: {u_in} u_out: {u_out} reward: {rm_reward}')
-
+            print()
         self.u_in= u_out
-        
+
+        self.current_time+=1        
         return obs, rm_reward*self.unwrapped._reward(), terminated, truncated, info
 
     def reset(self, *, seed=None, options=None):                
         self.reset_rm()
+        self.current_time=0
         obs, info = self.env.reset(seed=seed, options=options)
         obs = obs["unwrapped"]        
         if self.cfg_rm['in_observation']:
@@ -65,26 +71,46 @@ class RewardMachineWrapper(gym.Wrapper):
         self.u_in = self.u_0
         
 
-    def get_rm_transition(self, u_in):
-        get_rob= self.env.get_wrapper_attr('get_rob')
-        transitions = self.cfg_rm['transitions']
-        
+    def get_rm_transition(self, u_in):        
+        transitions = self.cfg_rm['transitions']        
+        u_out = u_in
+        reward = 0
         states = self.cfg_rm['states']
         for s in states:
             if u_in == s['id']:
                 reward = s['reward']
                 break
         priority = 0
-        for t in transitions:
-            formula_name = t["condition"]
-            if u_in == t["from"] and get_rob(formula_name)[-1] > 0 :
-                u_out = t['to']
-                reward = t["reward"]
+        for t in transitions:            
+            if u_in == t['from']:
+                cond = self._checks_stl_condition(t["condition"])
+                if cond > 0 :
+                    u_out = t['to']
+                    reward = t["reward"]
+                
         return u_out, reward
 
     def _augmented_obs(self, obs):
         rm_state = [self.states_idx_map[self.u_in]]  
         return np.concatenate([obs, rm_state])
+
+    def _checks_stl_condition(self, cond_name):
+        if self.cfg_rm.get('debug_rm',False):
+            print(f'Checking transition condition {cond_name}:', end='')
+        cfg_cond = self.cfg_rm.get('conditions', {})
+        if cond_name in cfg_cond:
+            f_cfg= cfg_cond[cond_name]
+            f_name= cfg_cond.get('formula_name', cond_name)
+            if 'online' not in f_cfg:
+                f_cfg['online']=True
+            f_cfg['tend']=self.current_time #we need this because STLWrapper has already updated its own time 
+            _,robs = self.eval_stl_cond(f_name, f_cfg)
+            cond_val = robs['lower_rob']
+
+
+        if self.cfg_rm.get('debug_rm',False):
+            print(cond_val)
+        return cond_val
 
     def _load_reward_machine(self):
         num_states = len(self.cfg_rm['states'])
@@ -96,5 +122,5 @@ class RewardMachineWrapper(gym.Wrapper):
             self.states_idx_map[s['id']] = i_state
             self.states_idx_map[i_state] = s['id']
             i_state += 1
-        #returns a list of all possible transitions and the number of states of the reward machine
+                    
         return num_states, u_0, u_t

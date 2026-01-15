@@ -1,6 +1,7 @@
 signal ego, obj_front, distance, door_open
 
-has_key:= ego[t]>4
+has_key:= ego[t]>4 and ego[t]<6
 not_has_key:= not has_key
+kept_key_too_long:= alw_[0, 5] has_key
 door_in_front:= obj_front[t]>3 and obj_front[t]<5
 obj_in_front := obj_front[t]>6 and obj_front[t]<8

@@ -357,10 +357,6 @@ class STLWrapper(gym.Wrapper):
         if self.stl_driver.data == []:
             raise ValueError("No data/episode was computed.")
         
-        if formula in self.obs_formulas:
-            print('bingo')
-            print(self.obs_formulas[formula])
-
         monitor = self.stl_driver.get_monitor(formula)
         
         rob = np.zeros(len(self.stl_driver.data))
@@ -394,15 +390,15 @@ class STLWrapper(gym.Wrapper):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
     # TODO option to choose lower or upper or time or bool robustness    
         if f_opt is None:
-            f_opt={}
+            f_opt={}        
 
-        f_hor = f_opt.get('past_horizon',0)            
-
+        f_hor = f_opt.get('past_horizon',0.)   
         t0 = f_opt.get('t0',0.)
-        if f_opt.get('eval_all_steps') is True:
-            t0 = max(t0, self.current_time-f_hor)
-            
-        
+        tend = f_opt.get('tend',self.current_time)
+        online = f_opt.get('eval_all_steps', False) or f_opt.get('online', False)
+        if online is True:
+            t0 = max(t0, tend-f_hor)
+                    
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
         if eval_res is None:
@@ -436,7 +432,7 @@ class STLWrapper(gym.Wrapper):
         val = min(val, upper_bound)
         
         if self.debug_formulas>=2:
-            print(f'{f_name} at t0={t0} (current_time:{self.current_time}, f_hor:{f_hor}): [ {lower_bound}  <=  {val} <= {lower_bound}]')
+            print(f'{f_name} at t0={t0} (current_time:{tend}, f_hor:{f_hor}): [ {robs[1]}  <=  {val} <= {robs[2]}]')
         
         return val, eval_res
                
