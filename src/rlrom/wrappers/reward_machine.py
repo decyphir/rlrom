@@ -2,30 +2,28 @@ import gymnasium as gym
 import numpy as np
 import rlrom.utils as utils
 
-class RewardMachine(gym.Wrapper):
-    """Transform the reward via reward machine.
+class RewardMachine: 
+    def __init__(self, cfg_rm):
+        self_current_state= 0   
+        self.cfg_rm = cfg_rm
+        
+    def reset(self):
+        return self.u0
 
-    Warning:
-        If the base environment specifies a reward range which is not invariant under :attr:`f`, 
-        the :attr:`reward_range` of the wrapped environment will be incorrect.
 
-    """
-
+class RewardMachineWrapper(gym.Wrapper):
+    
     def __init__(self, env, cfg_rm):
-        """Initialize the :class:`RewardMachine` wrapper with an environment and the file that contains the reward machine.
-        Args:
-            env: The environment to apply the wrapper
-        """
+        
         super().__init__(env)
         self.env = env
         self.cfg_rm = cfg_rm        
         self.states_idx_map={}
         self.num_states, self.u_0, self.u_t = self._load_reward_machine()
         
-
         if self.cfg_rm['in_observation']:
             old_shape = env.observation_space["unwrapped"].shape[0]
-            new_shape = old_shape + 1  # add RM feature
+            new_shape = old_shape+1 # add RM feature
 
             self.observation_space = gym.spaces.Box(
                 low=0,
@@ -34,11 +32,7 @@ class RewardMachine(gym.Wrapper):
                 dtype=env.observation_space["unwrapped"].dtype)
         
     def step(self, action):
-        """Modify the step function
-        :param action: same as the original step
-        :return: observation with the reward machine state, the new reward value from the
-        reward machine, terminated, truncated, info.
-        """
+
         obs, reward, terminated, truncated, info = self.env.step(action)
         obs = obs["unwrapped"]
         u_in = self.u_in
@@ -59,18 +53,22 @@ class RewardMachine(gym.Wrapper):
         
         return obs, rm_reward*self.unwrapped._reward(), terminated, truncated, info
 
-    def reset(self, *, seed=None, options=None):
-        self.u_in = self.u_0
+    def reset(self, *, seed=None, options=None):                
+        self.reset_rm()
         obs, info = self.env.reset(seed=seed, options=options)
         obs = obs["unwrapped"]        
         if self.cfg_rm['in_observation']:
             obs = self._augmented_obs(obs)
         return obs, info
 
+    def reset_rm(self):
+        self.u_in = self.u_0
+        
+
     def get_rm_transition(self, u_in):
         get_rob= self.env.get_wrapper_attr('get_rob')
         transitions = self.cfg_rm['transitions']
-        u_out = u_in
+        
         states = self.cfg_rm['states']
         for s in states:
             if u_in == s['id']:
@@ -78,8 +76,8 @@ class RewardMachine(gym.Wrapper):
                 break
         priority = 0
         for t in transitions:
-            formula_name = t["condition"]            
-            if u_out == t["from"] and get_rob(formula_name)[-1] > 0 :
+            formula_name = t["condition"]
+            if u_in == t["from"] and get_rob(formula_name)[-1] > 0 :
                 u_out = t['to']
                 reward = t["reward"]
         return u_out, reward

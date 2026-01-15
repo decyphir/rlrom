@@ -357,6 +357,10 @@ class STLWrapper(gym.Wrapper):
         if self.stl_driver.data == []:
             raise ValueError("No data/episode was computed.")
         
+        if formula in self.obs_formulas:
+            print('bingo')
+            print(self.obs_formulas[formula])
+
         monitor = self.stl_driver.get_monitor(formula)
         
         rob = np.zeros(len(self.stl_driver.data))

@@ -4,7 +4,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import rlrom.utils as utils
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
-from rlrom.wrappers.reward_machine import RewardMachine
+from rlrom.wrappers.reward_machine import RewardMachineWrapper
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.utils import yaml
 
@@ -49,7 +49,7 @@ def make_env_test(cfg):
         
         cfg_rm = cfg_specs.get('cfg_rm', None)            
         if cfg_rm is not None:
-            env = RewardMachine(env, cfg_rm)  
+            env = RewardMachineWrapper(env, cfg_rm)  
     return env
 
     
