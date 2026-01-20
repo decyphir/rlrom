@@ -40,16 +40,18 @@ def make_env_test(cfg):
       else: 
         render_mode=None
       env = gym.make(env_name, render_mode=render_mode)
+      
       if env_name.lower().startswith("minigrid"):  
         #env = ImgObsWrapper(env)
         env = FlattenObservation(env) 
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
-        env = stl_wrap_env(env, cfg)
-        
+        env = stl_wrap_env(env, cfg)           
         cfg_rm = cfg_specs.get('cfg_rm', None)            
         if cfg_rm is not None:
             env = RewardMachineWrapper(env, cfg_rm)  
+        else:
+            env = FlattenObservation(env)
     return env
 
     
@@ -58,7 +60,7 @@ class RLTester:
         
         cfg = utils.load_cfg(cfg)
         self.cfg = cfg        
-        self.manual_control = False
+        self.keyboard_control = False
         self.env_name = cfg.get('env_name')
         self.env = None
         self.model = None
@@ -73,10 +75,10 @@ class RLTester:
     def load_model(self, model_file=None):
         
         cfg_env = self.cfg.get('cfg_env',dict())
-        if cfg_env.get('manual_control', False):
-            model = 'manual'
+        if cfg_env.get('keyboard_control', False):
+            model = 'keyboard'
             print("INFO: manual_control set to True, stay alert.")    
-            self.manual_control = True        
+            self.keyboard_control = True        
         else:            
             self.manual_control = False
             model_path = self.cfg.get('model_path', './models')
@@ -101,13 +103,13 @@ class RLTester:
 
     def _get_action(self, obs):        
         
-        if self.manual_control is True:
-            manual_control = self.env.get_wrapper_attr('manual_control')
+        if self.keyboard_control is True:
+            keyboard_control = self.env.get_wrapper_attr('keyboard_control')
             action = None 
             while action==None: # wait for action to come (note: we'll want to change that for real time control)
-                action = manual_control(obs)           
-        elif self.model=='random':
-            action = self.env.action_space.sample()
+                action = keyboard_control(obs)           
+        elif isinstance(self.model, str):  # includes "random" and "manual_control" which is bypassed anyway for hw env 
+            action = self.env.action_space.sample()            
         else:
             if self.has_stl_wrapper:  
                 if self.model_use_specs is False:
@@ -131,7 +133,7 @@ class RLTester:
         if self.fig_layout is not None:
             rl_fig = rlp.RLFig(self, self.fig_layout)
             rl_fig.fig.show()
-            time.sleep(.1)
+            time.sleep(.1)  # TODO probably cfg that 
         else:
             rl_fig = None
         # We actually might want to reload every time to enforce determinism     

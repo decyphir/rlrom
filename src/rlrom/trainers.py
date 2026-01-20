@@ -37,9 +37,9 @@ def make_env_train(cfg):
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         model_use_spec = cfg.get('model_use_specs', False)
-        if model_use_spec:          
-          env = FlattenObservation(env)
+        if model_use_spec:                    
           env = stl_wrap_env(env, cfg)
+          env = FlattenObservation(env)
           
           cfg_rm = cfg_specs.get('cfg_rm', None)            
           if cfg_rm is not None:
@@ -78,8 +78,8 @@ class RlromCallback(BaseCallback):
     self.cfg = utils.set_rec_cfg_field(cfg_main,render_mode=None)
     
     cfg_train = cfg_main.get('cfg_train')
-    self.n_envs = cfg_train.get('n_envs',1)
-    self.eval_freq = cfg_train.get('eval_freq', 1000)//self.n_envs        
+    self.n_envs = int(cfg_train.get('n_envs',1))
+    self.eval_freq = int(cfg_train.get('eval_freq', 1000))//self.n_envs        
     self.chkpt_dir = chkpt_dir
     self.chkpt_model_root_name = os.path.join(chkpt_dir, 'model_step_')
     self.chkpt_res_root_name = os.path.join(chkpt_dir, 'res_step_')
@@ -148,7 +148,8 @@ class RLTrainer:
     self.model_use_specs = self.cfg.get('model_use_specs', False)
     self.env_name = self.cfg.get('env_name')
     self.model_name = self.cfg.get('model_name')
-    self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
+    #self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)
+    self.make_env= lambda: make_env_train(self.cfg)
     self.model = None
     
   def train(self):
@@ -187,7 +188,7 @@ class RLTrainer:
 
 
     # Training          
-    total_timesteps = self.cfg_train.get('total_timesteps',1000)    
+    total_timesteps = int(self.cfg_train.get('total_timesteps',1000))
     progress_bar = self.cfg_train.get('progress_bar',True)    
     tb_prefix =  utils.add_now_suffix(self.model_name)
 
@@ -252,7 +253,7 @@ class RLTrainer:
       cfg_a2c['policy_kwargs']= policy_cfg2kargs(cfg_a2c['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -281,7 +282,7 @@ class RLTrainer:
       cfg_sac['policy_kwargs']= policy_cfg2kargs(cfg_sac['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -310,7 +311,7 @@ class RLTrainer:
       cfg_td3['policy_kwargs']= policy_cfg2kargs(cfg_td3['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -339,7 +340,7 @@ class RLTrainer:
       cfg_dqn['policy_kwargs']= policy_cfg2kargs(cfg_dqn['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -368,7 +369,7 @@ class RLTrainer:
       cfg_ppo['policy_kwargs']= policy_cfg2kargs(cfg_ppo['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -397,7 +398,7 @@ class RLTrainer:
       cfg_ddpg['policy_kwargs']= policy_cfg2kargs(cfg_ddpg['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:

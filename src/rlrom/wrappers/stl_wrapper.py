@@ -16,6 +16,8 @@ def stl_wrap_env(env, cfg):
     to_import = cfg.get('import_module')                
     if to_import is not None:
         import_module = importlib.import_module(to_import)
+    else:
+        import_module = None
     cfg_specs = cfg.get('cfg_specs',{})
     stl_specs_str = cfg_specs.get('specs','')
     if stl_specs_str=='':    # default stl signals declaration. Not sure why it is here.
@@ -155,6 +157,8 @@ class STLWrapper(gym.Wrapper):
         for f_name, f_opt in self.obs_formulas.items():                                     
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
             robs[idx_formula] = robs_f # forget about low and high robs for now            
+            
+            # display debug_formula
             idx_formula+=1     
             if self.debug_formulas is True:                
                 if idx_formula==1:
@@ -163,19 +167,42 @@ class STLWrapper(gym.Wrapper):
                 if idx_formula==num_obs_formulas:
                     print('')
 
-         
+        # eval terminal formulas
+        idx_formula=0         
+        num_end_formulas =len(self.end_formulas)
         for f_name, f_opt in self.end_formulas.items():                     
             _, eval_res = self.eval_formula_cfg(f_name,f_opt)          
             if eval_res['lower_rob'] > 0:
                 print('Episode terminated because of formula', f_name)
                 terminated = True
 
-        new_reward = reward                         
+            # display debug_formula
+            idx_formula +=1
+            if self.debug_formulas is True:                
+                if idx_formula==1:
+                    print('end formulas', end='  --  ')                
+                print(f_name+f': {eval_res['lower_rob']}', end=' ')
+                if idx_formula==num_end_formulas:
+                    print('')
+
         # add stl robustness to reward
+        new_reward = reward                         
+        idx_formula = 0
+        num_rew_formulas =len(self.reward_formulas)
         for f_name, f_opt in self.reward_formulas.items():                         
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)
             w = f_opt.get('weight',1)        
             new_reward += w*robs_f   
+            
+            # display debug_formula
+            idx_formula +=1
+            if self.debug_formulas is True:                
+                if idx_formula==1:
+                    print('reward formulas', end='  --  ')                
+                print(f_name+f': {robs_f}', end=' ')
+                if idx_formula==num_rew_formulas:
+                    print('')
+
         
         # update current time
         self.time_step += 1

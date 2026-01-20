@@ -3,7 +3,7 @@ import_module: 'env_task3'
 #model_use_specs: False # False is default
 
 cfg_env:
-  manual_control: True
+  keyboard_control: True
 
 cfg_test:  
   num_ep: 1

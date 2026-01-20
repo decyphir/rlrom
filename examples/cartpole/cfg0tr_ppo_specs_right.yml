@@ -17,17 +17,17 @@ cfg_specs:
     
 
   reward_formulas:
-    cart_on_left:
+    cart_on_right:
       online: True
       past_horizon: 0
       weight: 10
       lower_bound: 0      
       
   eval_formulas:
-    cart_on_left:
+    cart_on_right:
       past_horizon: 0
       eval_all_steps: true
-    phi_left_goal:
+    phi_right_goal:
       t0: 0
       eval_all_steps: false
 
