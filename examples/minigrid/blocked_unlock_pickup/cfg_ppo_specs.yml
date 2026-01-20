@@ -1,0 +1,60 @@
+env_name: MiniGrid-BlockedUnlockPickup-v4
+model_path: ./models/
+model_name: task3
+import_module: env_task3
+model_use_specs: True 
+
+cfg_specs:
+  obs_names:
+    ego: "obs[81]"
+    obj_front: "obs[78]" 
+    distance: "self.my_env.distance(self.env)"
+    door_open: "self.my_env._door_open(self.env)"
+  specs: minigrid.stl
+  
+  eval_formulas:
+    find_ball:
+      t0: 0 
+      eval_all_steps: False
+    find_key:
+      t0: 0
+      eval_all_steps: False
+    find_key_and_door:
+      t0: 0
+      eval_all_steps: False
+  # obs_formulas:
+  #   key_is_visible:
+  #     obs_name: 'obs_key_visible'
+  #     past_horizon: 0  
+  # end_formulas:
+  #   drop_key:
+  #     past_horizon: 0  
+  #     eval_all_steps: True
+  cfg_rm: cfg_rm_task3.yml
+
+cfg_train:
+  total_timesteps: 500_000
+  #n_envs: 1
+  eval_freq: 100_000  
+  
+  algo:
+    ppo:
+      n_steps: 256
+      batch_size: 512
+      n_epochs: 10
+      gamma: 0.999 
+      learning_rate: 0.00025
+      clip_range: 0.2
+      ent_coef: 0.01 
+      vf_coef: 0.5
+      max_grad_norm: 0.5
+      policy: "MlpPolicy"
+      policy_kwargs:
+        net_arch: [256, 256]
+      tensorboard_log: ./tb_logs/
+
+cfg_test:
+  init_seeds: 1
+  num_ep: 4
+  num_steps: 150
+  render_mode: 'human'

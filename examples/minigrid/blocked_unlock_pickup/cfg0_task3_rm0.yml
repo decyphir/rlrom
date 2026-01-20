@@ -1,0 +1,36 @@
+env_name: 'MiniGrid-BlockedUnlockPickup-v4'
+import_module: 'env_task3'
+#model_use_specs: False # False is default
+
+cfg_env:
+  manual_control: True
+
+cfg_test:  
+  num_ep: 1
+  num_steps: 50 # max number of moves 
+  render_mode: 'human'
+
+cfg_specs: 
+#  debug_signals: True
+#  debug_formulas: 2
+  obs_names:
+    ego: obs[81]
+    obj_front: obs[78] 
+    distance:  "self.import_module.distance(self.env)"
+    door_open: "self.import_module._door_open(self.env)"
+  action_names:
+    action: "action"
+  specs: task3.stl
+  
+  obs_formulas:
+    has_key:
+      eval_all_steps: True
+    obj_in_front:
+      eval_all_steps: True
+      
+  eval_formulas:
+    has_key:
+      eval_all_steps: True
+      t0: 0
+
+  cfg_rm: reward_machine_test0.yml

@@ -1,0 +1,10 @@
+signal  ego, obj_front, reward, key_visible, action
+
+has_key:= ego[t]>4
+not_has_key:= not has_key
+door_in_front:= obj_front[t]>3 and obj_front[t]<5
+key_is_visible:= key_visible[t]>0
+drop_key:= action[t]>3 and action[t]<5
+
+find_key := ev_[0,1000] has_key
+find_key_and_door := ev_[0,1000] (has_key and door_in_front)

@@ -3,17 +3,20 @@ import rlrom.utils as utils
 from rlrom.utils import policy_cfg2kargs, add_now_suffix
 from rlrom.testers import RLTester
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import numpy as np
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
+from minigrid.wrappers import ImgObsWrapper
 from rlrom.wrappers.stl_wrapper import stl_wrap_env
+from rlrom.wrappers.reward_machine import RewardMachineWrapper
 import os
 import sys
 import importlib
 from rlrom.utils import yaml
 import copy #for deep copy of dicts (*not* default !)
+import functools
 
 def make_env_train(cfg):
         
@@ -30,16 +33,44 @@ def make_env_train(cfg):
       # default
       env_name = cfg.get('env_name','')                           
       env = gym.make(env_name, render_mode=None)
-      
+      #env = ImgObsWrapper(env)
     cfg_specs = cfg.get('cfg_specs', None)            
     if cfg_specs is not None:
         model_use_spec = cfg.get('model_use_specs', False)
         if model_use_spec:          
-          env = stl_wrap_env(env, cfg_specs)
           env = FlattenObservation(env)
+          env = stl_wrap_env(env, cfg)
+          
+          cfg_rm = cfg_specs.get('cfg_rm', None)            
+          if cfg_rm is not None:
+            env = RewardMachineWrapper(env, cfg_rm)  
+            obs, _ = env.reset()
+            print("env", env)
             
     return env
 
+def make_vec_envs(cfg, n_envs=8, use_subproc=False):
+    """
+    Create a vectorized environment with n_envs copies of make_env_train(cfg).
+    Works for STL + RM wrappers.
+    """
+    def _make_env_fn():
+        def _init():
+            return make_env_train(cfg)
+        return _init
+
+    env_fns = [_make_env_fn() for _ in range(n_envs)]
+    
+    if n_envs == 1:
+        # Just return a single env (not vectorized)
+        env = make_env_train(cfg)
+        env = VecMonitor(DummyVecEnv([lambda: env]))  # Wrap single env for logging
+        return env
+    else:
+        vec_env_cls = SubprocVecEnv if use_subproc else DummyVecEnv
+        vec_env = vec_env_cls(env_fns)
+        vec_env = VecMonitor(vec_env) 
+        return vec_env
 
 class RlromCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict(), chkpt_dir='', cfg_name=''):
@@ -69,13 +100,12 @@ class RlromCallback(BaseCallback):
     return True
     
   def  eval_and_save_model(self):
-    Tres = self.eval_policy()
-    
     model_filename = self.chkpt_model_root_name+str(self.n_calls*self.n_envs)
     print(f'saving model to {model_filename}...')
     self.model.save(model_filename)      
     res_filename = self.chkpt_res_root_name+str(self.n_calls*self.n_envs)+'.yml'            
     
+    Tres = self.eval_policy()
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
     with open(res_filename,'w') as f:
@@ -118,7 +148,7 @@ class RLTrainer:
     self.model_use_specs = self.cfg.get('model_use_specs', False)
     self.env_name = self.cfg.get('env_name')
     self.model_name = self.cfg.get('model_name')
-    self.make_env= lambda: make_env_train(self.cfg)
+    self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
     self.model = None
     
   def train(self):

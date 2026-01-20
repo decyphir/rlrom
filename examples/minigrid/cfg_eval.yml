@@ -1,3 +1,0 @@
-phi:
-  past_horizon: 0    
-  eval_all_steps: true

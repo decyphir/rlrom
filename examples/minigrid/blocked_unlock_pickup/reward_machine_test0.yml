@@ -1,0 +1,42 @@
+in_observation: True
+debug_rm: True
+rm_id: test0
+
+conditions:
+  has_key:
+  # default options
+    online: True       
+    past_horizon: 0
+
+  not_has_key:
+    online: True
+    past_horizon: 0
+
+  kept_key_too_long:
+    online: True
+    past_horizon: 5
+
+states:
+  - id: "u_has_key"    
+    initial: True
+    reward: 0
+  - id: "u_not_has_key"
+    reward: 0
+  - id: "u_kept_key_too_long"
+    reward: -10    
+    final: True
+
+transitions:
+  - from: "u_not_has_key"
+    to: "u_has_key"
+    condition: "has_key" 
+    reward: -1
+  - from: "u_has_key"
+    to: "u_not_has_key"
+    condition: "not_has_key" 
+    reward: 2
+  - from: "u_has_key"
+    to: "u_kept_key_too_long"
+    condition: "kept_key_too_long" 
+    reward: -20
+      

@@ -1,0 +1,28 @@
+in_observation: True
+states:
+  - id: "u0"
+    initial: True
+    reward: 0
+  - id: "u1"
+    reward: 0
+  - id: "u2"
+    reward: 0   
+  - id: "u3"
+    final: True
+transitions:
+  - from: "u0"
+    to: "u1"
+    condition: "has_ball"
+    reward: 0
+  - from: "u1"
+    to: "u2"
+    condition: "far_from_door"
+    reward: 0
+  - from: "u2"
+    to: "u0"
+    condition: "ball_close_door"
+    reward: 0
+  - from: "u2"
+    to: "u3"
+    condition: "ball_far_door"
+    reward: 1

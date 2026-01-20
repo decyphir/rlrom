@@ -1,0 +1,22 @@
+in_observation: True
+states:
+  - id: "u3"
+    initial: True
+    reward: 0
+  - id: "u4"
+    reward: 0
+  - id: "u5"
+    final: True
+transitions:
+  - from: "u3"
+    to: "u4"
+    condition: "has_key"
+    reward: 0
+  - from: "u4"
+    to: "u5"
+    condition: "door_is_open"
+    reward: 1
+  - from: "u4"
+    to: "u3"
+    condition: "not_has_key"
+    reward: 0
