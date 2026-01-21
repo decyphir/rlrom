@@ -4,4 +4,5 @@ events.out.*
 .vscode/settings.json
 *.whl
 *.tar.gz
-*_training*
+#*_training*
+.ipynb*

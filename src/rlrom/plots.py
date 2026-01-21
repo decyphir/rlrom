@@ -9,6 +9,57 @@ import rlrom.utils as utils
 import polars as pl
 
 
+class live_line:
+    def __init__(self, T, st, ax):
+        self.get_time = T.env.get_wrapper_attr('get_time')
+        get_vals_from_st = T.env.get_wrapper_attr('get_values_from_str')
+        self.get_vals = lambda: get_vals_from_st(st)
+        self.ax = ax                
+        self.label = st
+        self.line = self.reset_plot()
+        
+    def reset_plot(self):
+        self.ax.plot([], [], label = self.label)
+        return self.ax.lines[-1]
+    
+    def update(self):
+        t = self.get_time()
+        v,_ = self.get_vals()        
+        self.line.set_xdata(t)
+        self.line.set_ydata(v)
+        self.line.set_label(self.label)
+        self.ax.relim()
+        self.ax.autoscale_view(scalex=False, scaley=True)
+        self.ax.legend()
+
+class RLFig: 
+    def __init__(self, T, layout):
+        plt.ioff()
+        self.tester = T
+        self.layout = get_layout_from_string(layout)        
+        N = len(self.layout)
+        fig, axs = plt.subplots(N, 1, sharex=True, figsize=(9, 2*N))
+                
+        self.live_lines = []
+        iax = 0
+        for l in self.layout:
+            for s in l:
+                self.live_lines.append(live_line(T, s, axs[iax]))
+            axs[iax].grid()
+            iax +=1
+        self.fig = fig
+        self.axs= axs
+        self.tester.callbacks.append(self.update)
+
+    def update(self):
+        l0 = self.live_lines[0]
+        t = l0.get_time()
+        self.axs[0].set_xlim(max(0, len(t)-25), len(t))
+        for l in self.live_lines:
+            l.update()
+        self.fig.canvas.draw()
+
+
 def get_layout_from_string(signals_layout):
     out = []
     # split signals string wrt linebreaks first
@@ -128,18 +179,33 @@ def plot_tb_training_logs(data, ax=None, label=None, color='gray', linestyle='-'
 
 
 def plot_df_training(df, formula=None, metric='mean_ep_rew', 
-                     ax=None, label=None, linestyle='-'):
+                     label='auto',ax=None,**kargs):
     
     steps = df.collect()['steps'].to_numpy()
-    metric_values = df.collect()[metric].to_numpy()
+    
+    if formula is None:
+        metric_values = df.collect()[metric].to_numpy()
+    else:
+        df_phi = df.select('label', #training id 
+                           'steps',
+                            formula).unnest(formula)        
+        metric_values = df_phi.collect()[metric].to_numpy()
+
+
 
     if ax is None:
        _, ax = plt.subplots(figsize=(8, 4))
        ax.grid(True)
 
     if label is None:    
-        ax.plot(steps, metric_values,linestyle=linestyle)
+        ax.plot(steps, metric_values,**kargs)
     elif label=='auto':
-        ax.plot(steps, metric_values,label=metric,linestyle=linestyle)
+        ax.plot(steps, metric_values,label=metric,**kargs)
+    else:
+        ax.plot(steps, metric_values,label=label,**kargs)
+    
+    ax.legend()
+    ax.set_xlabel('Training Steps')
+    ax.set_ylabel('Value')
 
     return  ax

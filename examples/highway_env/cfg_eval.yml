@@ -3,6 +3,15 @@ phi_speed:
   t0: 0    
   eval_all_steps: false
 
+fa_n_da:
+  past_horizon: 0    
+  eval_all_steps: true
+
+# Right lane
+ego_right_lane:
+    past_horizon: 0
+    eval_all_steps: true
+
 # Sum of this estimates distance traveled
 ego_moves:     
   past_horizon: 0    
@@ -12,10 +21,21 @@ ego_fast:
   past_horizon: 0    
   eval_all_steps: true
 
-# Right lane
-ego_right_lane:
-    past_horizon: 0
-    eval_all_steps: true
+Gda:
+  past_horizon: 0    
+  eval_all_steps: true
+
+fa_da:
+  past_horizon: 0    
+  eval_all_steps: true
+
+n_fa_n_da:
+  past_horizon: 0    
+  eval_all_steps: true
+
+Gn_fa_n_da:
+  past_horizon: 5
+  eval_all_steps: true
 
 phi_right_lane:
   t0: 0

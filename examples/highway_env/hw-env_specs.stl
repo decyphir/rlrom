@@ -9,7 +9,7 @@ ego_moves := ego_vx[t] > 0 # used for evaluation
 ego_slow  := ego_vx[t] < 22
 ego_fast  := ego_vx[t] > 25
 
-# Danger formmulas
+# Danger formulas
 car1_same_lane  := abs(car1_y[t]) < 0.1  
 car1_too_close := abs(car1_x[t]) < 0.1 
 car1_danger := car1_same_lane and car1_too_close
@@ -26,7 +26,9 @@ danger := car1_danger or car2_danger or car3_danger
 
 # Right lane formulas
 ego_right_lane := ego_y[t] > 0.6
-  
+not_right := not ego_right_lane
+not_right_too_long := alw_[0,10] (not_right)
+
 # There is a car on the left 
 car1_left := car1_y[t] > -.35 and car1_y[t] < -.15 and car1_too_close
 car2_left := car2_y[t] > -.35 and car2_y[t] < -.15 and car2_too_close
@@ -34,7 +36,14 @@ car3_left := car3_y[t] > -.35 and car3_y[t] < -.15 and car3_too_close
 car_left := car1_left or car2_left or car3_left
 
 # Full episode formulas
+phi_speed := alw_[0,50] ev_[0,15] ego_fast 
+phi_right_lane := alw_[0,50] ev_[0,15] ego_right_lane
+phi_car_left := alw_[0,50] ev_[0,15] (not car_left)
 
-phi_speed := alw_[0,50] ev_[0,10] ego_fast 
-phi_right_lane := alw_[0,50] ev_[0,10] ego_right_lane
-phi_car_left := alw_[0,50] ev_[0,10] (not car_left)
+# Reward formulas, shorter
+
+Gda := alw_[0,5] danger
+fa_da := danger and ego_fast
+fa_n_da := (not danger) and ego_fast
+n_fa_n_da :=  not (ego_fast or danger)
+Gn_fa_n_da := alw_[0,5] n_fa_n_da

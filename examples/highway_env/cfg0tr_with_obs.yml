@@ -14,10 +14,11 @@ cfg_train:
   eval_freq: 15_000
   n_envs: 4      
   algo:    
-    ppo: highway_env_ppo.yml      
+    a2c:
+    #ppo: highway_env_ppo.yml      
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 20
+  num_ep: 50
   num_steps: 100 
   render_mode: 'human'
