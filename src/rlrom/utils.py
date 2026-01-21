@@ -501,9 +501,6 @@ def list_trained_models(folder='./models'):
                 list_models.append(m)
     return list_models
 
-def get_sys_info():
-    os.sys    
-
 def get_training_folders(cfg):
     cfg= load_cfg(cfg)
     mpath,_ = get_model_fullpath(cfg)

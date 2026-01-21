@@ -1,0 +1,10 @@
+env_name: 'MiniGrid-BlockedUnlockPickup-v4'
+import_module: 'env_task3'
+
+cfg_env:
+  manual_control: True
+
+cfg_test:
+  num_ep: 5
+  num_steps: 50 # max number of moves 
+  render_mode: 'human'

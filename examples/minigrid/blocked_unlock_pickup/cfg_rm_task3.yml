@@ -1,0 +1,40 @@
+in_observation: True
+states:
+  - id: "u5"
+    initial: True
+    reward: 0
+  - id: "u6"
+    reward: 0
+  - id: "u8"
+    reward: -1
+  - id: "u7"
+    final: True
+transitions:
+  - from: "u5"
+    to: "u8"
+    condition: "door_is_closed" 
+    reward: -1
+  - from: "u6"
+    to: "u8"
+    condition: "door_is_closed" 
+    reward: -1
+  - from: "u8"
+    to: u5
+    condition: "has_key_door_open"
+    reward: 0
+  - from: "u8"
+    to: u6
+    condition: "not_has_key_door_open_no_box"
+    reward: 0
+  - from: "u6"
+    to: "u5"
+    condition: "has_key_door_open"
+    reward: 0
+  - from: "u5"
+    to: "u6"
+    condition: "not_has_key_door_open_no_box"
+    reward: 0
+  - from: "u6"
+    to: "u7"
+    condition: "has_box"
+    reward: 1

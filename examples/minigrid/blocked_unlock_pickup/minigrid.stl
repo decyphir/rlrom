@@ -1,0 +1,25 @@
+signal ego, obj_front, distance, door_open, reward
+
+far_from_door:= distance[t]>1
+has_key:= ego[t]>4 and ego[t]<6
+has_ball:= ego[t]>5 and ego[t]<7
+has_box:= ego[t]>6 and ego[t]<8
+not_has_key:= not has_key
+not_has_ball:= not has_ball
+door_in_front:= obj_front[t]>3 and obj_front[t]<5
+ball_close_door:= not far_from_door and not_has_ball
+ball_far_door:= far_from_door and not_has_ball
+door_is_open:= door_open[t]>0.5 
+door_is_closed:= door_open[t]<0.5
+
+has_key_door_open:= has_key and door_is_open
+not_has_key_door_open:= not_has_key and door_is_open
+has_key_door_closed:= has_key and door_is_closed
+not_has_key_door_closed:= not_has_key and door_is_closed
+
+not_has_key_door_open_no_box:= not_has_key_door_open and not has_box
+
+
+find_ball := ev_[0,1000] has_ball
+find_key := ev_[0,1000] has_key
+find_key_and_door := ev_[0,1000] (has_key and door_in_front)

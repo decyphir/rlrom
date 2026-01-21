@@ -6,3 +6,6 @@ events.out.*
 *.tar.gz
 #*_training*
 .ipynb*
+*_training*
+examples/minigrid/test.py
+examples/minigrid/models/

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import gymnasium as gym
+from gymnasium.spaces import Box
 from minigrid.core.mission import MissionSpace
 from minigrid.core.roomgrid import RoomGrid
+import numpy as np
+import pprint
 from gymnasium.envs.registration import register
 
-class UnlockEnv20(RoomGrid):
+class UnlockEnvV1(RoomGrid):
     """
     ## Description
 
@@ -54,7 +57,7 @@ class UnlockEnv20(RoomGrid):
     """
 
     def __init__(self, max_steps: int | None = None, **kwargs):
-        room_size = 10
+        room_size = 12
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         if max_steps is None:
@@ -69,6 +72,16 @@ class UnlockEnv20(RoomGrid):
             **kwargs,
         )
 
+        # Initialize observation_space after creating a sample obs
+        sample_obs, _ = super().reset()
+        flat_sample = self._get_flat_obs(sample_obs)
+        self.observation_space = Box(
+            low=0,
+            high=255,
+            shape=(flat_sample.size,),
+            dtype=np.uint8,
+        )
+
     @staticmethod
     def _gen_mission():
         return "open the door"
@@ -80,11 +93,21 @@ class UnlockEnv20(RoomGrid):
         door, _ = self.add_door(0, 0, 0, locked=True)
         # Add a key to unlock the door
         self.add_object(0, 0, "key", door.color)
-
         self.place_agent(0, 0)
-
         self.door = door
+        self.key = False
         self.mission = "open the door"
+
+    def _get_flat_obs(self, obs):
+        """
+        Flatten the observation into a 1D array like FlatObsWrapper.
+        obs: the original dict observation from RoomGrid
+        """
+        if isinstance(obs, dict) and "image" in obs:
+            return obs["image"].ravel()
+        else:
+            # If your environment returns a raw array already
+            return np.array(obs).ravel()
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
@@ -93,10 +116,17 @@ class UnlockEnv20(RoomGrid):
             if self.door.is_open:
                 reward = self._reward()
                 terminated = True
-
+        # Flatten the observation
+        obs = self._get_flat_obs(obs)
+        self.key = True if self.carrying and self.carrying.type == "key" else False
         return obs, reward, terminated, truncated, info
     
+    def reset(self, **kwargs):
+        obs, info = super().reset(**kwargs)
+        flat_obs = self._get_flat_obs(obs).astype(np.uint8)
+        return flat_obs, info
+    
 register(
-    id="MiniGrid-CustomUnlock-20x20-v0",
-    entry_point=__name__ + ":UnlockEnv20",
+    id="MiniGrid-CustomUnlock-v1",
+    entry_point=__name__ + ":UnlockEnvV1",
 )
