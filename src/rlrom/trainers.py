@@ -1,22 +1,24 @@
-from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
-import rlrom.utils as utils
-from rlrom.utils import policy_cfg2kargs, add_now_suffix
-from rlrom.testers import RLTester
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
-from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+# Generic stuff
 import numpy as np
-import gymnasium as gym
-from gymnasium.wrappers import FlattenObservation
-from minigrid.wrappers import ImgObsWrapper
-from rlrom.wrappers.stl_wrapper import stl_wrap_env
-from rlrom.wrappers.reward_machine import RewardMachineWrapper
 import os
 import sys
 import importlib
-from rlrom.utils import yaml
 import copy #for deep copy of dicts (*not* default !)
-import functools
+#import functools
+
+# Gym and sb3 stuff
+import gymnasium as gym
+from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+from gymnasium.wrappers import FlattenObservation
+
+# rlrom stuff
+from rlrom.testers import RLTester
+import rlrom.utils as rlu
+from rlrom.utils import policy_cfg2kargs
+from rlrom.wrappers.specs_wrapper import wrap_env_specs
 
 def make_env_train(cfg):
         
@@ -33,19 +35,8 @@ def make_env_train(cfg):
       # default
       env_name = cfg.get('env_name','')                           
       env = gym.make(env_name, render_mode=None)
-      #env = ImgObsWrapper(env)
-    cfg_specs = cfg.get('cfg_specs', None)            
-    if cfg_specs is not None:
-        model_use_spec = cfg.get('model_use_specs', False)
-        if model_use_spec:          
-          env = FlattenObservation(env)
-          env = stl_wrap_env(env, cfg)
-          
-          cfg_rm = cfg_specs.get('cfg_rm', None)            
-          if cfg_rm is not None:
-            env = RewardMachineWrapper(env, cfg_rm)  
-            obs, _ = env.reset()
-            print("env", env)
+              
+    env = wrap_env_specs(env, cfg)
             
     return env
 
@@ -53,6 +44,8 @@ def make_vec_envs(cfg, n_envs=8, use_subproc=False):
     """
     Create a vectorized environment with n_envs copies of make_env_train(cfg).
     Works for STL + RM wrappers.
+    TODO: make that an option ? not fully compatible with Gymnasium, more like Gym 0.21 or 0.26
+    see  https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html
     """
     def _make_env_fn():
         def _init():
@@ -75,11 +68,11 @@ def make_vec_envs(cfg, n_envs=8, use_subproc=False):
 class RlromCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict(), chkpt_dir='', cfg_name=''):
     super().__init__(verbose)
-    self.cfg = utils.set_rec_cfg_field(cfg_main,render_mode=None)
+    self.cfg = rlu.set_rec_cfg_field(cfg_main,render_mode=None)
     
     cfg_train = cfg_main.get('cfg_train')
-    self.n_envs = cfg_train.get('n_envs',1)
-    self.eval_freq = cfg_train.get('eval_freq', 1000)//self.n_envs        
+    self.n_envs = int(cfg_train.get('n_envs',1))
+    self.eval_freq = int(cfg_train.get('eval_freq', 1000))//self.n_envs        
     self.chkpt_dir = chkpt_dir
     self.chkpt_model_root_name = os.path.join(chkpt_dir, 'model_step_')
     self.chkpt_res_root_name = os.path.join(chkpt_dir, 'res_step_')
@@ -90,7 +83,7 @@ class RlromCallback(BaseCallback):
     print(f'Saving configuration file to {cfg_filename}')
     
     with open(cfg_filename,'w') as f:
-         yaml.dump(self.cfg, f)
+         rlu.yaml.dump(self.cfg, f)
 
 
   def _on_step(self):
@@ -109,7 +102,7 @@ class RlromCallback(BaseCallback):
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
     with open(res_filename,'w') as f:
-       yaml.dump(Tres, f)
+       rlu.yaml.dump(Tres, f)
 
   def _on_training_end(self):
     self.eval_and_save_model()
@@ -143,18 +136,18 @@ class RlromCallback(BaseCallback):
 
 class RLTrainer:
   def __init__(self, cfg):    
-    self.cfg = utils.load_cfg(cfg)    
+    self.cfg = rlu.load_cfg(cfg)    
     self.cfg_train = self.cfg.get('cfg_train', {})
     self.model_use_specs = self.cfg.get('model_use_specs', False)
     self.env_name = self.cfg.get('env_name')
     self.model_name = self.cfg.get('model_name')
-    self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
+    #self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
+    self.make_env= lambda: make_env_train(self.cfg)
     self.model = None
     
   def train(self):
 
-    cfg_algo = self.cfg_train.get('algo')
-    model_name = self.cfg.get('model_name')
+    cfg_algo = self.cfg_train.get('algo')    
     
     if cfg_algo is not None:       
       has_cfg_specs = 'cfg_specs' in self.cfg
@@ -185,11 +178,10 @@ class RLTrainer:
     else:
       model= self.model
 
-
-    # Training          
+    # Training
     total_timesteps = self.cfg_train.get('total_timesteps',1000)    
     progress_bar = self.cfg_train.get('progress_bar',True)    
-    tb_prefix =  utils.add_now_suffix(self.model_name)
+    tb_prefix =  rlu.add_now_suffix(self.model_name)
 
     # Train the agent
     model.learn(
@@ -205,17 +197,17 @@ class RLTrainer:
     return model
 
   def save_model(self,path=None):
-    model_name, cfg_name = utils.get_model_fullpath(self.cfg)
+    model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
     self.model.save(model_name) #TODO try except 
     with open(cfg_name,'w') as f:
-         yaml.dump(self.cfg, f)
+         rlu.yaml.dump(self.cfg, f)
 
   def set_checkpoint_dir(self):
     cfg= self.cfg
-    model_full_path, cfg_name = utils.get_model_fullpath(cfg)    
+    model_full_path, cfg_name = rlu.get_model_fullpath(cfg)    
     chkpt_dir_root = os.path.splitext(model_full_path)[0]        
-    chkpt_dir_root = utils.add_now_suffix(chkpt_dir_root)
+    chkpt_dir_root = rlu.add_now_suffix(chkpt_dir_root)
     i = -1
     chkpt_dir_exists = True        
     while chkpt_dir_exists:
@@ -252,7 +244,7 @@ class RLTrainer:
       cfg_a2c['policy_kwargs']= policy_cfg2kargs(cfg_a2c['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -281,7 +273,7 @@ class RLTrainer:
       cfg_sac['policy_kwargs']= policy_cfg2kargs(cfg_sac['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -310,7 +302,7 @@ class RLTrainer:
       cfg_td3['policy_kwargs']= policy_cfg2kargs(cfg_td3['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -339,7 +331,7 @@ class RLTrainer:
       cfg_dqn['policy_kwargs']= policy_cfg2kargs(cfg_dqn['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -368,7 +360,7 @@ class RLTrainer:
       cfg_ppo['policy_kwargs']= policy_cfg2kargs(cfg_ppo['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
@@ -397,7 +389,7 @@ class RLTrainer:
       cfg_ddpg['policy_kwargs']= policy_cfg2kargs(cfg_ddpg['policy_kwargs'])
     
     # Environments
-    n_envs = self.cfg_train.get('n_envs',1)
+    n_envs = int(self.cfg_train.get('n_envs',1))
     if n_envs>1:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:

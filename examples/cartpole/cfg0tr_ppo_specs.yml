@@ -15,14 +15,15 @@ cfg_specs:
     
   reward_formulas:
     cart_on_left:
+      online: True
       past_horizon: 0
       weight: 10
       lower_bound: 0      
       
   eval_formulas:
     cart_on_left:
-      past_horizon: 0
-      eval_all_steps: true
+      online: True
+      past_horizon: 0      
     phi_left_goal:
       t0: 0
       eval_all_steps: false

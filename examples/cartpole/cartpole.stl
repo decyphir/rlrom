@@ -8,3 +8,7 @@ phi_goal_keep_up := ev_[0, 400] keep_up
 go_left := x_dot[t] < 0
 cart_on_left := x[t] < -0.5 and x[t]> -0.7
 phi_left_goal := ev_[0,400] alw_[0, 100] cart_on_left
+
+go_right := x_dot[t] > 0
+cart_on_right := x[t] < 0.7 and x[t]> 0.5
+phi_right_goal := ev_[0,400] alw_[0, 100] cart_on_right

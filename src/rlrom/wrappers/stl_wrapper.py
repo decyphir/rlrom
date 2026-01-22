@@ -16,6 +16,9 @@ def stl_wrap_env(env, cfg):
     to_import = cfg.get('import_module')                
     if to_import is not None:
         import_module = importlib.import_module(to_import)
+    else:
+        import_module = None
+
     cfg_specs = cfg.get('cfg_specs',{})
     stl_specs_str = cfg_specs.get('specs','')
     if stl_specs_str=='':    # default stl signals declaration. Not sure why it is here.
@@ -206,11 +209,10 @@ class STLWrapper(gym.Wrapper):
                 print()
                 print(f't:{s[0]}',end=' ')
         i_sig = 0
-        #for key, value in self.signals_map.items():
+        
         for sig in self.signals_specs:
             value= self.signals_map[sig]
-            i_sig = i_sig+1
-            
+            i_sig = i_sig+1           
             s[i_sig] = eval(value)
             if self.debug_signals is True:
                 print(f'{sig}: {s[i_sig]}', end=' ')
