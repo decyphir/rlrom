@@ -20,8 +20,8 @@ import rlrom.utils as rlu
 from rlrom.wrappers.specs_wrapper import wrap_env_specs
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.utils import yaml
-
 import rlrom.plots as rlp
+
 def make_env_test(cfg):
 
     if 'make_env_test' in cfg:
@@ -47,8 +47,8 @@ def make_env_test(cfg):
     env = wrap_env_specs(env, cfg)
     return env
 
-    
 class RLTester:
+
     def __init__(self,cfg):
         
         cfg = rlu.load_cfg(cfg)
@@ -118,9 +118,13 @@ class RLTester:
         cfg= rlu.set_rec_cfg_field(cfg,**kargs)                    
         self.env = make_env_test(cfg)
 
-    def run_seed(self, seed=None, num_steps=100, reload_model=False):
+    def run_episode(self, seed=None, num_steps=100, 
+                    init_env = True, load_model=True,
+                    step_pause=0, 
+                    ):
 
-        self.init_env()
+        if init_env:
+            self.init_env()
 
         if self.fig_layout is not None:
             rl_fig = rlp.RLFig(self, self.fig_layout)
@@ -129,7 +133,7 @@ class RLTester:
         else:
             rl_fig = None
         # We actually might want to reload every time to enforce determinism     
-        if reload_model:
+        if load_model:
              self.load_model()
         
         if self.has_stl_wrapper is False:
@@ -140,7 +144,6 @@ class RLTester:
         else:
             last_obs, info = self.env.reset()        
         
-        #for _ in range(num_steps):    
         terminated = False
         truncated = False
         step = 0
@@ -194,7 +197,9 @@ class RLTester:
                 self.load_model(model_file=model_file) 
             
             for seed in range(init_seed, init_seed+num_ep):
-                episode = self.run_seed(seed=seed, num_steps=num_steps, reload_model=reload_model_every_ep)
+                episode = self.run_episode(seed=seed, num_steps=num_steps, 
+                                        load_model=reload_model_every_ep, 
+                                        init_env=True) # TODO is this necessary ? I mean, to init_env each time ?
                 num_ep_so_far+=1
                 print('.', end='')
                 if num_ep_so_far%10==0:

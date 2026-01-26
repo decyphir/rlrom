@@ -1,0 +1,3 @@
+signal cos_theta1, sin_theta1
+
+mu := cos_theta1[t]>0

@@ -1,3 +1,5 @@
+specs: acrobot.stl
+
 action_names:
   torque: 'action'
 obs_names: 
@@ -7,6 +9,11 @@ obs_names:
   sin_theta2: 'obs[3]'
   theta1_dot: 'obs[4]'
   theta2_dot: 'obs[5]'
+
+obs_formulas:
+  mu:
+   # obs_name: mu     
+
 
 real_time_step: 0.05
 

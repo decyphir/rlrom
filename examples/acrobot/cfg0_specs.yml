@@ -1,0 +1,9 @@
+env_name: Acrobot-v1
+
+cfg_specs: cfg_specs_acrobot.yml 
+
+cfg_test: 
+  init_seeds: 1
+  num_ep: 2
+  num_steps: 500 
+  render_mode: human
