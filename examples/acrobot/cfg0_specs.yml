@@ -1,6 +1,24 @@
 env_name: Acrobot-v1
 
-cfg_specs: cfg_specs_acrobot.yml 
+cfg_specs: 
+  stl_specs: |
+    signal cos_theta1, reward
+    mu := cos_theta1[t]>0
+      
+  obs_names:
+    cos_theta1: "obs[0]"
+  
+  reward_formulas:
+    mu:
+
+  obs_formulas:
+    mu:
+      online: True
+      
+  real_time_step: 0.05
+  
+  debug_signals: True
+  debug_formulas: True
 
 cfg_test: 
   init_seeds: 1

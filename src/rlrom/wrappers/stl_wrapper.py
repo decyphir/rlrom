@@ -2,11 +2,6 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import stlrom
-import matplotlib.pyplot as plt
-from bokeh.models.annotations import Title
-from bokeh.layouts import gridplot
-from bokeh.plotting import figure, show
-from bokeh.palettes import Dark2_5 as palette
 from rlrom.utils import append_to_field_array as add_metric
 import importlib
 
@@ -24,7 +19,9 @@ class STLWrapper(gym.Wrapper):
         # Parsing and adding STL formulas
         stl_driver= stlrom.STLDriver()        
         cfg_specs = cfg.get('cfg_specs',{})
-        stl_specs_str = cfg_specs.get('specs','')
+        stl_specs_str = cfg_specs.get('specs','') # keeping for backward compat
+        stl_specs_str = cfg_specs.get('stl_specs',stl_specs_str) 
+        
         if stl_specs_str=='':    # default stl signals declaration. Not sure why it is here.
             stl_specs_str = 'signal'
             first = True
@@ -80,7 +77,12 @@ class STLWrapper(gym.Wrapper):
         self.signals_map['reward'] = 'reward'
 
         # signals in specs
-        self.signals_specs = stl_driver.get_signals_names().split()       
+        self.signals_specs = stl_driver.get_signals_names().split()               
+        self.signals_specs_idx = {}  # index map of signals in stl samples (t, s1, s2, etc).
+        idx = 1
+        for s in self.signals_specs:
+            self.signals_specs_idx[s] = idx
+            idx+=1
 
         num_obs_formulas = len(self.obs_formulas)
         if self.BigM is None:
@@ -96,7 +98,6 @@ class STLWrapper(gym.Wrapper):
                 f_opt=dict()            
             obs_name = f_opt.get('obs_name', f_name)
             self.signals_map[obs_name]= f_opt
-
 
     def reset(self, **kwargs):        
         self.time_step = 0
@@ -124,7 +125,6 @@ class STLWrapper(gym.Wrapper):
     def reset_monitor(self):        
         self.stl_driver.data = [] 
         return [0]*len(self.obs_formulas) 
-
 
     def step(self, action):
         
@@ -215,52 +215,6 @@ class STLWrapper(gym.Wrapper):
     def seed(self, seed):
         return self.env.reset(seed=seed)
     
-    def plot_signal(self, signal, fig=None,label=None,  color=None, online=False, past_horizon=0, linestyle='-', booleanize=False):
-    # signal should be part of the "signal" declaration or a valid formula id 
-     
-        if self.stl_driver.data == []:
-            raise ValueError("No data to plot.")
-                 
-        time = self.get_time()
-        sig_values = self.get_sig(signal)
-        if sig_values is None:
-            if signal in self.formulas:
-                sig_values = self.get_rob(signal, online=online,past_horizon=past_horizon)
-                signal_index = self.formulas.index(signal)+len(self.signals_map)        
-            elif isinstance(signal, np.ndarray) and signal.shape == (len(self.get_time()),):
-                sig_values = signal
-            elif isinstance(signal, stlrom.Signal):
-                pass
-            else:
-                try:
-                    sig_values = self.get_rob(signal, online=online,past_horizon=past_horizon)
-                except Exception as e:
-                    raise ValueError(f"Name '{signal}' not in signals_map nor in parsed formulas")
-
-        if booleanize:
-            sig_values = (sig_values >0).astype(int)
-
-        if fig is None:
-             fig = figure(height=200)
-
-        fig.set_xlabel('Time')
-        fig.grid(True)
-
-        fig.step(time, sig_values)
-        if color is None:
-            l, = fig.step(time, sig_values, label=label,linestyle=linestyle)
-            color = l.get_color()
-        else:
-            l = fig.step(time, sig_values, color=color,linestyle=linestyle)
-        
-        if label is None:
-            label=signal
-            
-        l.set_label(label)
-        fig.legend()
-
-        return fig
-
     def get_time(self):
         if self.stl_driver.data == []:
             raise ValueError("No data to plot.")
@@ -268,29 +222,21 @@ class STLWrapper(gym.Wrapper):
         return [s[0] for s in self.stl_driver.data]
         
     def get_sig(self, sig_name):
-        sig = None        
-        sig_expr = self.signals_map.get(sig_name,[])
-        if sig_expr != []:                     
-            observations = self.episode['observations']
-            actions = self.episode['actions']
-            rewards = self.episode['rewards']            
-            rewards_wrapped = self.episode.get('rewards_wrapped',rewards) 
-            step = 0
-            sig=[]            
-            while step<len(observations):
-                obs = observations[step]['unwrapped']
-                obs_formulas= observations[step]['obs_formulas']        
-                action = actions[step]
-                reward = rewards[step]
-                reward_wrapped = rewards_wrapped[step]                                
-                sig.append(eval(sig_expr))                
-                step +=1
-        return sig
+        # recover a signal computed during an episode, either observation, reward, reward formula, 
+        sig_val=[]
+
+        if sig_name in self.signals_specs:
+            idx = self.signals_specs_idx[sig_name]            
+            for s in self.episode['stl_data']:
+                sig_val.append(s[idx])
+        elif sig_name in self.episode['res_f']:
+            sig_val = self.episode['res_f'][sig_name]               
+        return sig_val
 
     def get_values_from_str(self, str):
-        sig_type = 'val'
-        env_signal_names = self.signals_map.keys()
-                    
+        
+        env_signal_names = self.signals_map.keys() 
+        sig_type= 'val'                   
         if str in env_signal_names or str.split('(')[0] in env_signal_names:                        
             sig_val = self.get_sig(str)                        
         elif str.startswith('rho(') or str.startswith('rob('):

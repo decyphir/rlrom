@@ -1,13 +1,6 @@
-from bokeh.models.annotations import Title
-from bokeh.layouts import gridplot
-from bokeh.plotting import figure, show
-from bokeh.palettes import Dark2_5 as palette
-import itertools
 import re
 import matplotlib.pyplot as plt
 import rlrom.utils as utils
-import polars as pl
-
 
 class live_line:
     def __init__(self, T, st, ax):
@@ -31,7 +24,7 @@ class live_line:
         self.ax.relim()
         self.ax.autoscale_view(scalex=False, scaley=True)
         self.ax.legend()
-
+  
 class RLFig: 
     def __init__(self, T, layout):
         plt.ioff()
@@ -59,7 +52,6 @@ class RLFig:
             l.update()
         self.fig.canvas.draw()
 
-
 def get_layout_from_string(signals_layout):
     out = []
     # split signals string wrt linebreaks first
@@ -74,58 +66,6 @@ def get_layout_from_string(signals_layout):
             out.append(out_row)        
 
     return out            
-
-
-def get_fig(envs, signals_layout, tr_idx=0):
-# plots stuff in bokeh from a list of environments
-         
-    if not isinstance(envs, list):
-         envs= [envs]
-    current_env= envs[tr_idx]                                                 
-    lay = get_layout_from_string(signals_layout)
-    status = "Plot ok. Hit reset on top right if not visible."            
-
-    #f= figure(height=200)
-    figs = []
-    colors = itertools.cycle(palette)    
-    
-    for signal_list in enumerate(lay):
-        f=None
-        for signal in signal_list[1]:                
-            #try: 
-                color=colors.__next__()                                        
-                #print(signal.strip())
-                if signal.strip().startswith("set_trace_idx(") or signal.strip().startswith("_tr("):            
-                    tr_idx = int(signal.split('(')[1][:-1])
-                    current_env= envs[tr_idx]                                                 
-                else: 
-                    if f is None:
-                        if figs == []:
-                            f = figure(height=200)
-                        else:
-                            f = figure(height=200, x_range=figs[0][0].x_range)
-                        figs.append([f])
-                    
-                    ttime = current_env.get_time()                        
-                    labl = signal                                                
-                    if len(envs)>1:                                                            
-                        labl += ', trace_idx='+str(tr_idx)
-
-                    sig_values, sig_type = current_env.get_values_from_str(signal)
-                    if sig_type == 'val':
-                        f.scatter(ttime, sig_values, legend_label=labl, color=color)
-                        f.line(ttime, sig_values, legend_label=labl, color=color)
-                    elif sig_type == 'rob':
-                        f.step(ttime, sig_values, legend_label=labl, color=color)                        
-                        
-                    elif sig_type == 'sat':
-                        f.step(ttime, sig_values, legend_label=labl, color=color)                        
-                                            
-            #except:
-            #     status = "Warning: error getting values for " + signal
-    fig = gridplot(figs, sizing_mode='stretch_width')        
-        
-    return fig, status
 
 def plot_enveloppe(steps, mean_val, min_val, max_val, 
                       ax=None, label=None, color='blue', linestyle='-'):
