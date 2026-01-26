@@ -3,13 +3,15 @@ env_name: Acrobot-v1
 cfg_specs: 
   stl_specs: |
     signal cos_theta1, reward
-    mu := cos_theta1[t]>0
+    mu := cos_theta1[t]>.5
       
   obs_names:
     cos_theta1: "obs[0]"
   
   reward_formulas:
     mu:
+      online: True
+      weight: 1
 
   obs_formulas:
     mu:
