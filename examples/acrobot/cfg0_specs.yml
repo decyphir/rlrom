@@ -1,26 +1,42 @@
 env_name: Acrobot-v1
+model_path: huggingface
+model_name: sb3/ppo-Acrobot-v1
+
 
 cfg_specs: 
   stl_specs: |
-    signal cos_theta1, reward
-    mu := cos_theta1[t]>.5
+    signal cos_theta1, sin_theta1, cos_theta2, sin_theta2, height
+
+    mu_height := height[t]>0
+    phi_goal := ev_[0, 10] mu_height
       
   obs_names:
     cos_theta1: "obs[0]"
-  
+    sin_theta1: "obs[1]"
+    cos_theta2: "obs[2]"
+    sin_theta2: "obs[3]"
+    height: "-obs[0] - obs[0]*obs[2]+obs[1]*obs[3]"
+
+  obs_formulas:
+    obs_mu_height:
+      formula_name: mu_height
+      online: True
+      past_horizon: 0
+
+
   reward_formulas:
-    mu:
+    mu_height:  
       online: True
       weight: 1
 
-  obs_formulas:
-    mu:
-      online: True
-      
   real_time_step: 0.05
   
   debug_signals: True
   debug_formulas: True
+
+  eval_formulas:
+    phi_goal:
+      online: False
 
 cfg_test: 
   init_seeds: 1

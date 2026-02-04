@@ -96,7 +96,7 @@ class STLWrapper(gym.Wrapper):
         for f_name, f_opt in self.obs_formulas.items():                                     
             if f_opt is None:
                 f_opt=dict()            
-            obs_name = f_opt.get('obs_name', f_name)
+            obs_name = f_opt.get('obs_name', f_name)            
             self.signals_map[obs_name]= f_opt
 
     def reset(self, **kwargs):        
@@ -308,7 +308,7 @@ class STLWrapper(gym.Wrapper):
     
         if f_opt is None:
             f_opt={}        
-
+        f_name = f_opt.get('formula_name',f_name)
         f_hor = f_opt.get('past_horizon',0.)   
         t0 = f_opt.get('t0',0.)
         tend = f_opt.get('tend',self.current_time)

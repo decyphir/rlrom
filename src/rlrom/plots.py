@@ -2,7 +2,6 @@ import re
 import matplotlib.pyplot as plt
 import rlrom.utils as utils
 
-
 def plot_signal(env, st, ax):
     get_time = env.get_wrapper_attr('get_time')
     get_sig = env.get_wrapper_attr('get_sig')
@@ -20,7 +19,6 @@ def plot_rob(env, formula, ax, past_horizon=0, online=True):
     ax.plot(time, vals, label = formula)
     ax.legend()
     ax.grid()
-
 
 
 class live_line:
