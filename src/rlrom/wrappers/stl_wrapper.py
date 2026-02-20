@@ -376,11 +376,9 @@ class STLWrapper(gym.Wrapper):
 
         res_all_ep = dict({'basics':{}, 'reward_formulas':dict(), 'eval_formulas':dict()})            
         res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
-        res_all_ep['basics']['mean_ep_rew'] = res['ep_rew'].mean()
+        res_all_ep['basics']['mean_ep_rew'] = np.double(res['ep_rew']).mean()
         # maybe a mean mean reward ?
         
-        # rewards formulas: here we "replay" the trace, reusing stl_data, but reinjecting each sample step by step to get true online evaluation
-        # WHY ???
         stl_data = episode['stl_data']            
         len_episode = len(stl_data)
         if self.reward_formulas != dict():
@@ -388,13 +386,15 @@ class STLWrapper(gym.Wrapper):
             res_f = episode['res_f']
             # Synthesize 
             for f_name,f_cfg in self.reward_formulas.items():
+                if f_name not in res:
+                    res[f_name] = dict()
                 w = f_cfg.get('weight', 1)
-                res[f_name] = add_metric(res[f_name], 'mean', w*res_f[f_name].mean())
+                res[f_name] = add_metric(res[f_name], 'mean', w*np.double(res_f[f_name]).mean())
                 
-                sum_f = w*res_f[f_name].sum()
+                sum_f = w*np.double(res_f[f_name]).sum()
                 res[f_name] = add_metric(res[f_name], 'sum', sum_f)
                 
-                num_sat = (res_f[f_name]>0).sum()
+                num_sat = (np.double(res_f[f_name])>0).sum()
                 res[f_name] = add_metric(res[f_name], 'num_sat', num_sat)
 
             res_rew_f_list.append(res_f)            
