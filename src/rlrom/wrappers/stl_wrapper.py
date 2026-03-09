@@ -43,6 +43,8 @@ class STLWrapper(gym.Wrapper):
         self.real_time_step = cfg_specs.get('real_time_step',1)
         self.obs_formulas = cfg_specs.get('obs_formulas',{})        
         self.reward_formulas = cfg_specs.get('reward_formulas',{})
+        self.keep_old_reward = cfg_specs.get('keep_old_reward',True)
+        self.multi_objective = cfg_specs.get('multi_objective',False)
         self.eval_formulas = cfg_specs.get('eval_formulas',{})
         self.end_formulas = cfg_specs.get('end_formulas',{})
         self.debug_signals=  cfg_specs.get('debug_signals',False)
@@ -98,6 +100,13 @@ class STLWrapper(gym.Wrapper):
                 f_opt=dict()            
             obs_name = f_opt.get('obs_name', f_name)            
             self.signals_map[obs_name]= f_opt
+        
+        if self.multi_objective:
+            # See https://mo-gymnasium.farama.org/tutorials/custom_env/
+            self.reward_dim = len(self.reward_formulas)
+            if self.keep_old_reward:
+                self.reward_dim += 1
+            self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,))
 
     def reset(self, **kwargs):        
         self.time_step = 0
@@ -158,13 +167,23 @@ class STLWrapper(gym.Wrapper):
                 print('Episode terminated because of formula', f_name)
                 terminated = True
 
-        new_reward = reward                         
-        # add stl robustness to reward
-        for f_name, f_opt in self.reward_formulas.items():                         
-            robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
-            self.episode['res_f'][f_name].append(robs_f)
-            w = f_opt.get('weight',1)        
-            new_reward += w*robs_f   
+        if not self.multi_objective:
+            # The returned new_reward is a scalar
+            new_reward = reward if self.keep_old_reward else 0
+            # add stl robustness to reward
+            for f_name, f_opt in self.reward_formulas.items():                         
+                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
+                self.episode['res_f'][f_name].append(robs_f)
+                w = f_opt.get('weight',1)        
+                new_reward += w*robs_f   
+        else:
+            # The returned new_reward is a vector
+            new_reward = [reward] if self.keep_old_reward else []
+            for f_name, f_opt in self.reward_formulas.items():                         
+                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
+                self.episode['res_f'][f_name].append(robs_f)
+                new_reward.append(robs_f)
+            new_reward = np.asarray(new_reward)
         
         # update current time
         self.time_step += 1
