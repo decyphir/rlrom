@@ -213,12 +213,8 @@ class RLTrainer:
     return chkpt_dir, cfg_name
 
   def init_rl_algo(self, cfg_algo_name: dict):
-    ALGO_NAMES_CLASSES = {
-      "a2c": A2C, "sac": SAC, "td3": TD3,
-      "dqn": DQN, "ppo": PPO, "ddpg": DDPG
-    }
     algo_name = None
-    for name in ALGO_NAMES_CLASSES:
+    for name in rlu.ALGO_NAMES_CLASSES:
       if name in cfg_algo_name:
         algo_name = name
         break
@@ -248,7 +244,7 @@ class RLTrainer:
        env = self.make_env()
 
     print(cfg_rl_algo)
-    algo_class = ALGO_NAMES_CLASSES[algo_name]
+    algo_class = rlu.ALGO_NAMES_CLASSES[algo_name]
     self.model= algo_class(env=env, **cfg_rl_algo )
 
     return self.model
