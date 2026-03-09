@@ -27,6 +27,7 @@ dependencies = [
     "kaleido>=1.1.0",
     "ir-sim>=2.8.2",
     "ipympl>=0.10.0",
+    "wandb>=0.25.0",
 ]
 
 [project.optional-dependencies]
