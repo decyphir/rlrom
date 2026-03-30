@@ -2207,6 +2207,23 @@ wheels = [
 ]
 
 [[package]]
+name = "mo-gymnasium"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "gymnasium" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pygame" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/2b/9b38d06a0827aa393710d07016cc4b9dd5b23607dbe80163f7e99c4c6649/mo_gymnasium-1.3.2.tar.gz", hash = "sha256:cd19c58f030fa32d3ca7a61210bc099921867c024b3e6ea12f97908ec11c8f7f", size = 468197 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/98/f187e8b5e96b241d58afb550e8425eafda867870cef568e5046f03ee6d76/mo_gymnasium-1.3.2-py3-none-any.whl", hash = "sha256:8728698efc1257b5893f69e1a7b41cca6b1f5c3e0dd3c5b6f4dce2337fd36765", size = 481774 },
+]
+
+[[package]]
 name = "mpmath"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3787,7 +3804,7 @@ wheels = [
 
 [[package]]
 name = "rlrom"
-version = "0.2.0.post64.dev0+bd76665"
+version = "0.2.0.post66.dev0+1256e72"
 source = { editable = "." }
 dependencies = [
     { name = "bokeh" },
@@ -3798,6 +3815,7 @@ dependencies = [
     { name = "ir-sim" },
     { name = "kaleido" },
     { name = "minigrid" },
+    { name = "mo-gymnasium" },
     { name = "plotly" },
     { name = "polars" },
     { name = "rich" },
@@ -3838,6 +3856,7 @@ requires-dist = [
     { name = "ir-sim", specifier = ">=2.8.2" },
     { name = "kaleido", specifier = ">=1.1.0" },
     { name = "minigrid", specifier = ">=3.0.0,<4.0.0" },
+    { name = "mo-gymnasium", specifier = ">=1.3.2" },
     { name = "plotly", specifier = ">=6.3.1" },
     { name = "polars", specifier = ">=1.34.0" },
     { name = "rich", specifier = ">=14.1.0,<15.0.0" },
