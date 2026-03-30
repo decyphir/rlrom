@@ -14,6 +14,8 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMoni
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 from gymnasium.wrappers import FlattenObservation
 
+from mo_gymnasium.wrappers.vector import MOSyncVectorEnv, MORecordEpisodeStatistics
+
 # rlrom stuff
 from rlrom.testers import RLTester
 import rlrom.utils as rlu
@@ -228,8 +230,12 @@ class RLTrainer:
     if cfg_algo.get(algo_name) is not None:                     
       cfg_rl_algo = copy.deepcopy(cfg_algo.get(algo_name))
 
+    env = self.make_env()
+    is_multiobjective = env.get_wrapper_attr("multi_objective")
+    del env
+
     # Policy     
-    if 'policy' not in cfg_rl_algo:
+    if 'policy' not in cfg_rl_algo and not is_multiobjective: # TODO: Handle multiobjective policy
       cfg_rl_algo['policy']= 'MlpPolicy'
 
     if 'policy_kwargs' in cfg_rl_algo:
@@ -238,7 +244,7 @@ class RLTrainer:
     
     # Environments
     n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
+    if n_envs>1 and not is_multiobjective: # TODO: Handle multiobjective vector envs, see MOSyncVectorEnv
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
        env = self.make_env()

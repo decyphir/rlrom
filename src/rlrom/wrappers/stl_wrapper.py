@@ -107,6 +107,8 @@ class STLWrapper(gym.Wrapper):
             if self.keep_old_reward:
                 self.reward_dim += 1
             self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,))
+            self.unwrapped.reward_dim = self.reward_dim
+            self.unwrapped.reward_space = self.reward_space
 
     def reset(self, **kwargs):        
         self.time_step = 0

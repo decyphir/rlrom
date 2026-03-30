@@ -1,4 +1,5 @@
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
+from morl_baselines.multi_policy.pcn.pcn import PCN
 from sb3_contrib import TRPO, QRDQN
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
@@ -15,7 +16,8 @@ import polars as pl
 
 ALGO_NAMES_CLASSES = {
   "ppo": PPO, "a2c": A2C, "sac": SAC, "td3": TD3,
-  "trpo": TRPO, "dqn": DQN, "ddpg": DDPG, "qrdqn": QRDQN
+  "trpo": TRPO, "dqn": DQN, "ddpg": DDPG, "qrdqn": QRDQN,
+  "pcn": PCN
 }
 
 yaml = YAML(typ='safe')
