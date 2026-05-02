@@ -171,13 +171,28 @@ class RLTrainer:
     progress_bar = self.cfg_train.get('progress_bar',True)    
     tb_prefix =  rlu.add_now_suffix(self.model_name)
 
-    # Train the agent
-    model.learn(
-      total_timesteps = total_timesteps,
-      callback = callbacks,
-      tb_log_name = tb_prefix,
-      progress_bar= progress_bar,
-    )
+    # algo_train_kwargs contains algorithm-specific configurations that are only
+    # used when calling train(); these are used heavily in morl-baselines
+    algo_train_kwargs = self.cfg_train.get('train_kwargs', {})
+    if "ref_point" in algo_train_kwargs:
+      algo_train_kwargs["ref_point"] = np.asarray(algo_train_kwargs["ref_point"])
+
+    # Train the agent: Method is "learn" or "train" depending on whether it's a
+    # SB3 or morl-baselines model
+    assert hasattr(model, "learn") or hasattr(model, "train")
+    if hasattr(model, "learn"):
+      model.learn(
+        total_timesteps = total_timesteps,
+        callback = callbacks,
+        tb_log_name = tb_prefix,
+        progress_bar= progress_bar,
+      )
+    else:
+      model.train(
+        total_timesteps = total_timesteps,
+        eval_env = self.make_env(),
+        **algo_train_kwargs
+      )
     
     # Saving the agent
     self.save_model()
