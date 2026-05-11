@@ -143,6 +143,8 @@ class RLTrainer:
     self.model_use_specs = self.cfg.get('model_use_specs', False)
     self.env_name = self.cfg.get('env_name')
     self.model_name = self.cfg.get('model_name')
+    if self.model_name is None:
+      raise ValueError("model_name must be provided in the top-level configuration")
     #self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
     self.make_env= lambda: make_env_train(self.cfg)
     self.model = None
