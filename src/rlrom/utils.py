@@ -1,5 +1,20 @@
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
+from morl_baselines.single_policy.ser.mo_ppo import MOPPO
+from morl_baselines.single_policy.ser.nl_mo_ppo import NLMOPPO
+from morl_baselines.single_policy.ser.mo_q_learning import MOQLearning
+from morl_baselines.single_policy.ser.mosac_continuous_action import MOSAC
+from morl_baselines.single_policy.ser.mosac_discrete_action import MOSACDiscrete
+from morl_baselines.single_policy.esr.eupg import EUPG
 from morl_baselines.multi_policy.pcn.pcn import PCN
+from morl_baselines.multi_policy.pgmorl.pgmorl import PGMORL
+from morl_baselines.multi_policy.pareto_q_learning.pql import PQL
+from morl_baselines.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import MPMOQLearning
+from morl_baselines.multi_policy.morld.morld import MORLD
+from morl_baselines.multi_policy.ipro.ipro_2d import IPRO2D
+from morl_baselines.multi_policy.ipro.ipro import IPRO
+from morl_baselines.multi_policy.capql.capql import CAPQL
+from morl_baselines.multi_policy.envelope.envelope import Envelope
+from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from sb3_contrib import TRPO, QRDQN
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
@@ -15,9 +30,33 @@ import torch as th
 import polars as pl
 
 ALGO_NAMES_CLASSES = {
-  "ppo": PPO, "a2c": A2C, "sac": SAC, "td3": TD3,
-  "trpo": TRPO, "dqn": DQN, "ddpg": DDPG, "qrdqn": QRDQN,
-  "pcn": PCN
+    # Stable Baselines 3 (single objective)
+    "ppo": PPO,
+    "a2c": A2C,
+    "sac": SAC,
+    "td3": TD3,
+    "trpo": TRPO,
+    "dqn": DQN,
+    "ddpg": DDPG,
+    "qrdqn": QRDQN,
+    # MORL single-policy
+    "moppo": MOPPO,
+    "nlmoppo": NLMOPPO,
+    "moql": MOQLearning,
+    "mosac": MOSAC,
+    "mosac_discrete": MOSACDiscrete,
+    "eupg": EUPG,
+    # MORL multi-policy
+    "pcn": PCN,
+    "pgmorl": PGMORL,
+    "pql": PQL,
+    "mpmoql": MPMOQLearning,
+    "morld": MORLD,
+    "ipro2d": IPRO2D,
+    "ipro": IPRO,
+    "capql": CAPQL,
+    "envelope": Envelope,
+    "gpipd": GPIPD,
 }
 
 yaml = YAML(typ='safe')
