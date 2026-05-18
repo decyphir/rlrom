@@ -90,9 +90,12 @@ class STLWrapper(gym.Wrapper):
         if self.BigM is None:
             self.BigM = stlrom.Signal.get_BigM()
                 
-        obs_formula_space = spaces.Box(np.array([-self.BigM]*num_obs_formulas), np.array([self.BigM]*num_obs_formulas))
-        dict_obs = {'unwrapped': env.observation_space, 'obs_formulas': obs_formula_space}        
-        self.observation_space =  spaces.Dict(dict_obs)        
+        if num_obs_formulas == 0:
+            self.observation_space = env.observation_space
+        else:
+            obs_formula_space = spaces.Box(np.array([-self.BigM]*num_obs_formulas), np.array([self.BigM]*num_obs_formulas))
+            dict_obs = {'unwrapped': env.observation_space, 'obs_formulas': obs_formula_space}        
+            self.observation_space =  spaces.Dict(dict_obs)        
 
         # adding mapping from stl signal to its config
         for f_name, f_opt in self.obs_formulas.items():                                     
@@ -116,9 +119,10 @@ class STLWrapper(gym.Wrapper):
         obs0, info = self.env.reset(**kwargs)
         self.wrapped_obs = obs0        
         robs0 = self.reset_monitor()
-        obs = dict()
-        obs['unwrapped'] = obs0
-        obs['obs_formulas'] = robs0
+        obs = dict(
+            unwrapped=obs0,
+            obs_formulas=robs0
+        ) if isinstance(self.observation_space, spaces.Dict) else obs0
         self.last_obs = obs
         self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[], 'last_obs':[obs], 
                       'stl_data':[]}        
@@ -193,9 +197,10 @@ class STLWrapper(gym.Wrapper):
         
         # return obs with added robustness
         
-        new_obs = dict()
-        new_obs['unwrapped'] = obs
-        new_obs['obs_formulas'] = robs
+        new_obs = dict(
+            unwrapped=obs,
+            obs_formulas=robs
+        ) if isinstance(self.observation_space, spaces.Dict) else obs
 
         self.episode['observations'].append(self.last_obs)               
         self.episode['actions'].append(action)
