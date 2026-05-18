@@ -12,7 +12,7 @@ def wrap_env_specs(env,cfg):
         cfg_rm = cfg_specs.get('cfg_rm', None)            
         if cfg_rm is not None:
             env = RewardMachineWrapper(env, cfg_rm)  
-        else:
+        elif cfg.get("flatten_obs", True):
             env = FlattenObservation(env)          
     
     return env
