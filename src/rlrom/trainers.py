@@ -269,7 +269,6 @@ class RLTrainer:
     else:
        env = self.make_env()
 
-    print(cfg_rl_algo)
     algo_class = rlu.ALGO_NAMES_CLASSES[algo_name]
     self.model= algo_class(env=env, **cfg_rl_algo )
 
