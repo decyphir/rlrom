@@ -84,8 +84,11 @@ class RlromCallback(BaseCallback):
     print(f'n_envs: {self.n_envs}, Eval freq: {self.eval_freq}, Checkpoints folder: {self.chkpt_dir}')
     print(f'Saving configuration file to {cfg_filename}')
     
-    with open(cfg_filename,'w') as f:
-         rlu.yaml.dump(self.cfg, f)
+    try:
+      with open(cfg_filename,'w') as f:
+           rlu.yaml.dump(self.cfg, f)
+    except Exception as e:
+      print(f"Could not save configuration file: {e}")
 
 
   def _on_step(self):
