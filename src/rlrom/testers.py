@@ -63,6 +63,7 @@ class RLTester:
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
         self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
         self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
+        self.model_action_function = None # if None, model.predict() is used; otherwise, model_action_function(model, obs) is called
         
     def load_model(self, model_file=None):
         
@@ -110,7 +111,8 @@ class RLTester:
                     obs = last_obs['unwrapped']
                 else:
                     pass # use the obs that we were given                
-            action, _ = self.model.predict(obs)
+            action = self.model.predict(obs)[0] if self.model_action_function is None \
+                else self.model_action_function(self.model, obs)
         return action
 
     def init_env(self, **kargs):      # **kargs allows to override self.cfg fields without changing self.cfg
