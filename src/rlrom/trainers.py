@@ -207,9 +207,12 @@ class RLTrainer:
   def save_model(self,path=None):
     model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
-    self.model.save(model_name) #TODO try except 
-    with open(cfg_name,'w') as f:
-         rlu.yaml.dump(self.cfg, f)
+    try:
+      self.model.save(model_name)
+      with open(cfg_name,'w') as f:
+           rlu.yaml.dump(self.cfg, f)
+    except Exception as e:
+      print(f"Could not save model: {e}")
 
   def set_checkpoint_dir(self):
     cfg= self.cfg
