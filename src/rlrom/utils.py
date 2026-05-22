@@ -15,6 +15,9 @@ from morl_baselines.multi_policy.ipro.ipro import IPRO
 from morl_baselines.multi_policy.capql.capql import CAPQL
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
+from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
+from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
+from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
 from sb3_contrib import TRPO, QRDQN
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
@@ -57,6 +60,9 @@ ALGO_NAMES_CLASSES = {
     "capql": CAPQL,
     "envelope": Envelope,
     "gpipd": GPIPD,
+    "gpils": GPILS,
+    "gpipd_continuous_action": GPIPDContinuousAction,
+    "gpils_continuous_action": GPILSContinuousAction,
 }
 
 yaml = YAML(typ='safe')
