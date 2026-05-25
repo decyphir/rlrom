@@ -18,7 +18,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
-from sb3_contrib import TRPO, QRDQN
+from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
@@ -38,9 +38,11 @@ ALGO_NAMES_CLASSES = {
     "a2c": A2C,
     "sac": SAC,
     "td3": TD3,
-    "trpo": TRPO,
     "dqn": DQN,
     "ddpg": DDPG,
+    # sb3-contrib (more RL algos)
+    "trpo": TRPO,
+    "crossq": CrossQ,
     "qrdqn": QRDQN,
     # MORL single-policy
     "moppo": MOPPO,
