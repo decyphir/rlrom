@@ -18,6 +18,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
+from rlrom.extra_algos.tabular_q_learning import TabularQLearning
 from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
@@ -44,6 +45,8 @@ ALGO_NAMES_CLASSES = {
     "trpo": TRPO,
     "crossq": CrossQ,
     "qrdqn": QRDQN,
+    # Other algos
+    "qlearning": TabularQLearning,
     # MORL single-policy
     "moppo": MOPPO,
     "nlmoppo": NLMOPPO,
