@@ -65,4 +65,4 @@ build-backend = "hatchling.build"
 source = "uv-dynamic-versioning"
 
 [tool.uv.sources]
-morl-baselines = { git = "https://github.com/LucasAlegre/morl-baselines.git" }
+morl-baselines = { git = "https://github.com/jongoiko/morl-baselines.git", branch = "gpi_pd_continuous_action_fix_idxes_device" }
