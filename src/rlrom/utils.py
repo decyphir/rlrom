@@ -18,6 +18,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
+import sbx
 from rlrom.extra_algos.tabular_q_learning import TabularQLearning
 from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
@@ -41,6 +42,13 @@ ALGO_NAMES_CLASSES = {
     "td3": TD3,
     "dqn": DQN,
     "ddpg": DDPG,
+    # SBX variants (Stable Baselines Jax)
+    "sbx_ppo": sbx.PPO,
+    "sbx_sac": sbx.SAC,
+    "sbx_td3": sbx.TD3,
+    "sbx_dqn": sbx.DQN,
+    "sbx_ddpg": sbx.DDPG,
+    "sbx_crossq": sbx.CrossQ,
     # sb3-contrib (more RL algos)
     "trpo": TRPO,
     "crossq": CrossQ,
