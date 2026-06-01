@@ -106,8 +106,11 @@ class RlromCallback(BaseCallback):
     Tres = self.eval_policy()
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
-    with open(res_filename,'w') as f:
-       rlu.yaml.dump(Tres, f)
+    try:
+      with open(res_filename,'w') as f:
+         rlu.yaml.dump(Tres, f)
+    except Exception as e:
+      print(f"Could not save test results to {res_filename}: {e}")
 
   def _on_training_end(self):
     self.eval_and_save_model()
