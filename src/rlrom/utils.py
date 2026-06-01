@@ -18,6 +18,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
 from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
+from morl_baselines.multi_policy.gpi_ls_jax.gpi_ls_continuous_action_jax import GPILSContinuousAction as GPILSContinuousActionJax
 import sbx
 from rlrom.extra_algos.tabular_q_learning import TabularQLearning
 from sb3_contrib import TRPO, QRDQN, CrossQ
@@ -76,6 +77,7 @@ ALGO_NAMES_CLASSES = {
     "gpils": GPILS,
     "gpipd_continuous_action": GPIPDContinuousAction,
     "gpils_continuous_action": GPILSContinuousAction,
+    "gpils_continuous_action_jax": GPILSContinuousActionJax
 }
 
 yaml = YAML(typ='safe')
