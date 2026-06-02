@@ -782,7 +782,7 @@ wheels = [
 
 [[package]]
 name = "cvxpy"
-version = "1.9.0"
+version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -812,32 +812,32 @@ dependencies = [
     { name = "scs", marker = "python_full_version >= '3.11'" },
     { name = "sparsediffpy", marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/98/4c0a083b86a66d3e3e4b61e2c9eb37134964681192dcc8167c304004d7a0/cvxpy-1.9.0.tar.gz", hash = "sha256:b392783713d82a0f4c229a9c08f2f0c03fc5e8b23e877dc45617a60dfac06104", size = 1885589 }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/52/be03c63aa2f101ea6b50d676bd4618c77b17d4b0ce3e173cf306fb805dc4/cvxpy-1.9.1.tar.gz", hash = "sha256:4504d44011e0ef21348db1d8d1d2784d39742c646853fed13894d9b2292ae853", size = 1889168 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/fc/0f6f1e2b0f85134e63716d7ee42ae4c69892339a10a6c2c61fca4e8cdc7d/cvxpy-1.9.0-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:2ae78b9d56ddeb126d1b45dd82066c1f923894f42bff7227f6c416505ad5e6bb", size = 1599364 },
-    { url = "https://files.pythonhosted.org/packages/64/f0/57f541c20fd57c56c1d2a781945d6fff570b8d25f29090ffdce72a98e792/cvxpy-1.9.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:52eb87b58b96749316d96430ed88cca2b8b61dcf137c648c3ee70739c450d2b6", size = 1389746 },
-    { url = "https://files.pythonhosted.org/packages/59/6e/052511c6edb8336d2e69b86ed6562a422ae07254662e1cf3bac54beceaa0/cvxpy-1.9.0-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:19dee8fc8c87014cf5f716e6bdc15c8777210d16ecb26616b7aa07a92d950ed8", size = 4325377 },
-    { url = "https://files.pythonhosted.org/packages/e4/c6/b256d8f4ab98249923fe0f0810c89ed0104383c0d0896d0827f98b666bcd/cvxpy-1.9.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:27e41cdc25ab40b2b4ad08e2fc486733f893b067c6bcb28b6906eabf21632fba", size = 4374657 },
-    { url = "https://files.pythonhosted.org/packages/15/ad/840bc8eb81a7cb4fb03febbddee02aafdf03acf2938d88d2899b1b87a3bb/cvxpy-1.9.0-cp311-cp311-win_amd64.whl", hash = "sha256:dc47a3e9d86cfa917a0cba9c075f22727806b406b6a67b5ff342959358e10991", size = 1351849 },
-    { url = "https://files.pythonhosted.org/packages/52/5e/d2fdaeb8834259cbba02dc0f7f187b0f5a12c8bbacb4ab3dca6ac8403d36/cvxpy-1.9.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:f6a4f23db5ef11e1e52e946fb90cf44e25bac635e53a534c32e368300e25860d", size = 1601277 },
-    { url = "https://files.pythonhosted.org/packages/0b/d8/72558be03c4d2b98ead008c00799da76236d3169045c9e7f9811510dccd5/cvxpy-1.9.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:67fa522ac687f8407ec5e4ab9f5af7115b349ed3ba0369e2e8a39fb78d129178", size = 1391137 },
-    { url = "https://files.pythonhosted.org/packages/18/a4/b92c30c991697e4192f6aa4d4fb33206c23564329b25ccb2d62dd26b3aeb/cvxpy-1.9.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:eeefd2d3c8bc28f5b909c0359b003a35ba6f4e101f004dfca1a60a6bee20ddae", size = 4343514 },
-    { url = "https://files.pythonhosted.org/packages/4d/d9/8a8aaad62ba6aee8feff5957e024417e85641dad9acfc4a0b3b41ac76b3f/cvxpy-1.9.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:31652050a82b98c6107f0fdced1b07aca0e27e4b587a6f1d479e1542a171bf28", size = 4392472 },
-    { url = "https://files.pythonhosted.org/packages/b4/1b/e3b336737f4ec8690ad33c8d02f571c47fa40047ea2cd794fedbbb33977f/cvxpy-1.9.0-cp312-cp312-win_amd64.whl", hash = "sha256:fbaa8dee0d29af1b4298cba8e361edfcab5585dcb96b4216b35514fc741b93bf", size = 1351964 },
-    { url = "https://files.pythonhosted.org/packages/f1/41/e226f6dac8de660ce2e25ffc9fa436fff499783ccd147b37927bb20047c7/cvxpy-1.9.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:71286efb504c50d61e730fc8b3cd4377f1fe5d40a245508579d756ee9801525b", size = 1601326 },
-    { url = "https://files.pythonhosted.org/packages/ba/d4/f47c546b70fc4b42ac15476c179ad22398c083c12b9c688f9a75d2c03f2a/cvxpy-1.9.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:0f9000e21cbeb6bb4ab7ffb97b87a45dd0873603126323418b8691ad9f7707fd", size = 1391127 },
-    { url = "https://files.pythonhosted.org/packages/06/f7/8d9c7cda2021c82cca74f579c092411e95bfdcfad95c5046985e628d86d5/cvxpy-1.9.0-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9d3dd28dc7996899c4a3441fb5cf3907a95f09fefd54bb5afcbe4ac709bf193a", size = 4343116 },
-    { url = "https://files.pythonhosted.org/packages/a0/42/df61884aff1d1881daebeff7d2dc1cdf0207c5bee0d6eb94fa48a5d879ce/cvxpy-1.9.0-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5cabde10df1e7d9efa7652ad62f08032aebd98e59747b71a0bc15228c2f04f8a", size = 4392197 },
-    { url = "https://files.pythonhosted.org/packages/2a/00/9dcbd849941840821cdcd39cff10afe4994f00daf9db9a6e0c7966e70a19/cvxpy-1.9.0-cp313-cp313-win_amd64.whl", hash = "sha256:f5b2a6a355428b261727396a07611f652f96ca5740b1012148a6b0141ad7dc44", size = 1351997 },
-    { url = "https://files.pythonhosted.org/packages/4a/31/40742143e90cbd1b81ace719ad6e5d904df1f4d8c3c49359f3b4304ddde9/cvxpy-1.9.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:c23cc318d0a804886f0a86bc40a8129b0dcfa9868ab1922143788bb4bf4c4950", size = 1602169 },
-    { url = "https://files.pythonhosted.org/packages/c5/d8/0219ada4a93d1ef7f98766667c84acb5705d1b1e21fb094c35714e41434d/cvxpy-1.9.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:f1597aca3442d3dfd85c362d415f9a10d373d75bb45a60ed87cf9b76eb31410e", size = 1391592 },
-    { url = "https://files.pythonhosted.org/packages/b7/41/a3b493e501dd2252132dcbdb1b9e708eaf7bb961b86a1db7e8ecf72d8f4d/cvxpy-1.9.0-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:78549ad31e9fcecca1cdb993ab0c1b6a00a7791f59b5cefc6dd1049942310072", size = 4339749 },
-    { url = "https://files.pythonhosted.org/packages/9b/87/1e472d8748c4ddd5c7389f467808f5efc1a1740c316a458f8d66044b4e68/cvxpy-1.9.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:40403a0c36e7d7e23b9515b01eb4dffe751c713c54aff011a22f32f31f476757", size = 4387783 },
-    { url = "https://files.pythonhosted.org/packages/b6/a1/1dbe972618aa8da61f6a08ce208ee54cb4833168970cf269d88930b1b64e/cvxpy-1.9.0-cp314-cp314-win_amd64.whl", hash = "sha256:6bda922fc3204e8c572cdad15c658fd3cdb62a15655b8af5398d832b7d7405ee", size = 1357973 },
-    { url = "https://files.pythonhosted.org/packages/9d/41/76fab9c267cb34fe78c8020e4d786e70614ba9fcf819d607454d0a76335f/cvxpy-1.9.0-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:de8a7a2de1b011e7c66292399f35ccb881e9674b248e5a3d35bfd54b0a24a7ab", size = 1609691 },
-    { url = "https://files.pythonhosted.org/packages/d3/49/6cf735d69755401bf9a2d39372964236f80fea3b5978ac0f8ffb621419cb/cvxpy-1.9.0-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:63d00f30e29714373f806b42b4b7902846970d04aea9b29eedceb9e8cb694b6d", size = 1395929 },
-    { url = "https://files.pythonhosted.org/packages/06/76/668458d9818e7884b462c99a988384c2857e5f7223670f7b95a548ffa1c9/cvxpy-1.9.0-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:717c67dd0095dc453a5733d0ec5bca588c3e7acd33da0a9a5cfd0055568594ca", size = 4327302 },
-    { url = "https://files.pythonhosted.org/packages/6b/5f/62c259a38b3b3184f91ba6f21f9c7bdc9ab72fd3f068c288f7964d9ee4bc/cvxpy-1.9.0-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a5f077ead8bfc9171dc063c6521b1656452628e931aab4c73b460df16d97cee8", size = 4379073 },
+    { url = "https://files.pythonhosted.org/packages/0e/25/7384a92ca7079a902717b53bb6da674953e744cdaf46114727d73b2cc896/cvxpy-1.9.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:0ed5e3af294f4cc060dbcdf9ecf21a36247bc4ff89b4b390f5def989e42a23db", size = 1604339 },
+    { url = "https://files.pythonhosted.org/packages/23/a9/98359fc64042152c1692929b32e17461667e69075316bc1a7aef8bf0d6ab/cvxpy-1.9.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:e78eda914db92954ac63c58cd3176349f344bf120f3733fab1dbb5ce7dc88ce9", size = 1394712 },
+    { url = "https://files.pythonhosted.org/packages/85/ca/228f24cc89d578e66e3bf89f295878d687883c86349362ebd33a9946bb92/cvxpy-1.9.1-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ee74bee6a9179e57f80993556afd1f7588d9afedd8fcca707b32a8dcb84a67fa", size = 4330363 },
+    { url = "https://files.pythonhosted.org/packages/11/3a/d8e7b83678e8ca959b8409db265deaccb0f28dfc2f32a30e3d4037cba111/cvxpy-1.9.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:41bba9aea431568fe863bd1f461659b66efc3154f8d9699a2fef329c5d96bc01", size = 4379645 },
+    { url = "https://files.pythonhosted.org/packages/90/5f/90666e73bc409693a0edf4f10c1eb47d6d134754bc44ca6770bdde89c347/cvxpy-1.9.1-cp311-cp311-win_amd64.whl", hash = "sha256:a0d8589b159deba642cd339c4bc0903ebf9ef8c6d3c318ea7ed6b81269828a5e", size = 1356842 },
+    { url = "https://files.pythonhosted.org/packages/59/d6/ef27ea596e3bf9393aa3d0f9fbb49876a0d658b4d9bc8e989ba6f6141e66/cvxpy-1.9.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:8ab4900f6ee50ea89a7778b15b7361bdc23fb2a40bc8ed34863d69edb1e8db25", size = 1606249 },
+    { url = "https://files.pythonhosted.org/packages/17/27/2fb792fc990e3dd73710610e5df6fab51e421ce51f6190602cd3af73220c/cvxpy-1.9.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:ab98f4e5b31aef375efee96c22a499b3d6deed34b9b92ab852854745865e35ec", size = 1396105 },
+    { url = "https://files.pythonhosted.org/packages/b8/34/8ab5203ab71bf1f4a4679f04949bf28a9e4175b69f88fee23eef77520266/cvxpy-1.9.1-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e5a0f0e8c7999b682aee3c1bcb3d65e6102591ce4ced7c99ea3672c9d993c63d", size = 4348501 },
+    { url = "https://files.pythonhosted.org/packages/b0/19/588ff6966046a553ed8ca1cb429cecbc34ac7bb7945b954bdf1b3cae1bb8/cvxpy-1.9.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:df7f2d60d80be2b76617c68c26c241c7208bd4336edc6d726e048ce039570016", size = 4397460 },
+    { url = "https://files.pythonhosted.org/packages/a7/fd/c7f778cc2c2d5efed895a0fca50650ad9a9ed7c3bf0506bd5d13b62e89b1/cvxpy-1.9.1-cp312-cp312-win_amd64.whl", hash = "sha256:d54e298739afffe97a4f0e7c2584f70cf65ba5c0107cfd6166293873db80d311", size = 1356961 },
+    { url = "https://files.pythonhosted.org/packages/17/a3/f43c4ab773193ec690e82536f136d35132243892bea9712f276bad6c4694/cvxpy-1.9.1-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:b5b367dda7851414295805900c131af9df910aa69ab0e86a54138d64be24fc96", size = 1606295 },
+    { url = "https://files.pythonhosted.org/packages/8a/cf/c96e988298093cc8c01ade4078d0d3ba5940757351da5a57967aa8e4f521/cvxpy-1.9.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:fd9e3f5cc6aa39c1537dacdd159806e21b388c8b7e73093c8c98365ca60ae527", size = 1396098 },
+    { url = "https://files.pythonhosted.org/packages/12/34/b05bf8e6d58f9e0bd9a548d2fc71a544fe6f13b4204f975929054cb3053b/cvxpy-1.9.1-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:1a7760ddc04bad6ee8b3632d4b8fa092fb5bea3a00750e01e21d57f1aedfdd01", size = 4348103 },
+    { url = "https://files.pythonhosted.org/packages/a1/7c/8cd7c88a905307f96cf21e2498d159f452a886f412966371db38932de666/cvxpy-1.9.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:99f489ad58fb9ac27b02c38ff5eb5d6f2852c6cb7ae2cb98c58846c707d7237f", size = 4397182 },
+    { url = "https://files.pythonhosted.org/packages/ed/48/5a8f0e9e9c421005c570d7060b6cf2a6c70fd5c5e99dbb9eb31b9ac92ac3/cvxpy-1.9.1-cp313-cp313-win_amd64.whl", hash = "sha256:e824f0b626e6ec56d84901e56cfbbe067f4397390cbcfe7438dbeafdee4463c9", size = 1356989 },
+    { url = "https://files.pythonhosted.org/packages/0e/e6/ef14cf6f78406070095a532500d3c433f5d2b492f5e6fec1ecc1f38893e5/cvxpy-1.9.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:b3a3fb63f284b13db893f7245fc8c1fddf20a3d3d415d85634b2cc107b0261d7", size = 1607137 },
+    { url = "https://files.pythonhosted.org/packages/a3/13/cf8a4db898e674239d1517833f7d099fd1568bdaa0a02ddbdfe8b4a99731/cvxpy-1.9.1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:d84447e850664aca7e6c17fa37fc7072d97d1de8c1b89896702b955ece7787fb", size = 1396560 },
+    { url = "https://files.pythonhosted.org/packages/bf/96/bbe9c41e6a95bda5a2cbb1010377efa1762be3dbfb4b2be10788d914f277/cvxpy-1.9.1-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:91e412469037dc0b775ffc2315f8022fd8f15d8f37108847ea31520f93d78cfd", size = 4344740 },
+    { url = "https://files.pythonhosted.org/packages/8a/b8/ffbf8d0ee8e89ff10530fc91fcc54adf95848da43db2abba37b1a8a59a77/cvxpy-1.9.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:69cff046b34c568a5911b36a6122085b0685102e7cf5cf845b6ab31adeb93478", size = 4392772 },
+    { url = "https://files.pythonhosted.org/packages/94/62/c842a85cd6d542952a59b8badeaadfb8c14c83428e2062ff62379b9dc598/cvxpy-1.9.1-cp314-cp314-win_amd64.whl", hash = "sha256:649c637095d77fd6ab998f3792a425071df30e49e641e4ea459ed3ee01cb487c", size = 1362971 },
+    { url = "https://files.pythonhosted.org/packages/a6/48/b5a223c97a2ef5e5bc9332a5209d02d7a6ea74758f93354962ed465a9d61/cvxpy-1.9.1-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:88fa05388e70ed49c92bae4251ce722f2170c3f7b7defd54f943d0002b509d12", size = 1614659 },
+    { url = "https://files.pythonhosted.org/packages/4e/f5/e7b3bb8958d7e1f554493d8fcd5cee58ca01244c695c891c2e6b85b56c0f/cvxpy-1.9.1-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:f0adc20ec54b6d7bcb26aeb82e4ef408cf62506420213177f05f3e1a4694bc07", size = 1400901 },
+    { url = "https://files.pythonhosted.org/packages/db/67/183bafeebdf150baabf223c45779fa6002b9fb53e67ce604ced297a08b5b/cvxpy-1.9.1-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ee9969fbba34749d026983b14b8882ae023619b5d95c5bdc3bc5fa3dca47a738", size = 4332292 },
+    { url = "https://files.pythonhosted.org/packages/68/3c/659638af87e56f5d7fd1b65b9e9976379e8d410c93338bf134e19334e927/cvxpy-1.9.1-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ca433d097adae8b2c6d017c9d9ca95eac7fe41f59accd8cb07800e10b9543255", size = 4384057 },
 ]
 
 [[package]]
@@ -1887,6 +1887,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/31/a8/97ef0cbb7a17143ace2643d600a7b80d6705b2266fc31078229e406bdef2/jax-0.6.2-py3-none-any.whl", hash = "sha256:bb24a82dc60ccf704dcaf6dbd07d04957f68a6c686db19630dd75260d1fb788c", size = 2722396 },
 ]
 
+[package.optional-dependencies]
+cuda12 = [
+    { name = "jax-cuda12-plugin", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, extra = ["with-cuda"], marker = "python_full_version < '3.11'" },
+    { name = "jaxlib", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+]
+
 [[package]]
 name = "jax"
 version = "0.8.3"
@@ -1922,57 +1928,145 @@ wheels = [
 ]
 
 [package.optional-dependencies]
-cuda13 = [
-    { name = "jax-cuda13-plugin", extra = ["with-cuda"], marker = "python_full_version >= '3.11'" },
+cuda12 = [
+    { name = "jax-cuda12-plugin", version = "0.8.3", source = { registry = "https://pypi.org/simple" }, extra = ["with-cuda"], marker = "python_full_version >= '3.11'" },
     { name = "jaxlib", version = "0.8.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [[package]]
-name = "jax-cuda13-pjrt"
-version = "0.8.3"
+name = "jax-cuda12-pjrt"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11' and sys_platform == 'linux'",
+    "python_full_version < '3.11' and sys_platform != 'linux'",
+]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/2b/ce02419a82d50be8214928b2dbaaa90ea29c71370ff1c0de517765a26ea1/jax_cuda13_pjrt-0.8.3-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:b45a4a111e05d33e58fc262d9c0cde5bcd83dc3300bd6ac85c39b180575eebae", size = 104805710 },
-    { url = "https://files.pythonhosted.org/packages/47/d0/84d2e4a55f01d78b4dd050ba538308e6ee4c77a470caf47f20e2fbfd78f5/jax_cuda13_pjrt-0.8.3-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:e0e7ac14ad4c6cb00dd1ef2b522b52eb61bfe89ecbc22b63f4b509842ac9b3de", size = 110717836 },
+    { url = "https://files.pythonhosted.org/packages/43/8b/096a12d91b1bc76a13cd8e63f2d8eae5ca9b5693b5ee2687e46be3b5d779/jax_cuda12_pjrt-0.6.2-py3-none-manylinux2014_aarch64.whl", hash = "sha256:22faf020d2e8f7ca1e2915633241f7df7678b73c7078f5f0b2f113248337f7de", size = 111228681 },
+    { url = "https://files.pythonhosted.org/packages/9c/8e/21c21b4335fce1c022c339da5e6b6249c246ad062e924d28fb0eda4bcef0/jax_cuda12_pjrt-0.6.2-py3-none-manylinux2014_x86_64.whl", hash = "sha256:8cd9ead7948ea2c778a508fef5d1159e8b7abf4fccc7037c3fe1dbfcd95012dc", size = 125263999 },
 ]
 
 [[package]]
-name = "jax-cuda13-plugin"
+name = "jax-cuda12-pjrt"
 version = "0.8.3"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jax-cuda13-pjrt", marker = "python_full_version >= '3.11'" },
+resolution-markers = [
+    "python_full_version >= '3.14' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.14' and sys_platform == 'linux'",
+    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.11.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform == 'linux'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'linux'",
+    "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/5c/83fc1af7479dbe896b2a90f53922b096e9a5f1aacf70c19e10d3f7ec2f4e/jax_cuda13_plugin-0.8.3-cp311-cp311-manylinux_2_27_aarch64.whl", hash = "sha256:2ac6b94a520e91b3248e446380adad26fc96184842e0073c062da164e72da306", size = 5663770 },
-    { url = "https://files.pythonhosted.org/packages/7e/7d/29dbfeb12eb8d2600e261629d387fa47c99203290ccc28e9f60b82544476/jax_cuda13_plugin-0.8.3-cp311-cp311-manylinux_2_27_x86_64.whl", hash = "sha256:85ed856a6b2ae4e1e6a86599983c377867951078caae0fada8f4e9e82b5b1cfc", size = 5678397 },
-    { url = "https://files.pythonhosted.org/packages/ae/bf/38a996f25d2cbb2e739a7485b67ed0f7952de1acc1f765940dda3b1a9f9c/jax_cuda13_plugin-0.8.3-cp312-cp312-manylinux_2_27_aarch64.whl", hash = "sha256:558e9b313a3f6c457f312f816298a3fb536440160c767c324d677325ce350b3d", size = 5658036 },
-    { url = "https://files.pythonhosted.org/packages/37/16/b0a66bdf60c061d4cde31188bada761e113aee47b702c5b459d1ee6624ba/jax_cuda13_plugin-0.8.3-cp312-cp312-manylinux_2_27_x86_64.whl", hash = "sha256:28f5381decb99c279b9ac65de66bf739e879fa136fa7ca3b1a5c724d16ef2845", size = 5675612 },
-    { url = "https://files.pythonhosted.org/packages/c6/67/7792cbd93649da532d402e1f5d12590de8097f841c22a483290457083bca/jax_cuda13_plugin-0.8.3-cp313-cp313-manylinux_2_27_aarch64.whl", hash = "sha256:908c715d5cb2bb10967e3513e4e0b89ea76e6843167afaa64a34017010a44dee", size = 5658525 },
-    { url = "https://files.pythonhosted.org/packages/52/c4/17679f4aa0d33308d826a690567b3ca4e1f37efb42d054199b664246e239/jax_cuda13_plugin-0.8.3-cp313-cp313-manylinux_2_27_x86_64.whl", hash = "sha256:f7df93bdf642c88bcf4ce6e57fbebad1bfb15fea6fe238aaed7465341b3f1c8c", size = 5675434 },
-    { url = "https://files.pythonhosted.org/packages/7c/83/5cf8110b3ec73d13e0434bccc7c73a254a3004c651e0c116abf69f56d75f/jax_cuda13_plugin-0.8.3-cp313-cp313t-manylinux_2_27_aarch64.whl", hash = "sha256:7c49819ec6cb94ad53cc1d2494b2adcafc55917e48a6afd95953b7ac19ce2522", size = 5672523 },
-    { url = "https://files.pythonhosted.org/packages/0d/8a/b7e14240544466e264631c22f46758c595ac1497ba3665e82e54065b9790/jax_cuda13_plugin-0.8.3-cp313-cp313t-manylinux_2_27_x86_64.whl", hash = "sha256:cccff31c6e2ae78c7a6f43bae76021763d1aff11fc75809c02bfb1b796ed0da5", size = 5683210 },
-    { url = "https://files.pythonhosted.org/packages/fd/cb/acdf4c42ea15c72ce44eab3a161b7ab224c7931e066ddc8faf59237c50f8/jax_cuda13_plugin-0.8.3-cp314-cp314-manylinux_2_27_aarch64.whl", hash = "sha256:de27203804100e9d17c4bb5309bb4a52798e2a18d2f5911f1b6b86fc42f30d6a", size = 5659155 },
-    { url = "https://files.pythonhosted.org/packages/72/c6/82028b81e806a834845e0a6b43d14a52bcd04a8d357f1d6824bac0b96343/jax_cuda13_plugin-0.8.3-cp314-cp314-manylinux_2_27_x86_64.whl", hash = "sha256:5da345624f0c21a44ad9be372731971a3f1396946b90cb6d154901ccdd2adfcd", size = 5675978 },
-    { url = "https://files.pythonhosted.org/packages/7b/2c/3443832ca050124a12e81361ed9e1fb22bbe7ab2e7a142dbab7309c13a88/jax_cuda13_plugin-0.8.3-cp314-cp314t-manylinux_2_27_aarch64.whl", hash = "sha256:b37e012e560367693bea5d96ee7e74736114d60a16adf704a1b3bb997f11e3a1", size = 5672831 },
-    { url = "https://files.pythonhosted.org/packages/91/41/1a067393549c5344a5e4db037674faf89a9a574607f46f4c2b3273cdd425/jax_cuda13_plugin-0.8.3-cp314-cp314t-manylinux_2_27_x86_64.whl", hash = "sha256:4e5cf4a5eba2dfb4d2ac3adb7e59c390ed6de4410d56ceb04e2207a2af3e102f", size = 5683697 },
+    { url = "https://files.pythonhosted.org/packages/e8/12/a86f876a234cd33dd9ef290dc92fa4cb5c9e5a4ebfde3b8a657244e9aa77/jax_cuda12_pjrt-0.8.3-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:f6d085fa7b2836cd79b14cabf1058ddb50c5161bfca9ede407993fa4f7547b7b", size = 147769955 },
+    { url = "https://files.pythonhosted.org/packages/2e/fa/b28dc4bdd110fb79a78218d11ebfc8695abdc7cf63f0ece9e93200d906c1/jax_cuda12_pjrt-0.8.3-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:f740c661dd4064ff45dedf170fd0c4ff1a25d077636ad293307e8d28c78e65d7", size = 153678420 },
+]
+
+[[package]]
+name = "jax-cuda12-plugin"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11' and sys_platform == 'linux'",
+    "python_full_version < '3.11' and sys_platform != 'linux'",
+]
+dependencies = [
+    { name = "jax-cuda12-pjrt", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/58/29/4b8822ca459da39bda9be7454908ae4e29d88cfb99b480b641cbb063af7a/jax_cuda12_plugin-0.6.2-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:bc5c3a75d05519b4d326e4669d0f7ad0fe0f0acf875f9313d913748ccca5a9ea", size = 15873729 },
+    { url = "https://files.pythonhosted.org/packages/4d/3d/f543bab6ef7eebb9840d618fb2272bdcc0e990e60aa012f14a3564532823/jax_cuda12_plugin-0.6.2-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:1751f88989269b3cdb0dfe4f7b072a6442149818c9bc98c3a395c8acaf910a79", size = 15879965 },
+    { url = "https://files.pythonhosted.org/packages/9e/99/90f81c660bf662698be17e8b959d8302682c5cd5ce0729c0bfc883d8affe/jax_cuda12_plugin-0.6.2-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:2cd8e279a59a38ba0c978a831e13adeb6ee9e4572fba387c7975ba3ad535dd38", size = 15873970 },
+    { url = "https://files.pythonhosted.org/packages/ad/00/e733c87a2fb7265c96f48c991a896552c873de949217823d519288724d91/jax_cuda12_plugin-0.6.2-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:0896cbb308d95291e205cd89d254029dee3a1df43d66e9831331a9afd2d27870", size = 15879563 },
+    { url = "https://files.pythonhosted.org/packages/1d/53/6ea0db7230ac3dcb26b732452f4f2e2c6868b75d3603be19cee388fef279/jax_cuda12_plugin-0.6.2-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:6c9b002d13b1fcb9403713eedd3876a227ad1ffbdfb3811b1f9f89af4c25a5f7", size = 15867462 },
+    { url = "https://files.pythonhosted.org/packages/a5/db/e6643143caf573273eedb991cb1af2bea964b84594a8887802eb0b6ba64a/jax_cuda12_plugin-0.6.2-cp312-cp312-manylinux2014_x86_64.whl", hash = "sha256:febd099f970d350eb8fa5a2c9a2fb4b0ea7b3d6a89df1496663edfa7afe590e5", size = 15876401 },
+    { url = "https://files.pythonhosted.org/packages/b4/10/74fbae1c1bb9d11b113c62e03c445bdf0aaaa4981bc13d2de8e3f4f503ca/jax_cuda12_plugin-0.6.2-cp313-cp313-manylinux2014_aarch64.whl", hash = "sha256:773efa8b55a837406c561f0ef02144dda9019181193760ec5419eec9dd2b9aac", size = 15868561 },
+    { url = "https://files.pythonhosted.org/packages/2b/96/53928ad62ecddbf76f4c413025fdeab5a90adf7fbd970d800162399e504a/jax_cuda12_plugin-0.6.2-cp313-cp313-manylinux2014_x86_64.whl", hash = "sha256:db4c6103c912d8cd1adf94c34d313bb4760ca7f01c897ca7cd62e65f27994199", size = 15876276 },
+    { url = "https://files.pythonhosted.org/packages/22/29/f1c1790d77ccad3587e6c97045b567006a8050fec151581d4cf883779e25/jax_cuda12_plugin-0.6.2-cp313-cp313t-manylinux2014_aarch64.whl", hash = "sha256:ed5316ca1818db7ef53230ee0a41398d3a60942e361dfb857a952eb4d92fc8d7", size = 15964355 },
+    { url = "https://files.pythonhosted.org/packages/07/af/c3224aafbc1d2d7654359a5410319bf15361067635bd3616cf5ad3e16af2/jax_cuda12_plugin-0.6.2-cp313-cp313t-manylinux2014_x86_64.whl", hash = "sha256:83345f52f610cdb8e90044566d8e120864150b8090968c8ab6dd8e0bfb9a6a9f", size = 16037754 },
 ]
 
 [package.optional-dependencies]
 with-cuda = [
-    { name = "nvidia-cublas", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-cupti", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-nvcc", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-nvrtc", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-runtime", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cudnn-cu13", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cufft", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cusolver", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cusparse", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-nccl-cu13", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-nvshmem-cu13", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-nvvm", marker = "python_full_version >= '3.11'" },
+    { name = "nvidia-cublas-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cuda-nvcc-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cudnn-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cufft-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cusolver-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-cusparse-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-nccl-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version < '3.11'" },
+    { name = "nvidia-nvshmem-cu12", marker = "python_full_version < '3.11'" },
+]
+
+[[package]]
+name = "jax-cuda12-plugin"
+version = "0.8.3"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.14' and sys_platform == 'linux'",
+    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.11.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform == 'linux'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'linux'",
+    "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "jax-cuda12-pjrt", version = "0.8.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/29/7ef7aa55f039aec29f16afd40c170534d497e66f8c9100642c08de6fdea6/jax_cuda12_plugin-0.8.3-cp311-cp311-manylinux_2_27_aarch64.whl", hash = "sha256:9782db4ef66440c0a51090561a42748dab94d8b4c0f757fcb600d759dee9cc05", size = 5676992 },
+    { url = "https://files.pythonhosted.org/packages/58/98/605dfd6e4d07850560fd285fa5391d0d7c3d586b69eff15a91f960fe29aa/jax_cuda12_plugin-0.8.3-cp311-cp311-manylinux_2_27_x86_64.whl", hash = "sha256:a9d8deaefa1e74bc6545fa4118d5fc6f79361e534e53fe2c88d40eb663bdeb85", size = 5687014 },
+    { url = "https://files.pythonhosted.org/packages/fe/8e/b5983ea659660b8fff5ff151cb974f98e6385f52a79d555137a155928075/jax_cuda12_plugin-0.8.3-cp312-cp312-manylinux_2_27_aarch64.whl", hash = "sha256:5c20c297923937a846e15539f18fac88ffb729861a243953c24d79d334532ea8", size = 5670355 },
+    { url = "https://files.pythonhosted.org/packages/40/0b/c3efc05a9466d193f417717c728c7311a02def260927b8779ce0633c96a6/jax_cuda12_plugin-0.8.3-cp312-cp312-manylinux_2_27_x86_64.whl", hash = "sha256:8bcb7f1c2800fa1d87f80b7d09994d44f91be19f4fb8cc9dd9ff9212c951b6c6", size = 5684844 },
+    { url = "https://files.pythonhosted.org/packages/15/8b/1e4a010b35bd99ad8cbd959d2f6620493e759388fe904cab06bf53411ba3/jax_cuda12_plugin-0.8.3-cp313-cp313-manylinux_2_27_aarch64.whl", hash = "sha256:bb20d8b794ce52d644967c7229c5e0a01d3b1fac7efc60fbbfcd046a745a66c6", size = 5670617 },
+    { url = "https://files.pythonhosted.org/packages/46/65/70f86faca2a5226b03e4b1d325f177cab967723b967a3e730f97afedd5f1/jax_cuda12_plugin-0.8.3-cp313-cp313-manylinux_2_27_x86_64.whl", hash = "sha256:fb9d49d43c4447793630079632e6fbb4a5ce30c388955131fe3ba96efec91817", size = 5684536 },
+    { url = "https://files.pythonhosted.org/packages/85/99/7b1059b4b113e9e4a98a0e92b11e4a1529b1e4cb0ec25dbcd3fbc22b627b/jax_cuda12_plugin-0.8.3-cp313-cp313t-manylinux_2_27_aarch64.whl", hash = "sha256:b3f64b5059a39c18ec006c136475f46d088a11164e7e6ee2444e76305da87a1b", size = 5685718 },
+    { url = "https://files.pythonhosted.org/packages/4f/e4/f22e2e4a67d35c6c68ee437f3945e68a14aa3c5a1ac85939b8235dd65498/jax_cuda12_plugin-0.8.3-cp313-cp313t-manylinux_2_27_x86_64.whl", hash = "sha256:7bb68f693e16038cad77197aba914375795e5bb7e99f4a4f023b67bb50cad8c2", size = 5692062 },
+    { url = "https://files.pythonhosted.org/packages/f8/0c/690a3e65f0ad937dc174d2809b7c82c595b51e005f27a2041e8d51c5c35e/jax_cuda12_plugin-0.8.3-cp314-cp314-manylinux_2_27_aarch64.whl", hash = "sha256:11d7cb222cfd4d5f6b7691df61516a5edc9298b7879dd6caaccc6dfc64678c70", size = 5671404 },
+    { url = "https://files.pythonhosted.org/packages/44/84/ff006556372dd549d1be1abc37ebf6ff5d5821da5955d8887dc1f7c73de9/jax_cuda12_plugin-0.8.3-cp314-cp314-manylinux_2_27_x86_64.whl", hash = "sha256:9e3f1335a6812f5b28ace211a17d9ede46b8b46ceb4b8d9c8c697d3b4ada513f", size = 5685145 },
+    { url = "https://files.pythonhosted.org/packages/49/61/101a3c568eee3c6b66617466e0afd4b9df5ca9499a04baeea9c3fa90d867/jax_cuda12_plugin-0.8.3-cp314-cp314t-manylinux_2_27_aarch64.whl", hash = "sha256:f9a722128e2b423469a5dab8f9f96d77257d153ca7d96850b25a475191efaacc", size = 5685940 },
+    { url = "https://files.pythonhosted.org/packages/71/67/d559ba4b1ff32fa282250ad7f5b6604ad0d36173abdc0d142c75070c6bbe/jax_cuda12_plugin-0.8.3-cp314-cp314t-manylinux_2_27_x86_64.whl", hash = "sha256:b38c4bd34062c01d22a8c6a2225254dcd429771e97e024f3a2ccc1d6d24fd856", size = 5692811 },
+]
+
+[package.optional-dependencies]
+with-cuda = [
+    { name = "nvidia-cublas-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-nvcc-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cudnn-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cufft-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cusolver-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-nccl-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
+    { name = "nvidia-nvshmem-cu12", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
 ]
 
 [[package]]
@@ -2955,10 +3049,10 @@ wheels = [
 [[package]]
 name = "morl-baselines"
 version = "1.2.0"
-source = { git = "https://github.com/jongoiko/morl-baselines.git?branch=gpi_pd_continuous_action_fix_idxes_device#ba61361be86ea94d034a65e1953ab1816ed77ce8" }
+source = { git = "https://github.com/LucasAlegre/morl-baselines.git#a2aa351645128a3005cfc92c3801e4af82344545" }
 dependencies = [
     { name = "cvxpy", version = "1.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "cvxpy", version = "1.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "cvxpy", version = "1.9.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "fire" },
     { name = "gymnasium" },
     { name = "imageio" },
@@ -3387,51 +3481,13 @@ wheels = [
 ]
 
 [[package]]
-name = "nvidia-cublas"
-version = "13.4.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-cuda-nvrtc", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/d0/4e327087b6026a15d83b31ee1268fa16292e3bb71fb402bbe017bf6649ac/nvidia_cublas-13.4.1.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:6351d2d921527479d6d5002e620fe1971d3e10c730b544c02a36d65301efb00d", size = 513048233 },
-    { url = "https://files.pythonhosted.org/packages/f8/79/0cefdaa1d9e45018a227bac64a79b92d2733cde28a8fd09c65362de08622/nvidia_cublas-13.4.1.1-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:28c983c8c03aa9a2d7b36cddcef2bfeeea85e13241d77df7622665502159f347", size = 404870806 },
-]
-
-[[package]]
 name = "nvidia-cublas-cu12"
 version = "12.8.4.1"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/29/99/db44d685f0e257ff0e213ade1964fc459b4a690a73293220e98feb3307cf/nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:b86f6dd8935884615a0683b663891d43781b819ac4f2ba2b0c9604676af346d0", size = 590537124 },
     { url = "https://files.pythonhosted.org/packages/dc/61/e24b560ab2e2eaeb3c839129175fb330dfcfc29e5203196e5541a4c44682/nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:8ac4e771d5a348c551b2a426eda6193c19aa630236b418086020df5ba9667142", size = 594346921 },
-]
-
-[[package]]
-name = "nvidia-cuda-cccl"
-version = "13.2.75"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/a4/15fbcc9f3dd481a37321bee6610388435611399853ac0f235220a8136377/nvidia_cuda_cccl-13.2.75-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d3b4129c84a8b94ac09fc3042c98c71bd0821e140f0ae213b319a9a86506d781", size = 3652758 },
-    { url = "https://files.pythonhosted.org/packages/92/87/d23db8276b76b4a7e4a702eebdc0a70e3b56c17b4dcd980ecb0f68b022e1/nvidia_cuda_cccl-13.2.75-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:11a2b1948e8709805a0ccf04441baf5279a9219c13eb11dc13d57bb023151768", size = 3600170 },
-]
-
-[[package]]
-name = "nvidia-cuda-crt"
-version = "13.2.78"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/8a/3954a429bbe1dea60c7e3fa4a0cf6a4fdb7df295b2cfb49a77a73bcd3ca4/nvidia_cuda_crt-13.2.78-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:3f5f1d7bf8a89e98f19f45a2f18bb5df99a806433bfb6f0bc487d9e8f4b3677b", size = 133298 },
-    { url = "https://files.pythonhosted.org/packages/ea/78/501eee5cce9202fba2f3476529e296a7f6d003261d80b52ab0abfa09ddd6/nvidia_cuda_crt-13.2.78-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:2c8615ee30ed466cb6298ecb8ffe9e6ea8b252ca833206152d155750bf831608", size = 133301 },
-]
-
-[[package]]
-name = "nvidia-cuda-cupti"
-version = "13.2.75"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/e2/b7bbe4e39781024fcc698fa3d0a788cd9559d9cba5e23fdbcff0a27783e4/nvidia_cuda_cupti-13.2.75-py3-none-manylinux_2_25_aarch64.whl", hash = "sha256:003157a0ca04d34a1f83a764dcbe36eabceda5a771e9a2cc85a461b2765888b6", size = 11759634 },
-    { url = "https://files.pythonhosted.org/packages/b7/2d/cbf8f6288259c502165282fdaa2b733daae98434e3f2aee2b7952ba87c6f/nvidia_cuda_cupti-13.2.75-py3-none-manylinux_2_25_x86_64.whl", hash = "sha256:f75aca6bef89c625a4076a820302bb06764daa1d21595286f6bee5e237d3a187", size = 11986992 },
+    { url = "https://files.pythonhosted.org/packages/70/61/7d7b3c70186fb651d0fbd35b01dbfc8e755f69fd58f817f3d0f642df20c3/nvidia_cublas_cu12-12.8.4.1-py3-none-win_amd64.whl", hash = "sha256:47e9b82132fa8d2b4944e708049229601448aaad7e6f296f630f2d1a32de35af", size = 567544208 },
 ]
 
 [[package]]
@@ -3441,29 +3497,17 @@ source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/1f/b3bd73445e5cb342727fd24fe1f7b748f690b460acadc27ea22f904502c8/nvidia_cuda_cupti_cu12-12.8.90-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:4412396548808ddfed3f17a467b104ba7751e6b58678a4b840675c56d21cf7ed", size = 9533318 },
     { url = "https://files.pythonhosted.org/packages/f8/02/2adcaa145158bf1a8295d83591d22e4103dbfd821bcaf6f3f53151ca4ffa/nvidia_cuda_cupti_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ea0cb07ebda26bb9b29ba82cda34849e73c166c18162d3913575b0c9db9a6182", size = 10248621 },
+    { url = "https://files.pythonhosted.org/packages/41/bc/83f5426095d93694ae39fe1311431b5d5a9bb82e48bf0dd8e19be2765942/nvidia_cuda_cupti_cu12-12.8.90-py3-none-win_amd64.whl", hash = "sha256:bb479dcdf7e6d4f8b0b01b115260399bf34154a1a2e9fe11c85c517d87efd98e", size = 7015759 },
 ]
 
 [[package]]
-name = "nvidia-cuda-nvcc"
-version = "13.2.78"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-cuda-crt", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cuda-runtime", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-nvvm", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/df/faf551572ae1359290afa5cb05d2c4b7e6674b07b8283b20eab4dbad15f6/nvidia_cuda_nvcc-13.2.78-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:dfc76950c775cd00ce588f15192f08c9b858c0dcfa7da685acf39a3d0d8f588b", size = 38713559 },
-    { url = "https://files.pythonhosted.org/packages/65/0f/c7c7d538c61794130e759ad74710ab5aa8cab1f700ee1754381f8c665605/nvidia_cuda_nvcc-13.2.78-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:c3bd144dd9b6b25e062589acb7bbd43d93d3120c72fad71da808f9817aba1239", size = 44040318 },
-]
-
-[[package]]
-name = "nvidia-cuda-nvrtc"
-version = "13.2.78"
+name = "nvidia-cuda-nvcc-cu12"
+version = "12.9.86"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/96/237b40b171e06eb65905375c4ad5c96f78c2f861ac6e8ae7f650d95e1dfd/nvidia_cuda_nvrtc-13.2.78-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:a9049031da08cbedd0c20e3470e5a978dc330af0e0326b3b05774718c665dc3e", size = 47019062 },
-    { url = "https://files.pythonhosted.org/packages/af/be/8476aa006686fb264d61de43e0408a8dbd001003a702574759b25e645587/nvidia_cuda_nvrtc-13.2.78-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:a50367a7e2a0bd00fb27e5648179149cc7a60e7c7811740a5ff559f06234526d", size = 44754755 },
+    { url = "https://files.pythonhosted.org/packages/25/48/b54a06168a2190572a312bfe4ce443687773eb61367ced31e064953dd2f7/nvidia_cuda_nvcc_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:5d6a0d32fdc7ea39917c20065614ae93add6f577d840233237ff08e9a38f58f0", size = 40546229 },
+    { url = "https://files.pythonhosted.org/packages/d6/5c/8cc072436787104bbbcbde1f76ab4a0d89e68f7cebc758dd2ad7913a43d0/nvidia_cuda_nvcc_cu12-12.9.86-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:44e1eca4d08926193a558d2434b1bf83d57b4d5743e0c431c0c83d51da1df62b", size = 39411138 },
+    { url = "https://files.pythonhosted.org/packages/d2/9e/c71c53655a65d7531c89421c282359e2f626838762f1ce6180ea0bbebd29/nvidia_cuda_nvcc_cu12-12.9.86-py3-none-win_amd64.whl", hash = "sha256:8ed7f0b17dea662755395be029376db3b94fed5cbb17c2d35cc866c5b1b84099", size = 34669845 },
 ]
 
 [[package]]
@@ -3473,15 +3517,7 @@ source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/6b/32f747947df2da6994e999492ab306a903659555dddc0fbdeb9d71f75e52/nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:a7756528852ef889772a84c6cd89d41dfa74667e24cca16bb31f8f061e3e9994", size = 88040029 },
     { url = "https://files.pythonhosted.org/packages/eb/d1/e50d0acaab360482034b84b6e27ee83c6738f7d32182b987f9c7a4e32962/nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:fc1fec1e1637854b4c0a65fb9a8346b51dd9ee69e61ebaccc82058441f15bce8", size = 43106076 },
-]
-
-[[package]]
-name = "nvidia-cuda-runtime"
-version = "13.2.75"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/40/56a70b5a4e0a2881a1b7c172fea8025ab6b3cfb2de61c743fb7974d1ded4/nvidia_cuda_runtime-13.2.75-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:36e539e8deb01568025830c1454216c26ef4b4529507220b1d8ef739bf5c6439", size = 2339755 },
-    { url = "https://files.pythonhosted.org/packages/dc/74/f1493b0774c6eaf0234512bb650e1ab90ce8f61fecf0b4aaf1fb416f571e/nvidia_cuda_runtime-13.2.75-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:72bf454902da594e0b833cadeddc8b7100ce1c7cf7ed9023943931be1aa913b7", size = 2321965 },
+    { url = "https://files.pythonhosted.org/packages/45/51/52a3d84baa2136cc8df15500ad731d74d3a1114d4c123e043cb608d4a32b/nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-win_amd64.whl", hash = "sha256:7a4b6b2904850fe78e0bd179c4b655c404d4bb799ef03ddc60804247099ae909", size = 73586838 },
 ]
 
 [[package]]
@@ -3491,6 +3527,7 @@ source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/75/f865a3b236e4647605ea34cc450900854ba123834a5f1598e160b9530c3a/nvidia_cuda_runtime_cu12-12.8.90-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:52bf7bbee900262ffefe5e9d5a2a69a30d97e2bc5bb6cc866688caa976966e3d", size = 965265 },
     { url = "https://files.pythonhosted.org/packages/0d/9b/a997b638fcd068ad6e4d53b8551a7d30fe8b404d6f1804abf1df69838932/nvidia_cuda_runtime_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:adade8dcbd0edf427b7204d480d6066d33902cab2a4707dcfc48a2d0fd44ab90", size = 954765 },
+    { url = "https://files.pythonhosted.org/packages/30/a5/a515b7600ad361ea14bfa13fb4d6687abf500adc270f19e89849c0590492/nvidia_cuda_runtime_cu12-12.8.90-py3-none-win_amd64.whl", hash = "sha256:c0c6027f01505bfed6c3b21ec546f69c687689aad5f1a377554bc6ca4aa993a8", size = 944318 },
 ]
 
 [[package]]
@@ -3498,35 +3535,12 @@ name = "nvidia-cudnn-cu12"
 version = "9.10.2.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "python_full_version < '3.11' or sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/41/e79269ce215c857c935fd86bcfe91a451a584dfc27f1e068f568b9ad1ab7/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:c9132cc3f8958447b4910a1720036d9eff5928cc3179b0a51fb6d167c6cc87d8", size = 705026878 },
     { url = "https://files.pythonhosted.org/packages/ba/51/e123d997aa098c61d029f76663dedbfb9bc8dcf8c60cbd6adbe42f76d049/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:949452be657fa16687d0930933f032835951ef0892b37d2d53824d1a84dc97a8", size = 706758467 },
-]
-
-[[package]]
-name = "nvidia-cudnn-cu13"
-version = "9.22.0.52"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-cublas", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/b0/0a76f3334b98f356188c71e71bde7945f8ac9d52a0011e0031fc8938ba67/nvidia_cudnn_cu13-9.22.0.52-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:876406c9abc74314dea03dedb338ac6329cfb41055d9c7873ce9f77fc1651e5f", size = 609342557 },
-    { url = "https://files.pythonhosted.org/packages/57/96/ce2cb84b5e8bb94dd55f554e3454b91e9ecd6708aa27d4a7b12f287613bc/nvidia_cudnn_cu13-9.22.0.52-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:7b24277af8cd2e4e5be731f5cf910255105d4b92481999771b99dbffee75d03e", size = 512596221 },
-]
-
-[[package]]
-name = "nvidia-cufft"
-version = "12.2.0.46"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-nvjitlink", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/b1/6e36381739b51e692d91646298ad5685c562929b899331c2bb6e9722a176/nvidia_cufft-12.2.0.46-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:2e8f3a22c2745f95327b7639ba2868ea2cbd5d3131ebe6313394e24164054f41", size = 218244743 },
-    { url = "https://files.pythonhosted.org/packages/36/3e/8d717a6e1f6e27b85b64650b1104dbcf6108c9dc7e27e9e26a0d8e936cc5/nvidia_cufft-12.2.0.46-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a9667ae4d81b9e54ddbbad24a9e72334f89d4fc184566d05ef028e2760c820eb", size = 218258098 },
+    { url = "https://files.pythonhosted.org/packages/3d/90/0bd6e586701b3a890fd38aa71c387dab4883d619d6e5ad912ccbd05bfd67/nvidia_cudnn_cu12-9.10.2.21-py3-none-win_amd64.whl", hash = "sha256:c6288de7d63e6cf62988f0923f96dc339cea362decb1bf5b3141883392a7d65e", size = 692992268 },
 ]
 
 [[package]]
@@ -3534,11 +3548,12 @@ name = "nvidia-cufft-cu12"
 version = "11.3.3.83"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version < '3.11' or sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/bc/7771846d3a0272026c416fbb7e5f4c1f146d6d80704534d0b187dd6f4800/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:848ef7224d6305cdb2a4df928759dca7b1201874787083b6e7550dd6765ce69a", size = 193109211 },
     { url = "https://files.pythonhosted.org/packages/1f/13/ee4e00f30e676b66ae65b4f08cb5bcbb8392c03f54f2d5413ea99a5d1c80/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4d2dd21ec0b88cf61b62e6b43564355e5222e4a3fb394cac0db101f2dd0d4f74", size = 193118695 },
+    { url = "https://files.pythonhosted.org/packages/7d/ec/ce1629f1e478bb5ccd208986b5f9e0316a78538dd6ab1d0484f012f8e2a1/nvidia_cufft_cu12-11.3.3.83-py3-none-win_amd64.whl", hash = "sha256:7a64a98ef2a7c47f905aaf8931b69a3a43f27c55530c698bb2ed7c75c0b42cb7", size = 192216559 },
 ]
 
 [[package]]
@@ -3560,43 +3575,18 @@ wheels = [
 ]
 
 [[package]]
-name = "nvidia-cusolver"
-version = "12.2.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-cublas", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-cusparse", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/21/21e5c491a8285a6ed039cbb8c60ec13ff3aff60c669e1caa4adaeb71f997/nvidia_cusolver-12.2.0.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:c9def09fcf300b9465cdf800142abf10149df28c4290bdf9e7b4a700480d31d7", size = 249744985 },
-    { url = "https://files.pythonhosted.org/packages/6b/97/a3c41eac54c89f6aac788d2b3ccd6642b32aa6b79650af3dedb8ee7c2bfa/nvidia_cusolver-12.2.0.1-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:4693ea3c2a5d20369da7b5a4970a41df9b40f1b6f2ef9909c95f7c8c8c5ffb4d", size = 227391570 },
-]
-
-[[package]]
 name = "nvidia-cusolver-cu12"
 version = "11.7.3.90"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
-    { name = "nvidia-cusparse-cu12", marker = "sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "python_full_version < '3.11' or sys_platform == 'linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "python_full_version < '3.11' or sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version < '3.11' or sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/32/f7cd6ce8a7690544d084ea21c26e910a97e077c9b7f07bf5de623ee19981/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:db9ed69dbef9715071232caa9b69c52ac7de3a95773c2db65bdba85916e4e5c0", size = 267229841 },
     { url = "https://files.pythonhosted.org/packages/85/48/9a13d2975803e8cf2777d5ed57b87a0b6ca2cc795f9a4f59796a910bfb80/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:4376c11ad263152bd50ea295c05370360776f8c3427b30991df774f9fb26c450", size = 267506905 },
-]
-
-[[package]]
-name = "nvidia-cusparse"
-version = "12.7.10.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-nvjitlink", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/09/9f1fa88dd305e838b71f2ca4e50064e7cbdf2e15cd6410d9e1b74066cc41/nvidia_cusparse-12.7.10.1-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:80cc98b38fdcf054a80bd9782fe2e63c66f90e202cac269f641357ccac5fe7e3", size = 168860233 },
-    { url = "https://files.pythonhosted.org/packages/b7/bd/bad43b37bcf13167637bef26399693d517b95092d742e8749eda5f4a85f3/nvidia_cusparse-12.7.10.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:f0d110640aa63e7182fa787cc245afa07c5fb84ac30f1c4029e4fa3012353172", size = 150855566 },
+    { url = "https://files.pythonhosted.org/packages/13/c0/76ca8551b8a84146ffa189fec81c26d04adba4bc0dbe09cd6e6fd9b7de04/nvidia_cusolver_cu12-11.7.3.90-py3-none-win_amd64.whl", hash = "sha256:4a550db115fcabc4d495eb7d39ac8b58d4ab5d8e63274d3754df1c0ad6a22d34", size = 256720438 },
 ]
 
 [[package]]
@@ -3604,11 +3594,12 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.8.93"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "python_full_version < '3.11' or sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/f7/cd777c4109681367721b00a106f491e0d0d15cfa1fd59672ce580ce42a97/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:9b6c161cb130be1a07a27ea6923df8141f3c295852f4b260c65f18f3e0a091dc", size = 288117129 },
     { url = "https://files.pythonhosted.org/packages/c2/f5/e1854cb2f2bcd4280c44736c93550cc300ff4b8c95ebe370d0aa7d2b473d/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1ec05d76bbbd8b61b06a80e1eaf8cf4959c3d4ce8e711b65ebd0443bb0ebb13b", size = 288216466 },
+    { url = "https://files.pythonhosted.org/packages/62/07/f3b2ad63f8e3d257a599f422ae34eb565e70c41031aecefa3d18b62cabd1/nvidia_cusparse_cu12-12.5.8.93-py3-none-win_amd64.whl", hash = "sha256:9a33604331cb2cac199f2e7f5104dfbb8a5a898c367a53dfda9ff2acb6b6b4dd", size = 284937404 },
 ]
 
 [[package]]
@@ -3630,30 +3621,13 @@ wheels = [
 ]
 
 [[package]]
-name = "nvidia-nccl-cu13"
-version = "2.30.4"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/32/ff4e28cbed87f99fed63df446ef1986e0617842258a3535eaa2ee92d6226/nvidia_nccl_cu13-2.30.4-py3-none-manylinux_2_18_aarch64.whl", hash = "sha256:e99308a3a89fba78918d50886e81072a6c8b0b4199feb02c3903e63713a6525a", size = 212898082 },
-    { url = "https://files.pythonhosted.org/packages/3e/93/6d020a69fc37e57fae8a96ab0c53102d96538db256e933e914d100e5a430/nvidia_nccl_cu13-2.30.4-py3-none-manylinux_2_18_x86_64.whl", hash = "sha256:534dbf3058cadb625f08ab0d17f1dffad3b961a2bfa360d66633fcf21be53f57", size = 212855427 },
-]
-
-[[package]]
-name = "nvidia-nvjitlink"
-version = "13.2.78"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/b5/dae67f0c45516cfaff2d7fba873c7425c2866d4c9ede5c14a269d89ed79b/nvidia_nvjitlink-13.2.78-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:27964b6702aeceee05fc0ab47b4c97e3f8966bd47d05d9827e913c49a025656b", size = 41370766 },
-    { url = "https://files.pythonhosted.org/packages/77/ab/ff01689cfeac7c197605a59c90f48815fbf21d8b4c008e6562cb927ffdc1/nvidia_nvjitlink-13.2.78-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:f8db47f159e434f5c7b9de53c4bc71cfa03ac3aeae717db5dc91b846c506b0a3", size = 39285235 },
-]
-
-[[package]]
 name = "nvidia-nvjitlink-cu12"
 version = "12.8.93"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/74/86a07f1d0f42998ca31312f998bd3b9a7eff7f52378f4f270c8679c77fb9/nvidia_nvjitlink_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:81ff63371a7ebd6e6451970684f916be2eab07321b73c9d244dc2b4da7f73b88", size = 39254836 },
     { url = "https://files.pythonhosted.org/packages/2a/a2/8cee5da30d13430e87bf99bb33455d2724d0a4a9cb5d7926d80ccb96d008/nvidia_nvjitlink_cu12-12.8.93-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:adccd7161ace7261e01bb91e44e88da350895c270d23f744f0820c818b7229e7", size = 38386204 },
+    { url = "https://files.pythonhosted.org/packages/ed/d7/34f02dad2e30c31b10a51f6b04e025e5dd60e5f936af9045a9b858a05383/nvidia_nvjitlink_cu12-12.8.93-py3-none-win_amd64.whl", hash = "sha256:bd93fbeeee850917903583587f4fc3a4eafa022e34572251368238ab5e6bd67f", size = 268553710 },
 ]
 
 [[package]]
@@ -3666,34 +3640,12 @@ wheels = [
 ]
 
 [[package]]
-name = "nvidia-nvshmem-cu13"
-version = "3.6.5"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nvidia-cuda-cccl", marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/6b/4c642d2cce57c8bd32043b4a608b6acc8cd0579c2f53af9a7ef9e1e1ccca/nvidia_nvshmem_cu13-3.6.5-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:94aa0149490be658cf95945ce9f16ba90a90edbd6a564366f996ead7496f2f22", size = 71726240 },
-    { url = "https://files.pythonhosted.org/packages/5d/7b/2ab033584a3339552472ac8d79543c503a0e06dd0d082448b06697e7f716/nvidia_nvshmem_cu13-3.6.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4001aabc72ead32ecc3c9add3c6781befcb71adcbe286d7f5956042e68668c70", size = 71952588 },
-]
-
-[[package]]
 name = "nvidia-nvtx-cu12"
 version = "12.8.90"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/c0/1b303feea90d296f6176f32a2a70b5ef230f9bdeb3a72bddb0dc922dc137/nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d7ad891da111ebafbf7e015d34879f7112832fc239ff0d7d776b6cb685274615", size = 91161 },
     { url = "https://files.pythonhosted.org/packages/a2/eb/86626c1bbc2edb86323022371c39aa48df6fd8b0a1647bc274577f72e90b/nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:5b17e2001cc0d751a5bc2c6ec6d26ad95913324a4adb86788c944f8ce9ba441f", size = 89954 },
-]
-
-[[package]]
-name = "nvidia-nvvm"
-version = "13.2.78"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/1f/930d63ccc8adcdf27bfc051a24e3e4da2cf6ef987848d6d1d642e29d704b/nvidia_nvvm-13.2.78-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:f5aa433631109bbdec81802c5b5f319bf10bc891fe2f212e4e445845211d6f77", size = 64279462 },
-    { url = "https://files.pythonhosted.org/packages/8b/fd/db44b7a662a6af75a9a0683ca4580c855a3f5fcfdf1261b0ddb9fce0ee26/nvidia_nvvm-13.2.78-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:88075f87a361a1dce95c799cabc028f7093af616a5702dcfb74eba4045dbbd5f", size = 61886055 },
-    { url = "https://files.pythonhosted.org/packages/35/b9/c3862fd1073326c61233f05e816c17a28ab86a361db1b7561c7f33ac3af4/nvidia_nvvm-13.2.78-py3-none-win_amd64.whl", hash = "sha256:cf8e91654e74285e9c574b3a45b92928c0a6d135928906cf11ce470bbec6a8ec", size = 56752219 },
 ]
 
 [[package]]
@@ -5104,7 +5056,7 @@ wheels = [
 
 [[package]]
 name = "rlrom"
-version = "0.2.0.post87.dev0+21e0d56"
+version = "0.2.0.post89.dev0+dc35a75"
 source = { editable = "." }
 dependencies = [
     { name = "bokeh" },
@@ -5113,8 +5065,8 @@ dependencies = [
     { name = "huggingface-sb3" },
     { name = "ipympl" },
     { name = "ir-sim" },
-    { name = "jax", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "jax", version = "0.8.3", source = { registry = "https://pypi.org/simple" }, extra = ["cuda13"], marker = "python_full_version >= '3.11'" },
+    { name = "jax", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, extra = ["cuda12"], marker = "python_full_version < '3.11'" },
+    { name = "jax", version = "0.8.3", source = { registry = "https://pypi.org/simple" }, extra = ["cuda12"], marker = "python_full_version >= '3.11'" },
     { name = "kaleido" },
     { name = "minigrid" },
     { name = "mo-gymnasium" },
@@ -5160,11 +5112,11 @@ requires-dist = [
     { name = "huggingface-sb3", specifier = ">=3.0,<4.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
     { name = "ir-sim", specifier = ">=2.8.2" },
-    { name = "jax", extras = ["cuda13"], specifier = ">=0.6.2" },
+    { name = "jax", extras = ["cuda12"], specifier = ">=0.6.2" },
     { name = "kaleido", specifier = ">=1.1.0" },
     { name = "minigrid", specifier = ">=3.0.0,<4.0.0" },
     { name = "mo-gymnasium", specifier = ">=1.3.2" },
-    { name = "morl-baselines", git = "https://github.com/jongoiko/morl-baselines.git?branch=gpi_pd_continuous_action_fix_idxes_device" },
+    { name = "morl-baselines", git = "https://github.com/LucasAlegre/morl-baselines.git" },
     { name = "plotly", specifier = ">=6.3.1" },
     { name = "polars", specifier = ">=1.34.0" },
     { name = "pycddlib", specifier = "==2.1.6" },
