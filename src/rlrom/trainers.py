@@ -4,6 +4,7 @@ import os
 import sys
 import importlib
 import copy #for deep copy of dicts (*not* default !)
+import datetime
 #import functools
 
 # Gym and sb3 stuff
@@ -211,7 +212,7 @@ class RLTrainer:
     model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
     try:
-      self.model.save(model_name)
+      self.model.save(f"{model_name}_{datetime.datetime.now():%Y-%m-%d_%H:%M:%S}")
       with open(cfg_name,'w') as f:
            rlu.yaml.dump(self.cfg, f)
     except Exception as e:
