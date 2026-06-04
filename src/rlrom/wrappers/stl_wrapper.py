@@ -225,7 +225,11 @@ class STLWrapper(gym.Wrapper):
         for sig in self.signals_specs:
             value= self.signals_map[sig]
             i_sig = i_sig+1           
-            s[i_sig] = eval(value)
+            signal = eval(value)
+            if isinstance(signal, np.ndarray):
+                assert signal.size == 1, "Signal must be float or an np.ndarray with a single element"
+                signal = signal.flatten()[0]
+            s[i_sig] = signal
             if self.debug_signals is True:
                 print(f'{sig}: {s[i_sig]:.3}', end=' ')
         if self.debug_signals is True:
