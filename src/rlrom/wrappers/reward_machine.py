@@ -1,6 +1,5 @@
 import gymnasium as gym
 import numpy as np
-import rlrom.utils as utils
 
 class RewardMachine: 
     def __init__(self, cfg_rm):

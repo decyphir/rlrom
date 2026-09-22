@@ -1,0 +1,18 @@
+from rlrom.wrappers.stl_wrapper import STLWrapper
+from rlrom.wrappers.reward_machine import RewardMachineWrapper
+from gymnasium.wrappers import FlattenObservation
+
+
+def wrap_env_specs(env,cfg):
+    
+    cfg_specs = cfg.get('cfg_specs', None)            
+    if cfg_specs is not None:
+        env = STLWrapper(env, cfg)
+        
+        cfg_rm = cfg_specs.get('cfg_rm', None)            
+        if cfg_rm is not None:
+            env = RewardMachineWrapper(env, cfg_rm)  
+        elif cfg_specs.get("flatten_obs", True):
+            env = FlattenObservation(env)          
+    
+    return env

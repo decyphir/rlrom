@@ -1,25 +1,26 @@
+# Generic stuff
 import numpy as np
+import itertools
+import os,sys,copy
+import time
 
-import gymnasium as gym
-from gymnasium import spaces
-import rlrom.utils as utils
-from rlrom.wrappers.stl_wrapper import stl_wrap_env
-from rlrom.wrappers.reward_machine import RewardMachineWrapper
-from rlrom.utils import append_to_field_array as add_metric
-from rlrom.utils import yaml
-
-import rlrom.plots as rlp
-from minigrid.wrappers import ImgObsWrapper
-from gymnasium.wrappers import FlattenObservation
-
+# Plotting (?)
 from bokeh.models.annotations import Title
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.palettes import Dark2_5 as palette
-# itertools handles the cycling
-import itertools
-import os,sys,copy
-import time
+
+# Gym and co
+import gymnasium as gym
+from gymnasium import spaces
+from gymnasium.wrappers import FlattenObservation
+
+#rlrom
+import rlrom.utils as rlu
+from rlrom.wrappers.specs_wrapper import wrap_env_specs
+from rlrom.utils import append_to_field_array as add_metric
+from rlrom.utils import yaml
+import rlrom.plots as rlp
 
 def make_env_test(cfg):
 
@@ -40,25 +41,17 @@ def make_env_test(cfg):
       else: 
         render_mode=None
       env = gym.make(env_name, render_mode=render_mode)
-      
-      if env_name.lower().startswith("minigrid"):  
-        #env = ImgObsWrapper(env)
+      if env_name.lower().startswith("minigrid"):          
         env = FlattenObservation(env) 
-    cfg_specs = cfg.get('cfg_specs', None)            
-    if cfg_specs is not None:
-        env = stl_wrap_env(env, cfg)           
-        cfg_rm = cfg_specs.get('cfg_rm', None)            
-        if cfg_rm is not None:
-            env = RewardMachineWrapper(env, cfg_rm)  
-        else:
-            env = FlattenObservation(env)
+
+    env = wrap_env_specs(env, cfg)
     return env
 
-    
 class RLTester:
+
     def __init__(self,cfg):
         
-        cfg = utils.load_cfg(cfg)
+        cfg = rlu.load_cfg(cfg)
         self.cfg = cfg        
         self.keyboard_control = False
         self.env_name = cfg.get('env_name')
@@ -67,10 +60,10 @@ class RLTester:
         self.callbacks = []
         self.fig_layout = None
         self.test_results = []
-
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
         self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
         self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
+        self.model_action_function = None # if None, model.predict() is used; otherwise, model_action_function(model, obs) is called
         
     def load_model(self, model_file=None):
         
@@ -87,17 +80,17 @@ class RLTester:
             if model_path=='huggingface':
                 repo_id = model_name
                 env_name = self.cfg.get('env_name')
-                model = utils.load_model(env_name, repo_id)
+                model = rlu.load_model(env_name, repo_id)
             elif model_file is not None:
                 print("INFO: Loading model file ", model_file)
-                model= utils.load_model(model_file)           
+                model= rlu.load_model(model_file)           
             else:
-                model_name, _ = utils.get_model_fullpath(self.cfg)
+                model_name, _ = rlu.get_model_fullpath(self.cfg)
                 if model_name=='random':
                     model='random'
                 else:
                     print("INFO: Loading model ", model_name)
-                    model= utils.load_model(model_name)            
+                    model= rlu.load_model(model_name)            
         self.model = model
         return model
 
@@ -118,17 +111,22 @@ class RLTester:
                     obs = last_obs['unwrapped']
                 else:
                     pass # use the obs that we were given                
-            action, _ = self.model.predict(obs)
+            action = self.model.predict(obs)[0] if self.model_action_function is None \
+                else self.model_action_function(self.model, obs)
         return action
 
     def init_env(self, **kargs):      # **kargs allows to override self.cfg fields without changing self.cfg
         cfg = self.cfg        
-        cfg= utils.set_rec_cfg_field(cfg,**kargs)                    
+        cfg= rlu.set_rec_cfg_field(cfg,**kargs)                    
         self.env = make_env_test(cfg)
 
-    def run_seed(self, seed=None, num_steps=100, reload_model=False):
+    def run_episode(self, seed=None, num_steps=100, 
+                    init_env = True, load_model=True,
+                    step_pause=0, 
+                    ):
 
-        self.init_env()
+        if init_env:
+            self.init_env()
 
         if self.fig_layout is not None:
             rl_fig = rlp.RLFig(self, self.fig_layout)
@@ -137,7 +135,7 @@ class RLTester:
         else:
             rl_fig = None
         # We actually might want to reload every time to enforce determinism     
-        if reload_model:
+        if load_model:
              self.load_model()
         
         if self.has_stl_wrapper is False:
@@ -148,7 +146,6 @@ class RLTester:
         else:
             last_obs, info = self.env.reset()        
         
-        #for _ in range(num_steps):    
         terminated = False
         truncated = False
         step = 0
@@ -169,7 +166,6 @@ class RLTester:
             # callbacks
             for c in self.callbacks:
                 c()
-
             if rl_fig is not None:
                 rl_fig.update()
 
@@ -203,7 +199,9 @@ class RLTester:
                 self.load_model(model_file=model_file) 
             
             for seed in range(init_seed, init_seed+num_ep):
-                episode = self.run_seed(seed=seed, num_steps=num_steps, reload_model=reload_model_every_ep)
+                episode = self.run_episode(seed=seed, num_steps=num_steps, 
+                                        load_model=reload_model_every_ep, 
+                                        init_env=True) # TODO is this necessary ? I mean, to init_env each time ?
                 num_ep_so_far+=1
                 print('.', end='')
                 if num_ep_so_far%10==0:
@@ -298,7 +296,7 @@ class RLTester:
             models = []
             models_ids = []
         else:
-            models, models_ids = utils.find_huggingface_models(env_name, repo_contains=repo_contains, algo=algo) 
+            models, models_ids = rlu.find_huggingface_models(env_name, repo_contains=repo_contains, algo=algo) 
         return models, models_ids
 
     def get_fig(self, signals_layout, ep_idx=0, test_result=-1):
@@ -315,7 +313,7 @@ class RLTester:
         set_ep = self.env.get_wrapper_attr('set_episode_data')
         set_ep(current_ep)
         num_ep = len(episodes)
-        lay = rlrom.plots.get_layout_from_string(signals_layout)
+        lay = rlp.get_layout_from_string(signals_layout)
         status = "Plot ok. Hit reset on top right if not visible."
 
         figs = []
@@ -362,7 +360,7 @@ class RLTester:
         return fig, status
 
     def retest_checkoints_models(self,df_idx=-1, **kargs):
-        df = utils.get_df_training(self.cfg, idx=df_idx)
+        df = rlu.get_df_training(self.cfg, idx=df_idx)
 
         cfg_tmp = copy.deepcopy(self.cfg)  
         cfg_test = cfg_tmp['cfg_test']
@@ -371,9 +369,7 @@ class RLTester:
             cfg_test['model_file']= os.path.join(r['path'],r['model_files'])
             cfg_test['res_file'] = r['res_files']        
             
-            cfg_tmp = utils.set_rec_cfg_field(cfg_tmp,cfg_test=cfg_test)
-            cfg_tmp = utils.set_rec_cfg_field(cfg_tmp,render_mode=None,**kargs)
+            cfg_tmp = rlu.set_rec_cfg_field(cfg_tmp,cfg_test=cfg_test)
+            cfg_tmp = rlu.set_rec_cfg_field(cfg_tmp,render_mode=None,**kargs)
             T = RLTester(cfg_tmp)
-            T.run_cfg_test()        
-
-    
+            T.run_cfg_test()

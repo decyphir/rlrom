@@ -25,8 +25,8 @@ cfg_specs:
       
   eval_formulas:
     cart_on_left:
-      past_horizon: 0
-      eval_all_steps: true
+      online: True
+      past_horizon: 0      
     phi_left_goal:
       t0: 0
       eval_all_steps: false

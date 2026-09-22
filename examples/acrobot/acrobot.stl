@@ -1,0 +1,4 @@
+signal cos_theta1, sin_theta1, cos_theta2, sin_theta2, height
+
+mu_height := height[t]>0
+phi_goal := ev_[0, 500] mu_height

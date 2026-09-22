@@ -1,5 +1,27 @@
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
-from sb3_contrib import TRPO, QRDQN
+from morl_baselines.single_policy.ser.mo_ppo import MOPPO
+from morl_baselines.single_policy.ser.nl_mo_ppo import NLMOPPO
+from morl_baselines.single_policy.ser.mo_q_learning import MOQLearning
+from morl_baselines.single_policy.ser.mosac_continuous_action import MOSAC
+from morl_baselines.single_policy.ser.mosac_discrete_action import MOSACDiscrete
+from morl_baselines.single_policy.esr.eupg import EUPG
+from morl_baselines.multi_policy.pcn.pcn import PCN
+from morl_baselines.multi_policy.pgmorl.pgmorl import PGMORL
+from morl_baselines.multi_policy.pareto_q_learning.pql import PQL
+from morl_baselines.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import MPMOQLearning
+from morl_baselines.multi_policy.morld.morld import MORLD
+from morl_baselines.multi_policy.ipro.ipro_2d import IPRO2D
+from morl_baselines.multi_policy.ipro.ipro import IPRO
+from morl_baselines.multi_policy.capql.capql import CAPQL
+from morl_baselines.multi_policy.envelope.envelope import Envelope
+from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
+from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
+from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
+from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
+from morl_baselines.multi_policy.gpi_ls_jax.gpi_ls_continuous_action_jax import GPILSContinuousAction as GPILSContinuousActionJax
+import sbx
+from rlrom.extra_algos.tabular_q_learning import TabularQLearning
+from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
@@ -12,6 +34,51 @@ from datetime import datetime, date
 from ruamel.yaml import YAML
 import torch as th
 import polars as pl
+
+ALGO_NAMES_CLASSES = {
+    # Stable Baselines 3 (single objective)
+    "ppo": PPO,
+    "a2c": A2C,
+    "sac": SAC,
+    "td3": TD3,
+    "dqn": DQN,
+    "ddpg": DDPG,
+    # SBX variants (Stable Baselines Jax)
+    "sbx_ppo": sbx.PPO,
+    "sbx_sac": sbx.SAC,
+    "sbx_td3": sbx.TD3,
+    "sbx_dqn": sbx.DQN,
+    "sbx_ddpg": sbx.DDPG,
+    "sbx_crossq": sbx.CrossQ,
+    # sb3-contrib (more RL algos)
+    "trpo": TRPO,
+    "crossq": CrossQ,
+    "qrdqn": QRDQN,
+    # Other algos
+    "qlearning": TabularQLearning,
+    # MORL single-policy
+    "moppo": MOPPO,
+    "nlmoppo": NLMOPPO,
+    "moql": MOQLearning,
+    "mosac": MOSAC,
+    "mosac_discrete": MOSACDiscrete,
+    "eupg": EUPG,
+    # MORL multi-policy
+    "pcn": PCN,
+    "pgmorl": PGMORL,
+    "pql": PQL,
+    "mpmoql": MPMOQLearning,
+    "morld": MORLD,
+    "ipro2d": IPRO2D,
+    "ipro": IPRO,
+    "capql": CAPQL,
+    "envelope": Envelope,
+    "gpipd": GPIPD,
+    "gpils": GPILS,
+    "gpipd_continuous_action": GPIPDContinuousAction,
+    "gpils_continuous_action": GPILSContinuousAction,
+    "gpils_continuous_action_jax": GPILSContinuousActionJax
+}
 
 yaml = YAML(typ='safe')
 # Define a representer for NumPy arrays
@@ -214,90 +281,23 @@ def load_model(env_name, repo_id=None, filename=None):
                 pass
             
             # try loading with PPO, A2C, SAC, TD3, DQN, QRDQN, DDPG, TRPO
-            try:
-                model= PPO.load(filename)
-                print("loading PPO model succeeded")                
-                return model
-            except:
-                print("loading PPO model failed")
-                pass
-
-            try:
-                model= A2C.load(filename)
-                print("loading A2C model succeeded")                
-                return model
-            except:
-                print("loading A2C model failed")
-                pass
-
-            try:
-                model= SAC.load(filename)
-                print("loading SAC model succeeded")                
-                return model
-            except:
-                print("loading SAC model failed")                
-                pass
-
-            try:
-                model= TD3.load(filename)
-                print("loading TD3 model succeeded")                                                
-                return model
-            except:
-                print("loading TD3 model failed")
-                pass
-
-            try:                
-                model= DQN.load(filename)
-                print("loading DQN model succeeded")                
-                return model
-            except:
-                print("loading DQN model failed")
-                pass    
-
-            try:
-                model= QRDQN.load(filename)
-                print("loading QRDQN model succeeded")                
-                return model
-            except:
-                print("loading QRDQN model failed")
-                pass
-
-            try:
-                model= DDPG.load(filename)
-                print("loading DDPG model succeeded")                                    
-                return model
-            except:
-                print("loading DDPG model failed")
-                pass
-            try:
-                model= TRPO.load(filename)
-                print("loading TRPO model succeeded")                
-                return model
-            except:
-                print("loading TRPO model failed")
-                pass            
+            for rl_algo_name, rl_algo_class in ALGO_NAMES_CLASSES.items():
+                try:
+                    model = rl_algo_class.load(filename)
+                    print(f"loading {rl_algo_name.upper()} model succeeded")
+                    return model
+                except:
+                    print(f"loading {rl_algo_name.upper()} model failed")
         except FileNotFoundError:
             print("File not found",filename)            
 
     if repo_id is not None:
-        if 'ppo' in repo_id:
-            model = load_ppo_model(env_name, repo_id, filename=filename)
-        elif 'a2c' in repo_id:
-            model = load_a2c_model(env_name, repo_id, filename=filename)
-        elif 'sac' in repo_id:
-            model = load_sac_model(env_name, repo_id, filename=filename)
-        elif 'td3' in repo_id:
-            model = load_td3_model(env_name, repo_id, filename=filename)
-        elif 'dqn' in repo_id:
-            model = load_dqn_model(env_name, repo_id, filename=filename)
-        elif 'qrdqn' in repo_id:
-            model = load_qrdqn_model(env_name, repo_id, filename=filename)
-        elif 'ddpg' in repo_id:
-            model = load_ddpg_model(env_name, repo_id, filename=filename)
-        elif 'trpo' in repo_id:
-            model = load_trpo_model(env_name, repo_id, filename=filename)
-        else:
-            model = None
+        model = load_rl_model(env_name, repo_id, filename=filename,
+                              custom_objects={
+                                "learning_rate": 0.0,
+                                "lr_schedule": lambda _: 0.0,
+                                "clip_range": lambda _: 0.0,
+                              } if "ppo" in repo_id else None)
     return model
 
 def get_upper_values(all_data):
@@ -413,66 +413,20 @@ def get_symmetric_max(sig):
     min_neg = -npsig.min()
     return max(max_pos,min_neg)
 
-# Auxiliary load functions        
-def load_ppo_model(env_name, repo_id, filename=None):
+# Auxiliary load function
+def load_rl_model(env_name, repo_id, filename=None, custom_objects=None):
+    algo_name = None
+    for name in ALGO_NAMES_CLASSES:
+        if name in repo_id:
+            algo_name = name
+            break
+    if algo_name is None:
+        return None
     if filename is None:
-        filename = ModelName('ppo', env_name)+'.zip'
+        filename = ModelName(algo_name, env_name)+'.zip'
     checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    custom_objects = {
-            "learning_rate": 0.0,
-            "lr_schedule": lambda _: 0.0,
-            "clip_range": lambda _: 0.0,
-    }
-    model = PPO.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
-    return model
-
-def load_a2c_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('a2c', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = A2C.load(checkpoint, print_system_info=True)
-    return model
-
-def load_sac_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('sac', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = SAC.load(checkpoint, print_system_info=True)
-    return model
-
-def load_td3_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('td3', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = TD3.load(checkpoint, print_system_info=True)
-    return model
-
-def load_dqn_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('dqn', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = DQN.load(checkpoint, print_system_info=True)
-    return model
-
-def load_qrdqn_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('dqn', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)  
-    model = QRDQN.load(checkpoint, print_system_info=True)
-    return model
-
-def load_ddpg_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('ddpg', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    model = DDPG.load(checkpoint, print_system_info=True)
-    return model
-
-def load_trpo_model(env_name, repo_id, filename=None):
-    if filename is None:
-        filename = ModelName('trpo', env_name)+'.zip'
-    checkpoint = load_from_hub(repo_id=repo_id, filename=filename)
-    model = TRPO.load(checkpoint, print_system_info=True)
+    algo_class = ALGO_NAMES_CLASSES[algo_name]
+    model = algo_class.load(checkpoint, custom_objects=custom_objects, print_system_info=True)
     return model
 
 def add_now_suffix(s):

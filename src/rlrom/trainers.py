@@ -1,22 +1,27 @@
-from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
-import rlrom.utils as utils
-from rlrom.utils import policy_cfg2kargs, add_now_suffix
-from rlrom.testers import RLTester
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
-from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+# Generic stuff
 import numpy as np
-import gymnasium as gym
-from gymnasium.wrappers import FlattenObservation
-from minigrid.wrappers import ImgObsWrapper
-from rlrom.wrappers.stl_wrapper import stl_wrap_env
-from rlrom.wrappers.reward_machine import RewardMachineWrapper
 import os
 import sys
 import importlib
-from rlrom.utils import yaml
 import copy #for deep copy of dicts (*not* default !)
-import functools
+import datetime
+#import functools
+
+# Gym and sb3 stuff
+import gymnasium as gym
+from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+from gymnasium.wrappers import FlattenObservation
+
+from mo_gymnasium.wrappers.vector import MOSyncVectorEnv, MORecordEpisodeStatistics
+
+# rlrom stuff
+from rlrom.testers import RLTester
+import rlrom.utils as rlu
+from rlrom.utils import policy_cfg2kargs
+from rlrom.wrappers.specs_wrapper import wrap_env_specs
 
 def make_env_train(cfg):
         
@@ -33,19 +38,8 @@ def make_env_train(cfg):
       # default
       env_name = cfg.get('env_name','')                           
       env = gym.make(env_name, render_mode=None)
-      #env = ImgObsWrapper(env)
-    cfg_specs = cfg.get('cfg_specs', None)            
-    if cfg_specs is not None:
-        model_use_spec = cfg.get('model_use_specs', False)
-        if model_use_spec:                    
-          env = stl_wrap_env(env, cfg)
-          env = FlattenObservation(env)
-          
-          cfg_rm = cfg_specs.get('cfg_rm', None)            
-          if cfg_rm is not None:
-            env = RewardMachineWrapper(env, cfg_rm)  
-            obs, _ = env.reset()
-            print("env", env)
+              
+    env = wrap_env_specs(env, cfg)
             
     return env
 
@@ -53,6 +47,8 @@ def make_vec_envs(cfg, n_envs=8, use_subproc=False):
     """
     Create a vectorized environment with n_envs copies of make_env_train(cfg).
     Works for STL + RM wrappers.
+    TODO: make that an option ? not fully compatible with Gymnasium, more like Gym 0.21 or 0.26
+    see  https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html
     """
     def _make_env_fn():
         def _init():
@@ -75,7 +71,7 @@ def make_vec_envs(cfg, n_envs=8, use_subproc=False):
 class RlromCallback(BaseCallback):
   def __init__(self, verbose=0, cfg_main=dict(), chkpt_dir='', cfg_name=''):
     super().__init__(verbose)
-    self.cfg = utils.set_rec_cfg_field(cfg_main,render_mode=None)
+    self.cfg = rlu.set_rec_cfg_field(cfg_main,render_mode=None)
     
     cfg_train = cfg_main.get('cfg_train')
     self.n_envs = int(cfg_train.get('n_envs',1))
@@ -89,8 +85,11 @@ class RlromCallback(BaseCallback):
     print(f'n_envs: {self.n_envs}, Eval freq: {self.eval_freq}, Checkpoints folder: {self.chkpt_dir}')
     print(f'Saving configuration file to {cfg_filename}')
     
-    with open(cfg_filename,'w') as f:
-         yaml.dump(self.cfg, f)
+    try:
+      with open(cfg_filename,'w') as f:
+           rlu.yaml.dump(self.cfg, f)
+    except Exception as e:
+      print(f"Could not save configuration file: {e}")
 
 
   def _on_step(self):
@@ -108,8 +107,11 @@ class RlromCallback(BaseCallback):
     Tres = self.eval_policy()
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
-    with open(res_filename,'w') as f:
-       yaml.dump(Tres, f)
+    try:
+      with open(res_filename,'w') as f:
+         rlu.yaml.dump(Tres, f)
+    except Exception as e:
+      print(f"Could not save test results to {res_filename}: {e}")
 
   def _on_training_end(self):
     self.eval_and_save_model()
@@ -143,19 +145,20 @@ class RlromCallback(BaseCallback):
 
 class RLTrainer:
   def __init__(self, cfg):    
-    self.cfg = utils.load_cfg(cfg)    
+    self.cfg = rlu.load_cfg(cfg)    
     self.cfg_train = self.cfg.get('cfg_train', {})
     self.model_use_specs = self.cfg.get('model_use_specs', False)
     self.env_name = self.cfg.get('env_name')
     self.model_name = self.cfg.get('model_name')
-    #self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)
+    if self.model_name is None:
+      raise ValueError("model_name must be provided in the top-level configuration")
+    #self.make_env=functools.partial(make_vec_envs, cfg, n_envs=8, use_subproc=False)#lambda: make_vec_envs(cfg, n_envs=2, use_subproc=True) #make_env_train(self.cfg)
     self.make_env= lambda: make_env_train(self.cfg)
     self.model = None
     
   def train(self):
 
-    cfg_algo = self.cfg_train.get('algo')
-    model_name = self.cfg.get('model_name')
+    cfg_algo = self.cfg_train.get('algo')    
     
     if cfg_algo is not None:       
       has_cfg_specs = 'cfg_specs' in self.cfg
@@ -170,35 +173,35 @@ class RLTrainer:
         RlromCallback(verbose=1, cfg_main=self.cfg, chkpt_dir=chkpt_dir, cfg_name=cfg_name)        
           ])
        
-    if self.model is None:   
-      if 'ppo' in cfg_algo:                           
-        model = self.init_PPO()
-      elif 'dqn' in cfg_algo:
-        model = self.init_DQN()
-      elif 'a2c' in cfg_algo:
-        model = self.init_A2C()
-      elif 'sac' in cfg_algo:
-        model = self.init_SAC()
-      elif 'td3' in cfg_algo:
-        model = self.init_TD3()
-      elif 'ddpg' in cfg_algo:
-        model = self.init_DDPG()
-    else:
-      model= self.model
-
+    model = self.init_rl_algo(cfg_algo) if self.model is None else self.model
 
     # Training          
     total_timesteps = int(self.cfg_train.get('total_timesteps',1000))
     progress_bar = self.cfg_train.get('progress_bar',True)    
-    tb_prefix =  utils.add_now_suffix(self.model_name)
+    tb_prefix =  rlu.add_now_suffix(self.model_name)
 
-    # Train the agent
-    model.learn(
-      total_timesteps = total_timesteps,
-      callback = callbacks,
-      tb_log_name = tb_prefix,
-      progress_bar= progress_bar,
-    )
+    # algo_train_kwargs contains algorithm-specific configurations that are only
+    # used when calling train(); these are used heavily in morl-baselines
+    algo_train_kwargs = self.cfg_train.get('train_kwargs', {})
+    if "ref_point" in algo_train_kwargs:
+      algo_train_kwargs["ref_point"] = np.asarray(algo_train_kwargs["ref_point"])
+
+    # Train the agent: Method is "learn" or "train" depending on whether it's a
+    # SB3 or morl-baselines model
+    assert hasattr(model, "learn") or hasattr(model, "train")
+    if hasattr(model, "learn"):
+      model.learn(
+        total_timesteps = total_timesteps,
+        callback = callbacks,
+        tb_log_name = tb_prefix,
+        progress_bar= progress_bar,
+      )
+    else:
+      model.train(
+        total_timesteps = total_timesteps,
+        eval_env = self.make_env(),
+        **algo_train_kwargs
+      )
     
     # Saving the agent
     self.save_model()
@@ -206,17 +209,20 @@ class RLTrainer:
     return model
 
   def save_model(self,path=None):
-    model_name, cfg_name = utils.get_model_fullpath(self.cfg)
+    model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
-    self.model.save(model_name) #TODO try except 
-    with open(cfg_name,'w') as f:
-         yaml.dump(self.cfg, f)
+    try:
+      self.model.save(f"{model_name}_{datetime.datetime.now():%Y-%m-%d_%H:%M:%S}")
+      with open(cfg_name,'w') as f:
+           rlu.yaml.dump(self.cfg, f)
+    except Exception as e:
+      print(f"Could not save model: {e}")
 
   def set_checkpoint_dir(self):
     cfg= self.cfg
-    model_full_path, cfg_name = utils.get_model_fullpath(cfg)    
+    model_full_path, cfg_name = rlu.get_model_fullpath(cfg)    
     chkpt_dir_root = os.path.splitext(model_full_path)[0]        
-    chkpt_dir_root = utils.add_now_suffix(chkpt_dir_root)
+    chkpt_dir_root = rlu.add_now_suffix(chkpt_dir_root)
     i = -1
     chkpt_dir_exists = True        
     while chkpt_dir_exists:
@@ -235,177 +241,43 @@ class RLTrainer:
     cfg_name = os.path.join(chkpt_dir,'cfg0.yml')    
     return chkpt_dir, cfg_name
 
-  def init_A2C(self):
-    cfg_a2c = {}
+  def init_rl_algo(self, cfg_algo_name: dict):
+    algo_name = None
+    for name in rlu.ALGO_NAMES_CLASSES:
+      if name in cfg_algo_name:
+        algo_name = name
+        break
+    if algo_name is None:
+      return None
+    cfg_rl_algo = {}
 
     # Get options  
     cfg_algo0 = self.cfg_train.get('algo')
     cfg_algo  = cfg_algo0.copy()   
-    if cfg_algo.get('a2c') is not None:                     
-      cfg_a2c = copy.deepcopy(cfg_algo.get('a2c'))
+    if cfg_algo.get(algo_name) is not None:                     
+      cfg_rl_algo = copy.deepcopy(cfg_algo.get(algo_name))
+
+    env = self.make_env()
+    is_multiobjective = env.get_wrapper_attr("multi_objective")
+    del env
 
     # Policy     
-    if 'policy' not in cfg_a2c:
-      cfg_a2c['policy']= 'MlpPolicy'
+    if 'policy' not in cfg_rl_algo and not is_multiobjective: # TODO: Handle multiobjective policy
+      cfg_rl_algo['policy']= 'MlpPolicy'
 
-    if 'policy_kwargs' in cfg_a2c:
+    if 'policy_kwargs' in cfg_rl_algo:
       print('Reading policy_kwargs')
-      cfg_a2c['policy_kwargs']= policy_cfg2kargs(cfg_a2c['policy_kwargs'])
+      cfg_rl_algo['policy_kwargs']= policy_cfg2kargs(cfg_rl_algo['policy_kwargs'])
     
     # Environments
     n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
+    if n_envs>1 and not is_multiobjective: # TODO: Handle multiobjective vector envs, see MOSyncVectorEnv
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
        env = self.make_env()
 
-    print(cfg_a2c)
-    self.model= A2C(env=env, **cfg_a2c )
-
-    return self.model
-
-  def init_SAC(self):
-    cfg_sac = {}
-
-    # Get options  
-    cfg_algo0 = self.cfg_train.get('algo')
-    cfg_algo  = cfg_algo0.copy()   
-    if cfg_algo.get('sac') is not None:                     
-      cfg_sac = copy.deepcopy(cfg_algo.get('sac'))
-
-    # Policy     
-    if 'policy' not in cfg_sac:
-      cfg_sac['policy']= 'MlpPolicy'
-
-    if 'policy_kwargs' in cfg_sac:
-      print('Reading policy_kwargs')
-      cfg_sac['policy_kwargs']= policy_cfg2kargs(cfg_sac['policy_kwargs'])
-    
-    # Environments
-    n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
-       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
-    else:
-       env = self.make_env()
-
-    print(cfg_sac)
-    self.model= SAC(env=env, **cfg_sac )
-
-    return self.model
-
-  def init_TD3(self):
-    cfg_td3 = {}
-
-    # Get options  
-    cfg_algo0 = self.cfg_train.get('algo')
-    cfg_algo  = cfg_algo0.copy()   
-    if cfg_algo.get('td3') is not None:                     
-      cfg_td3 = copy.deepcopy(cfg_algo.get('td3'))
-
-    # Policy     
-    if 'policy' not in cfg_td3:
-      cfg_td3['policy']= 'MlpPolicy'
-
-    if 'policy_kwargs' in cfg_td3:
-      print('Reading policy_kwargs')
-      cfg_td3['policy_kwargs']= policy_cfg2kargs(cfg_td3['policy_kwargs'])
-    
-    # Environments
-    n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
-       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
-    else:
-       env = self.make_env()
-
-    print(cfg_td3)
-    self.model= TD3(env=env, **cfg_td3 )
-
-    return self.model
-
-  def init_DQN(self):
-    cfg_dqn = {}
-
-    # Get options  
-    cfg_algo0 = self.cfg_train.get('algo')
-    cfg_algo  = cfg_algo0.copy()   
-    if cfg_algo.get('dqn') is not None:                     
-      cfg_dqn = copy.deepcopy(cfg_algo.get('dqn'))
-
-    # Policy     
-    if 'policy' not in cfg_dqn:
-      cfg_dqn['policy']= 'MlpPolicy'
-
-    if 'policy_kwargs' in cfg_dqn:
-      print('Reading policy_kwargs')
-      cfg_dqn['policy_kwargs']= policy_cfg2kargs(cfg_dqn['policy_kwargs'])
-    
-    # Environments
-    n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
-       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
-    else:
-       env = self.make_env()
-
-    print(cfg_dqn)
-    self.model= DQN(env=env, **cfg_dqn )
-
-    return self.model
-
-  def init_PPO(self):
-    cfg_ppo = {}
-
-    # Get options  
-    cfg_algo0 = self.cfg_train.get('algo')
-    cfg_algo  = cfg_algo0.copy()   
-    if cfg_algo.get('ppo') is not None:                     
-      cfg_ppo = copy.deepcopy(cfg_algo.get('ppo'))
-
-    # Policy     
-    if 'policy' not in cfg_ppo:
-      cfg_ppo['policy']= 'MlpPolicy'
-
-    if 'policy_kwargs' in cfg_ppo:
-      print('Reading policy_kwargs')
-      cfg_ppo['policy_kwargs']= policy_cfg2kargs(cfg_ppo['policy_kwargs'])
-    
-    # Environments
-    n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
-       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
-    else:
-       env = self.make_env()
-
-    print(cfg_ppo)
-    self.model= PPO(env=env, **cfg_ppo )
-
-    return self.model
-  
-  def init_DDPG(self):
-    cfg_ddpg = {}
-
-    # Get options  
-    cfg_algo0 = self.cfg_train.get('algo')
-    cfg_algo  = cfg_algo0.copy()   
-    if cfg_algo.get('ddpg') is not None:                     
-      cfg_ddpg = copy.deepcopy(cfg_algo.get('ddpg'))
-
-    # Policy     
-    if 'policy' not in cfg_ddpg:
-      cfg_ddpg['policy']= 'MlpPolicy'
-
-    if 'policy_kwargs' in cfg_ddpg:
-      print('Reading policy_kwargs')
-      cfg_ddpg['policy_kwargs']= policy_cfg2kargs(cfg_ddpg['policy_kwargs'])
-    
-    # Environments
-    n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
-       env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
-    else:
-       env = self.make_env()
-
-    print(cfg_ddpg)
-    self.model= DDPG(env=env, **cfg_ddpg )
+    algo_class = rlu.ALGO_NAMES_CLASSES[algo_name]
+    self.model= algo_class(env=env, **cfg_rl_algo )
 
     return self.model
   
