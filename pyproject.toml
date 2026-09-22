@@ -3,11 +3,11 @@ name = "rlrom"
 dynamic = ["version"]
 description = "RLROM is a library for testing and training reinforcement learning agent using online monitoring of signal temporal logics formulas, and more."
 authors = [{ name = "Alexandre Donze", email = "alexandre.donze@univ-grenoble-alpes.fr" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "BSD-3-Clauses" }
 dependencies = [
-    "stlrom (>=0.2.3,<0.3.0)",
+    "stlrom (>=0.4.0)",
     "gymnasium[classic_control] (>=1.2.0,<2.0.0)",
     "bokeh (>=3.6.0,<4.0.0)",
     "sb3-contrib>=2.7.0,<3.0.0",

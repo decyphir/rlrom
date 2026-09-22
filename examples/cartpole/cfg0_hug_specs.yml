@@ -14,6 +14,7 @@ cfg_specs:
     theta_dot: "obs[3]"  
   specs: cartpole.stl
   
+  
   eval_formulas:
     phi_goal_keep_up:
     

@@ -138,7 +138,7 @@ class STLWrapper(gym.Wrapper):
         return obs, info
 
     def reset_monitor(self):        
-        self.stl_driver.data = [] 
+        self.stl_driver.data.reset_signal_data
         return [0]*len(self.obs_formulas) 
 
     def step(self, action):

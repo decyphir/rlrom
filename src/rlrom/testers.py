@@ -61,8 +61,18 @@ class RLTester:
         self.fig_layout = None
         self.test_results = []
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
+        if self.has_stl_wrapper:
+            self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment            
+            cfg_specs = cfg.get('cfg_specs')
+            if 'obs_formulas' in cfg_specs.keys():
+                num_obs_formulas = len(cfg_specs.get('obs_formulas'))
+            else:
+                num_obs_formulas = 0
+            if num_obs_formulas==0: 
+                self.model_use_specs = True
         self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
-        self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
+        
+
         self.model_action_function = None # if None, model.predict() is used; otherwise, model_action_function(model, obs) is called
         
     def load_model(self, model_file=None):
@@ -104,7 +114,7 @@ class RLTester:
         elif isinstance(self.model, str):  # includes "random" and "manual_control" which is bypassed anyway for hw env 
             action = self.env.action_space.sample()            
         else:
-            if self.has_stl_wrapper:  
+            if self.has_stl_wrapper:                  
                 if self.model_use_specs is False:
                     # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action                    
                     last_obs= self.env.get_wrapper_attr('last_obs')
