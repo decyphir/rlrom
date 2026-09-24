@@ -212,7 +212,8 @@ class RLTrainer:
     model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
     try:
-      self.model.save(f"{model_name}_{datetime.datetime.now():%Y-%m-%d_%H:%M:%S}")
+      #self.model.save(f"{model_name}_{datetime.datetime.now():%Y-%m-%d_%H:%M:%S}")
+      self.model.save(model_name)
       with open(cfg_name,'w') as f:
            rlu.yaml.dump(self.cfg, f)
     except Exception as e:
@@ -257,8 +258,13 @@ class RLTrainer:
     if cfg_algo.get(algo_name) is not None:                     
       cfg_rl_algo = copy.deepcopy(cfg_algo.get(algo_name))
 
-    env = self.make_env()
-    is_multiobjective = env.get_wrapper_attr("multi_objective")
+    env = self.make_env()        
+    try: 
+      is_multiobjective = env.get_wrapper_attr("multi_objective")
+    except:
+      is_multiobjective = False # likely env is vanilla, not wrapped
+
+    
     del env
 
     # Policy     

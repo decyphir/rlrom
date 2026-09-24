@@ -383,3 +383,4 @@ class RLTester:
             cfg_tmp = rlu.set_rec_cfg_field(cfg_tmp,render_mode=None,**kargs)
             T = RLTester(cfg_tmp)
             T.run_cfg_test()
+    
