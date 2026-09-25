@@ -26,7 +26,7 @@ from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
 import re
-import os, sys, glob
+import os, sys, glob, shutil
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
@@ -577,8 +577,57 @@ def get_df_mean_min_max_val(df, feature):
     df_enveloppe = df.group_by(pl.col('steps')).agg(pl.col(feature)
                             ).sort(pl.col('steps'))                        
     df_enveloppe = df_enveloppe.collect().select('steps',expr_mean, expr_min, expr_max)
-
     
     return df_enveloppe
 
 
+
+def get_best_models(cfg,train_idx=-1):
+    df = get_df_training(cfg, train_idx)
+    dfc = df.collect()    
+    dff= dfc.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
+
+    full_paths = dff.select(
+        (pl.col("path") + pl.lit("/") + pl.col("model_files")).alias("full_path")
+    ).to_series().to_list()
+    return full_paths
+
+def get_training_cfg_path(cfg, train_idx=-1):
+    df = get_df_training(cfg, train_idx)
+    dfc = df.collect()    
+    dff= dfc.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
+    cfg_path = dff.select(
+         (pl.col("path") + pl.lit("/cfg0.yml")).alias("cfg0")
+    ).to_series().to_list()[0]
+    return cfg_path
+
+def get_step_model(cfg,step, train_idx=-1):
+    df = get_df_training(cfg, train_idx)
+    
+    dfc= df.collect()
+    fname = dfc.filter(
+        pl.col('steps')> step).sort('steps').head(1).select(
+            (pl.col('path')+pl.lit('/')+pl.col('model_files'))
+        ).to_series().to_list()[0]
+    return fname
+ 
+def set_active_model(cfg, model_full_path, train_idx=-1):
+    mdl_path, cfg_path  = get_model_fullpath(cfg)
+
+    target = model_full_path
+    link = mdl_path
+    if os.path.islink(link) or os.path.exists(link):
+        os.remove(link)
+    os.symlink(target, link)
+
+    
+    cfg_full_path = get_training_cfg_path(cfg, train_idx)
+    target = cfg_full_path
+    link = cfg_path
+
+    if os.path.islink(link) or os.path.exists(link):
+        os.remove(link)
+    os.symlink(target, link)
+
+
+    

@@ -11,9 +11,8 @@ cfg_specs:
     x: "obs[0]"
     x_dot: "obs[1]"
     theta: "obs[2]"
-    theta_dot: "obs[3]"  
+    theta_dot: "obs[3]"
   specs: cartpole.stl
-  
   
   eval_formulas:
     phi_goal_keep_up:
