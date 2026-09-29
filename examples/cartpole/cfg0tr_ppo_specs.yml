@@ -15,7 +15,6 @@ cfg_specs:
     theta_dot: "obs[3]"  
   specs: cartpole.stl
     
-
   reward_formulas:
     cart_on_left:
       online: True
@@ -33,9 +32,9 @@ cfg_specs:
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 10
+  num_ep: 1
   num_steps: 500 
-  render_mode: None
+  render_mode: human
 
 cfg_train:
   n_envs: 4
@@ -44,3 +43,9 @@ cfg_train:
   
   algo:
     ppo: cartpole_ppo.yml
+  
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500 
+    render_mode: None

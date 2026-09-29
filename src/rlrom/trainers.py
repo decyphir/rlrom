@@ -118,8 +118,16 @@ class RlromCallback(BaseCallback):
     return super()._on_training_end()
 
   def eval_policy(self):
-  # This might go eventually - log stuff from Tres into tensorboard      
-    self.tester = RLTester(self.cfg)
+  # This might go eventually - log stuff from Tres into tensorboard
+  # Also, maybe this can be made more efficient, like, not create a Tester each time ? 
+    cfg= copy.deepcopy(self.cfg) 
+    cfg_train = cfg.get('cfg_train')
+    cfg_eval = cfg_train.get('eval')
+    if  cfg_eval is not None:    
+      cfg['cfg_test']=cfg_eval
+      
+    
+    self.tester = RLTester(cfg)
     self.tester.model = self.model
     Tres = self.tester.run_cfg_test(reload_model=False)                
           
