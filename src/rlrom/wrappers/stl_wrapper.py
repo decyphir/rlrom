@@ -144,13 +144,14 @@ class STLWrapper(gym.Wrapper):
     def step(self, action):
         
         # steps the wrapped env
-        obs, reward, terminated, truncated, info = self.env.step(action)                
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        
         # collect the sample for monitoring 
         s = self.get_sample(obs, action, reward)
         self.episode['stl_data'].append(s)               
         
         # add sample and compute robustness
-        self.stl_driver.add_sample(s)        
+        self.stl_driver.add_sample(s,False)
         idx_formula = 0
         num_obs_formulas= len(self.obs_formulas)
         robs = [0]*num_obs_formulas
@@ -165,9 +166,9 @@ class STLWrapper(gym.Wrapper):
                 print(f_name+f': {robs_f:.3}', end=' ')
                 if idx_formula==num_obs_formulas:
                     print('')
-         
+        
         for f_name, f_opt in self.end_formulas.items():                     
-            _, eval_res = self.eval_formula_cfg(f_name,f_opt)                  
+            _, eval_res = self.eval_formula_cfg(f_name,f_opt)                 
             self.episode['res_f'][f_name].append(robs_f)
             if eval_res['lower_rob'] > 0:
                 print('Episode terminated because of formula', f_name)
@@ -328,8 +329,8 @@ class STLWrapper(gym.Wrapper):
         while self.time_step<len(observations):
             i_step = self.time_step
             s = stl_data[i_step]
-            self.stl_driver.add_sample(s)            
-            self.time_step +=1
+            self.stl_driver.add_sample(s, False) # we use constant interpolation and extrapolation
+            self.time_step += 1
             self.current_time += self.real_time_step
    
     def eval_formula_cfg(self, f_name, f_opt, eval_res=None):
@@ -343,9 +344,12 @@ class STLWrapper(gym.Wrapper):
         t0 = f_opt.get('t0',0.)
         tend = f_opt.get('tend',self.current_time)
         online = f_opt.get('eval_all_steps', False) or f_opt.get('online', False) # eval_all_steps and online are equivalent. online should prevail.
-        if online is True:
-            t0 = max(t0, tend-f_hor)
-                    
+        if online is True:    # For now, we eval online formulas at t0= current_time - horizon 
+            t0 = max(t0, tend-f_hor)   # FIXME: For now too, at the start, t0 cannot be negative
+                                       # So, if horizon is more than current_time, the interpration 
+                                       # of the formula might be as intended. 
+                                       # Eventually we should either force past formulas, or provide another 
+                                       # option: 'offline', 'online' (as now), 'past'
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
         if eval_res is None:
@@ -414,7 +418,7 @@ class STLWrapper(gym.Wrapper):
         if self.reward_formulas != dict():
             
             res_f = episode['res_f']
-            # Synthesize 
+            # Summarize
             for f_name,f_cfg in self.reward_formulas.items():
                 if f_name not in res:
                     res[f_name] = dict()
@@ -459,7 +463,7 @@ class STLWrapper(gym.Wrapper):
             for f_name,f_cfg in self.eval_formulas.items():                
                 if f_cfg is None:
                     f_cfg = {}
-                eval_all_steps = f_cfg.get('eval_all_steps', False)                
+                eval_all_steps = f_cfg.get('eval_all_steps', False) or f_cfg.get('online', False)                
                 if eval_all_steps:
                     w = f_cfg.get('weight', 1)
                     res[f_name] = add_metric(res[f_name], 'mean', w*res_f[f_name].mean())               
@@ -490,7 +494,7 @@ class STLWrapper(gym.Wrapper):
                     f_cfg = {}                
               if isinstance(res[f_name], dict):                    
                 res_all_ep['eval_formulas'][f_name] = dict()                
-                eval_all_steps = f_cfg.get('eval_all_steps', False)
+                eval_all_steps = f_cfg.get('eval_all_steps', False) or f_cfg.get('online', False)           
                 if eval_all_steps:
                     res_all_ep['eval_formulas'][f_name]['mean_sum'] = res[f_name]['sum'].mean()
                     res_all_ep['eval_formulas'][f_name]['mean_mean'] = res[f_name]['mean'].mean()

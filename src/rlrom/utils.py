@@ -522,7 +522,7 @@ def get_df_all_training_files(cfg):
             dict_trainings['path'].append(fd)
 
     df = pl.LazyFrame(dict_trainings)
-    df= df.sort('date', 'num')
+    df = df.sort('date', 'num')
     
     return df
 
@@ -556,9 +556,11 @@ def get_df_load_all_training_res(df_all_trainings):
 # load res files for trainings found by get_df_all_trainings, concat them vertically
 
     df_all_training_res = None
+    safe_select = ['label', 'steps','mean_ep_rew', 'mean_ep_len', 'res', 'res_files', 'model_files', 'path']
     idx =0
     for r in df_all_trainings.collect()['training_files']:
         r = get_df_load_training_res(r,f'Training{idx}')
+        r = r.select(safe_select)
         if df_all_training_res is None:
             df_all_training_res = r
         else:
@@ -629,5 +631,11 @@ def set_active_model(cfg, model_full_path, train_idx=-1):
         os.remove(link)
     os.symlink(target, link)
 
+def show_active_model(cfg):
+    mdl_path, cfg_path  = get_model_fullpath(cfg)
+    p = os.path.realpath(mdl_path)
+    filename = os.path.basename(p)
+    top_folder = os.path.basename(os.path.dirname(p))
+    print(f"{top_folder}/{filename}")
+    return p
 
-    

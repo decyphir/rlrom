@@ -291,7 +291,7 @@ class RLTester:
             for f_name,f_cfg in eval_formulas.items():
                 if f_cfg is None:
                     f_cfg = {}                
-                is_local_formula = f_cfg.get('eval_all_steps', False)
+                is_local_formula = f_cfg.get('eval_all_steps', False) or f_cfg.get('online', False)
                 if is_local_formula:                                                
                     print(f_name, end=': ')
                     print("sum=",f"{res_all_ep['eval_formulas'][f_name]['mean_sum']:.4g}",end=' | ')
