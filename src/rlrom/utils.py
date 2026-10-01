@@ -483,12 +483,12 @@ def get_date_num_training(cfg, training_folder):
 def get_df_training(cfg, idx=-1):
     dfallt= get_df_all_training_files(cfg)
     df_files_lastt = dfallt.collect()['training_files'][idx]
-    return get_df_load_training_res(df_files_lastt)
+    return get_df_training_res(df_files_lastt)
 
 
 def get_df_all_trainings(cfg):
     dfallt= get_df_all_training_files(cfg)
-    return get_df_load_all_training_res(dfallt)
+    return get_df_all_training_res(dfallt)
 
 
 def get_df_all_training_files(cfg):
@@ -513,7 +513,7 @@ def get_df_all_training_files(cfg):
                         'res_files':res_files,
                         'model_files':model_files,
                         'path': fd}
-            df_cp = pl.LazyFrame(dict_cp)
+            df_cp = pl.DataFrame(dict_cp)
             
             dt, num = get_date_num_training(cfg,fd)
             dict_trainings['date'].append(dt)
@@ -521,12 +521,12 @@ def get_df_all_training_files(cfg):
             dict_trainings['training_files'].append(df_cp.sort('steps'))                        
             dict_trainings['path'].append(fd)
 
-    df = pl.LazyFrame(dict_trainings)
+    df = pl.DataFrame(dict_trainings)
     df = df.sort('date', 'num')
     
     return df
 
-def get_df_load_training_res(df_training_files, label='Training0'):
+def get_df_training_res(df_training_files, label='Training0'):
 # load res files from a df_training_files (dataframe with list of res and model files)
 
     def load_result_fn(p):                    
@@ -541,26 +541,27 @@ def get_df_load_training_res(df_training_files, label='Training0'):
         typ= pl.Struct([pl.Field('res', res_typ), pl.Field('res_all_ep', res_all_ep_typ)])
         return typ
 
-    p = df_training_files.collect()['res_files'][-1]
+    p = df_training_files['res_files'][-1]
     res = load_result_fn(p)
     typ = get_dtype_from_res(res)
     expr = pl.col('res_files').map_elements(load_result_fn, return_dtype=typ)
     out = df_training_files.with_columns(
          expr.alias('results')
     )
-    out = out.unnest('results').unnest('res_all_ep').unnest('basics').unnest('eval_formulas')
+    out = out.unnest('results').unnest('res_all_ep').unnest('basics')#.unnest('eval_formulas')
 
     return out.with_columns(pl.lit(label).alias('label'))
 
-def get_df_load_all_training_res(df_all_trainings):
+def get_df_all_training_res(df_all_trainings, select = None):
 # load res files for trainings found by get_df_all_trainings, concat them vertically
 
     df_all_training_res = None
     safe_select = ['label', 'steps','mean_ep_rew', 'mean_ep_len', 'res', 'res_files', 'model_files', 'path']
     idx =0
-    for r in df_all_trainings.collect()['training_files']:
-        r = get_df_load_training_res(r,f'Training{idx}')
-        r = r.select(safe_select)
+    for r in df_all_trainings['training_files']:
+        r = get_df_training_res(r,f'Training{idx}')
+        if select is not None:
+            r = r.select(safe_select)
         if df_all_training_res is None:
             df_all_training_res = r
         else:
@@ -578,16 +579,13 @@ def get_df_mean_min_max_val(df, feature):
     df = df.select('label','steps',feature)
     df_enveloppe = df.group_by(pl.col('steps')).agg(pl.col(feature)
                             ).sort(pl.col('steps'))                        
-    df_enveloppe = df_enveloppe.collect().select('steps',expr_mean, expr_min, expr_max)
+    df_enveloppe = df_enveloppe.select('steps',expr_mean, expr_min, expr_max)
     
     return df_enveloppe
 
-
-
 def get_best_models(cfg,train_idx=-1):
     df = get_df_training(cfg, train_idx)
-    dfc = df.collect()    
-    dff= dfc.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
+    dff= df.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
 
     full_paths = dff.select(
         (pl.col("path") + pl.lit("/") + pl.col("model_files")).alias("full_path")
@@ -595,9 +593,8 @@ def get_best_models(cfg,train_idx=-1):
     return full_paths
 
 def get_training_cfg_path(cfg, train_idx=-1):
-    df = get_df_training(cfg, train_idx)
-    dfc = df.collect()    
-    dff= dfc.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
+    df = get_df_training(cfg, train_idx)    
+    dff= df.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
     cfg_path = dff.select(
          (pl.col("path") + pl.lit("/cfg0.yml")).alias("cfg0")
     ).to_series().to_list()[0]
@@ -605,14 +602,13 @@ def get_training_cfg_path(cfg, train_idx=-1):
 
 def get_step_model(cfg,step, train_idx=-1):
     df = get_df_training(cfg, train_idx)
-    
-    dfc= df.collect()
-    fname = dfc.filter(
+        
+    fname = df.filter(
         pl.col('steps')> step).sort('steps').head(1).select(
             (pl.col('path')+pl.lit('/')+pl.col('model_files'))
         ).to_series().to_list()[0]
     return fname
- 
+
 def set_active_model(cfg, model_full_path, train_idx=-1):
     mdl_path, cfg_path  = get_model_fullpath(cfg)
 
