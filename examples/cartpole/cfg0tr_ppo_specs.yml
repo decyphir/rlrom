@@ -32,12 +32,12 @@ cfg_specs:
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 100
+  num_ep: 1
   num_steps: 500 
-  render_mode: None
+  render_mode: human
 
 cfg_train:
-  n_envs: 4
+  n_envs: 1
   eval_freq: 10000  
   total_timesteps: 500_000
   

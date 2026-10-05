@@ -34,6 +34,7 @@ from datetime import datetime, date
 from ruamel.yaml import YAML
 import torch as th
 import polars as pl
+import pandas as pd
 
 ALGO_NAMES_CLASSES = {
     # Stable Baselines 3 (single objective)
@@ -88,13 +89,17 @@ yaml.representer.add_representer(np.ndarray, lambda dumper, data: dumper.represe
 yaml.representer.add_representer(np.float64, lambda dumper, data: dumper.represent_float(float(data)))
 
 def disp_df_metric(df, m): 
-    metric_values = df.collect()[m].to_numpy()
+    metric_values = df[m].to_numpy()
     print(m+':', metric_values)
 
 def disp_df_formula_metrics(df, f):
-    dff = df.select(f).unnest(f)
+    if isinstance(df[f].iloc[0], dict):
+        dff = pd.DataFrame(df[f].tolist(), index=df.index)
+    else:
+        dff = df[[f]]
     print(f)
-    metrics= dff.collect_schema().names()
+    metrics = dff.columns
+    
     for m in metrics:
         print(' - ', end='')
         disp_df_metric(dff,m)
@@ -446,16 +451,7 @@ def policy_cfg2kargs(cfg_policy):
   
   return cfg_policy
 
-def list_trained_models(folder='./models'):
-    list_models = []
-    with os.scandir(folder) as d:
-        for e in d:
-            m, ext=  os.path.splitext(e.name)
-            if ext=='.yml': 
-                list_models.append(m)
-    return list_models
-
-def get_training_folders(cfg):
+def list_training_folders(cfg):
     cfg= load_cfg(cfg)
     mpath,_ = get_model_fullpath(cfg)
     patt = os.path.splitext(mpath)[0]
@@ -479,153 +475,159 @@ def get_date_num_training(cfg, training_folder):
     
     return dt, int(training)
 
-
-def get_df_training(cfg, idx=-1):
-    dfallt= get_df_all_training_files(cfg)
-    df_files_lastt = dfallt.collect()['training_files'][idx]
-    return get_df_training_res(df_files_lastt)
-
-
-def get_df_all_trainings(cfg):
-    dfallt= get_df_all_training_files(cfg)
-    return get_df_all_training_res(dfallt)
-
-
-def get_df_all_training_files(cfg):
+#######################
+### DataFraming results 
+def get_training_folders(cfg, verbose=0):
     # returns a dataframe with all non empty folders containing checkpoints models and tests
-    list_folders = get_training_folders(cfg)    
-    dict_trainings = dict({'date':[], 'num':[], 'training_files':[], 'path':[]})
-
+    
+    list_folders = list_training_folders(cfg)    
+    dict_trainings = dict({'best_reward':[], 'date':[], 'num':[], 'training_files':[], 'path':[]})
+    if list_folders:
+        print('Scanning models in ',os.path.dirname(list_folders[0]))
+    else:
+        mpath,_ = get_model_fullpath(cfg)
+        print('No model found in ', os.path.dirname(mpath))
+    
     for fd in list_folders:             
         l = os.scandir(fd)
         steps = []
         res_files = []
         model_files = []
+        best_reward = 0
         for f in l:
-            if f.name.startswith('res_step_'):                
+            if f.name.startswith('res_step_'):
                 step = f.name.removesuffix('.yml').removeprefix('res_step_')
+                with open(f.path, 'r') as fn:
+                        res = yaml.load(fn)
+                        mean_reward  = res['res_all_ep']['basics']['mean_ep_rew']
+                        if mean_reward>best_reward:
+                            best_reward=mean_reward   
+                                
                 steps.append(int(step))
                 res_files.append(os.path.join(fd,f.name))
                 model_files.append(f.name.replace('res','model').replace('.yml','.zip'))
-
+                
         if len(steps)>0:    
-            dict_cp = { 'steps':steps, 
-                        'res_files':res_files,
-                        'model_files':model_files,
-                        'path': fd}
-            df_cp = pl.DataFrame(dict_cp)
-            
+            dict_cp = {
+                'path': fd,
+                'steps':steps, 
+                'res_files':res_files,
+                'model_files':model_files
+            }
+            df_cp = pd.DataFrame(dict_cp).sort_values('steps').reset_index(drop=True)
             dt, num = get_date_num_training(cfg,fd)
             dict_trainings['date'].append(dt)
             dict_trainings['num'].append(num)            
-            dict_trainings['training_files'].append(df_cp.sort('steps'))                        
+            dict_trainings['best_reward'].append(best_reward)
+            dict_trainings['training_files'].append(df_cp)                        
             dict_trainings['path'].append(fd)
+            if verbose>0:
+                print(f'{os.path.basename(fd)}: {best_reward}')                            
 
-    df = pl.DataFrame(dict_trainings)
-    df = df.sort('date', 'num')
-    
+    df = pd.DataFrame(dict_trainings)
+    if not df.empty:
+        df = df.sort_values(['date', 'num']).reset_index(drop=True)
+
     return df
 
-def get_df_training_res(df_training_files, label='Training0'):
-# load res files from a df_training_files (dataframe with list of res and model files)
+def get_training_res(training_folders, training_idx=-1):
+# load res files from a training_folders (dataframe with list of res and model files)
+
+    if isinstance(training_folders, dict):
+        cfg = training_folders
+        training_folders = get_training_folders(cfg)
 
     def load_result_fn(p):                    
-        with open(p,'r') as f:
+        with open(p, 'r') as f:
             res = yaml.load(f)    
         return res
 
-    def get_dtype_from_res(res):
-        df_res = pl.DataFrame(res)
-        res_typ = df_res['res'].dtype
-        res_all_ep_typ = df_res['res_all_ep'].dtype
-        typ= pl.Struct([pl.Field('res', res_typ), pl.Field('res_all_ep', res_all_ep_typ)])
-        return typ
+    if training_idx == 'all': # load all of them 
+        training_idx = training_folders.index
 
-    p = df_training_files['res_files'][-1]
-    res = load_result_fn(p)
-    typ = get_dtype_from_res(res)
-    expr = pl.col('res_files').map_elements(load_result_fn, return_dtype=typ)
-    out = df_training_files.with_columns(
-         expr.alias('results')
-    )
-    out = out.unnest('results').unnest('res_all_ep').unnest('basics')#.unnest('eval_formulas')
+    if np.isscalar(training_idx):
+        out = training_folders.iloc[training_idx]['training_files']
+        results = pd.DataFrame(out['res_files'].apply(load_result_fn).tolist(), index=out.index)
 
-    return out.with_columns(pl.lit(label).alias('label'))
+        if 'res_all_ep' in results.columns:
+            res_all_ep = pd.DataFrame(results['res_all_ep'].tolist(), index=out.index)
+            results = results.drop(columns=['res_all_ep']).join(res_all_ep)
 
-def get_df_all_training_res(df_all_trainings, select = None):
-# load res files for trainings found by get_df_all_trainings, concat them vertically
+        if 'basics' in results.columns:
+            basics = pd.DataFrame(results['basics'].tolist(), index=out.index)
+            results = results.drop(columns=['basics']).join(basics)
 
-    df_all_training_res = None
-    safe_select = ['label', 'steps','mean_ep_rew', 'mean_ep_len', 'res', 'res_files', 'model_files', 'path']
-    idx =0
-    for r in df_all_trainings['training_files']:
-        r = get_df_training_res(r,f'Training{idx}')
-        if select is not None:
-            r = r.select(safe_select)
-        if df_all_training_res is None:
-            df_all_training_res = r
-        else:
-            df_all_training_res = pl.concat([   df_all_training_res,
-                                                r])
-        idx = idx+1
-    return df_all_training_res
-        
+        out = out.join(results)
+        out['training_idx'] = training_idx
+    else:
+        out_list = []
+        for idx in training_idx:
+            out_list.append(get_training_res(training_folders,idx))
+        out = pd.concat(out_list, ignore_index=True)
+
+    return out
+
+
 def get_df_mean_min_max_val(df, feature):
-# returns mean, min and max values for a dataframe df of (steps,feature) concat vertically with label
-    expr_min =  pl.col(feature).list.min().name.suffix('_min')
-    expr_max =  pl.col(feature).list.max().name.suffix('_max')
-    expr_mean = pl.col(feature).list.mean().name.suffix('_mean')
-
-    df = df.select('label','steps',feature)
-    df_enveloppe = df.group_by(pl.col('steps')).agg(pl.col(feature)
-                            ).sort(pl.col('steps'))                        
-    df_enveloppe = df_enveloppe.select('steps',expr_mean, expr_min, expr_max)
+    df_envelope = df.groupby('steps')[feature].agg(
+        **{
+            f'{feature}_mean': 'mean',
+            f'{feature}_min': 'min',
+            f'{feature}_max': 'max'
+        }
+    ).reset_index().sort_values('steps').reset_index(drop=True)
     
-    return df_enveloppe
+    return df_envelope
+
 
 def get_best_models(cfg,train_idx=-1):
-    df = get_df_training(cfg, train_idx)
-    dff= df.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
+    if isinstance(cfg, dict):
+        df = get_training_res(cfg, train_idx)
+    else:
+        df=cfg
+    dff = df[df["mean_ep_rew"] == df["mean_ep_rew"].max()].sort_values("steps")
 
-    full_paths = dff.select(
-        (pl.col("path") + pl.lit("/") + pl.col("model_files")).alias("full_path")
-    ).to_series().to_list()
-    return full_paths
+    dff['mdl_path'] = dff['path']+'/'+dff["model_files"]
+    dff['cfg_path'] = dff["path"] + "/cfg0.yml"
+    mdl_file = dff['mdl_path'].iloc[0]
+    cfg_file = dff['cfg_path'].iloc[0]
+        
+    return cfg_file, mdl_file, dff[['steps', 'mean_ep_rew', 'mdl_path', 'cfg_path']]
 
 def get_training_cfg_path(cfg, train_idx=-1):
-    df = get_df_training(cfg, train_idx)    
-    dff= df.filter(pl.col("mean_ep_rew") == pl.col("mean_ep_rew").max()).sort(["steps"])
-    cfg_path = dff.select(
-         (pl.col("path") + pl.lit("/cfg0.yml")).alias("cfg0")
-    ).to_series().to_list()[0]
+    df = get_training_res(cfg, train_idx)    
+    dff = df[df["mean_ep_rew"] == df["mean_ep_rew"].max()].sort_values("steps")
+    cfg_path = (dff["path"] + "/cfg0.yml").iloc[0]
     return cfg_path
 
 def get_step_model(cfg,step, train_idx=-1):
-    df = get_df_training(cfg, train_idx)
-        
-    fname = df.filter(
-        pl.col('steps')> step).sort('steps').head(1).select(
-            (pl.col('path')+pl.lit('/')+pl.col('model_files'))
-        ).to_series().to_list()[0]
-    return fname
+    if isinstance(cfg, dict):
+        df = get_training_res(cfg, train_idx)
+    else:
+        df=cfg
+    dff = df[df['steps'] > step].sort_values('steps')
+    
+    mdl_file = (dff['path'] + '/' + dff['model_files']).iloc[0]
+    cfg_file = (dff["path"] + "/cfg0.yml").iloc[0]
 
-def set_active_model(cfg, model_full_path, train_idx=-1):
+    return cfg_file, mdl_file
+    
+def set_active_model(cfg, cfg_file, mdl_file):
     mdl_path, cfg_path  = get_model_fullpath(cfg)
 
-    target = model_full_path
+    target = mdl_file
     link = mdl_path
     if os.path.islink(link) or os.path.exists(link):
         os.remove(link)
     os.symlink(target, link)
-
     
-    cfg_full_path = get_training_cfg_path(cfg, train_idx)
-    target = cfg_full_path
+    target = cfg_file
     link = cfg_path
 
     if os.path.islink(link) or os.path.exists(link):
         os.remove(link)
     os.symlink(target, link)
+    show_active_model(cfg)
 
 def show_active_model(cfg):
     mdl_path, cfg_path  = get_model_fullpath(cfg)
@@ -635,3 +637,25 @@ def show_active_model(cfg):
     print(f"{top_folder}/{filename}")
     return p
 
+## DEPRECATED
+def get_df_all_trainings(cfg):
+    dfallt= get_training_folders(cfg)
+    return get_df_all_training_res(dfallt)
+
+def get_df_all_training_res(df_all_trainings, select = None):
+# load res files for trainings found by get_df_all_trainings, concat them vertically
+
+    # In case inconsistent result structure prevent concat:
+    # safe_select = ['label', 'steps', 'mean_ep_rew', 'mean_ep_len', 'res', 'res_files', 'model_files', 'path']
+    
+    res_list = []
+    for idx, r in enumerate(df_all_trainings['training_files']):
+        df_res = get_training_res(r, f'Training{idx}')
+        if select is not None:
+            cols = [c for c in select if c in df_res.columns]
+            df_res = df_res[cols]
+        res_list.append(df_res)
+    if not res_list:
+        return pd.DataFrame()
+    return pd.concat(res_list, ignore_index=True)
+    

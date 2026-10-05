@@ -218,6 +218,12 @@ class RLTrainer:
 
   def save_model(self,path=None):
     model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
+  
+    if os.path.islink(model_name) or os.path.exists(model_name):
+      os.remove(model_name)
+    if os.path.islink(cfg_name) or os.path.exists(cfg_name):
+      os.remove(cfg_name)
+  
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
     try:
       #self.model.save(f"{model_name}_{datetime.datetime.now():%Y-%m-%d_%H:%M:%S}")
