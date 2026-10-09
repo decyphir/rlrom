@@ -39,11 +39,12 @@ class STLWrapper(gym.Wrapper):
                     stl_specs_str += ','+ o
             stl_specs_str += ',reward'                                 
     
-        stl_driver.parse_string(stl_specs_str)        
+        stl_driver.parse_string(stl_specs_str)
+        self.stl_specs_str = stl_specs_str
         self.real_time_step = cfg_specs.get('real_time_step',1)
         self.obs_formulas = cfg_specs.get('obs_formulas',{})        
         self.reward_formulas = cfg_specs.get('reward_formulas',{})
-        self.keep_old_reward = cfg_specs.get('keep_old_reward',True)
+        self.env_reward_weight = cfg_specs.get('env_reward_weight', 1.0)
         self.multi_objective = cfg_specs.get('multi_objective',False)
         self.eval_formulas = cfg_specs.get('eval_formulas',{})
         self.end_formulas = cfg_specs.get('end_formulas',{})
@@ -138,7 +139,10 @@ class STLWrapper(gym.Wrapper):
         return obs, info
 
     def reset_monitor(self):        
-        self.stl_driver.data.reset_signal_data
+        # recreate the driver to reset the data (stlrom has no dedicated reset API,
+        # and re-parsing the same driver accumulates parse state)
+        self.stl_driver = stlrom.STLDriver()
+        self.stl_driver.parse_string(self.stl_specs_str)
         return [0]*len(self.obs_formulas) 
 
     def step(self, action):
@@ -176,7 +180,7 @@ class STLWrapper(gym.Wrapper):
 
         if not self.multi_objective:
             # The returned new_reward is a scalar
-            new_reward = reward if self.keep_old_reward else 0
+            new_reward = reward * self.env_reward_weight
             # add stl robustness to reward
             for f_name, f_opt in self.reward_formulas.items():                         
                 robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
@@ -185,7 +189,7 @@ class STLWrapper(gym.Wrapper):
                 new_reward += w*robs_f   
         else:
             # The returned new_reward is a vector
-            new_reward = [reward] if self.keep_old_reward else []
+            new_reward = [reward * self.env_reward_weight] if self.env_reward_weight else []
             for f_name, f_opt in self.reward_formulas.items():                         
                 robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
                 self.episode['res_f'][f_name].append(robs_f)
@@ -247,10 +251,11 @@ class STLWrapper(gym.Wrapper):
         return self.env.reset(seed=seed)
     
     def get_time(self):
-        if self.stl_driver.data == []:
+        stl_data = self.episode.get('stl_data', [])
+        if stl_data == []:
             raise ValueError("No data to plot.")
         
-        return [s[0] for s in self.stl_driver.data]
+        return [s[0] for s in stl_data]
         
     def get_sig(self, sig_name):
         # recover a signal computed during an episode, either observation, reward, reward formula, 

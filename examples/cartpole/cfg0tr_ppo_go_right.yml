@@ -1,0 +1,52 @@
+env_name: CartPole-v1
+model_path: ./models
+model_name: ppo_specs_go_right
+model_use_specs: true
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  action_names: 
+    push: "action"
+  obs_names:
+    x:     "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"  
+  specs: cartpole.stl
+
+  env_reward_weight: 0.5  
+  reward_formulas:
+    go_right:
+      online: True
+      past_horizon: 0
+      weight: 0.5
+      lower_bound: 0      
+      
+  eval_formulas:
+    go_right:
+      online: true
+      past_horizon: 0      
+    phi_right_goal:
+      t0: 0
+      eval_all_steps: false
+
+cfg_test: 
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 500 
+  render_mode: human
+
+cfg_train:
+  n_envs: 5
+  eval_freq: 10000  
+  total_timesteps: 250_000
+  
+  algo:
+    ppo: cartpole_ppo.yml
+  
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500 
+    render_mode: None
