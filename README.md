@@ -21,6 +21,7 @@ RLRom reads configuration files in the YAML format as inputs. Examples are provi
 $ rlr test examples/cartpole/cfg0_hug.yml
 ```
 will run a few episode of the cartpole classic environment, fetching a model on huggingface and monitor a formula on these episodes. 
+`rlr show cfg.yml` prints a configuration (optionally expanded with `--expand` or restricted with `--subcfg KEY`); `rlr --help` lists all options.
 
 For training with or without STL specifications, use the `rlr train` command, e.g.:
 
@@ -35,4 +36,4 @@ More programmatic features are demonstrated in notebooks, in particular
 
 - [The Cart Pole notebook](examples/cartpole/cartpole_notebook.ipynb) presents a case study around the classic Cart Pole Gymnasium environment.
 
-- [The Highway-env notebook](examples/highway-env/highway_env_notebook.ipynb) presents a slightly more involved autonomous driving example based on the [highway-env](https://github.com/Farama-Foundation/HighwayEnv) environment.
+- [The Highway-env notebook](examples/highway_env/highway_notebook.ipynb) presents a slightly more involved autonomous driving example based on the [highway-env](https://github.com/Farama-Foundation/HighwayEnv) environment.

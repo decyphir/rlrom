@@ -1,5 +1,5 @@
 device: cpu
-verbose: 1
+verbose: 0 
 tensorboard_log: ./tb_logs
 
 # Additional hyper parameters for ppo

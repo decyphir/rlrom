@@ -1,0 +1,70 @@
+env_name: CartPole-v1
+model_path: ./models
+model_name: rm_go_left
+model_use_specs: true
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  action_names:
+    push: "action"
+  obs_names:
+    x:     "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"
+  specs: cartpole.stl
+
+  # Reward machines driven by the labels above.
+  env_reward_weight: 0.5
+  
+  label_formulas:
+    go_left:
+      online: True
+      past_horizon: 0
+    
+  reward_machines:
+    - name: go_left
+      weight: 0.5
+      reward_machine:
+        states:
+          - id: u0
+            initial: true
+            reward: 0
+        transitions:
+          - from: u0
+            to: u0
+            condition: go_left
+            reward: 1
+
+  eval_formulas:
+    go_left:
+      online: true
+      past_horizon: 0
+    cart_on_left:
+      online: true
+      past_horizon: 0
+    phi_left_goal:
+      t0: 0
+      eval_all_steps: false
+  
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 500
+  render_mode: human
+
+cfg_train:
+  n_envs: 4
+  eval_freq: 10000
+  total_timesteps: 500_000
+
+  algo:
+    ppo: cartpole_ppo.yml
+
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500
+    render_mode: None

@@ -1,6 +1,6 @@
 env_name: CartPole-v1
 model_path: ./models
-model_name: ppo_specs_go_left
+model_name: stl_go_left
 model_use_specs: true
 
 cfg_specs:
@@ -14,17 +14,20 @@ cfg_specs:
     theta: "obs[2]"
     theta_dot: "obs[3]"  
   specs: cartpole.stl
-    
+
+  # Reward structure
+  env_reward_weight: 0.5  
   reward_formulas:
     go_left:
       online: True
       past_horizon: 0
-      weight: 10
+      weight: 0.5
       lower_bound: 0      
-      
+ 
+  # Eval formulas    
   eval_formulas:
     cart_on_left:
-      online: true
+      onlin : true
       past_horizon: 0      
     phi_left_goal:
       t0: 0
@@ -39,7 +42,7 @@ cfg_test:
 cfg_train:
   n_envs: 5
   eval_freq: 10000  
-  total_timesteps: 500_000
+  total_timesteps: 250_000
   
   algo:
     ppo: cartpole_ppo.yml
