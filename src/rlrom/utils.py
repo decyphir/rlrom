@@ -1,10 +1,32 @@
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
-from sb3_contrib import TRPO, QRDQN
+from morl_baselines.single_policy.ser.mo_ppo import MOPPO
+from morl_baselines.single_policy.ser.nl_mo_ppo import NLMOPPO
+from morl_baselines.single_policy.ser.mo_q_learning import MOQLearning
+from morl_baselines.single_policy.ser.mosac_continuous_action import MOSAC
+from morl_baselines.single_policy.ser.mosac_discrete_action import MOSACDiscrete
+from morl_baselines.single_policy.esr.eupg import EUPG
+from morl_baselines.multi_policy.pcn.pcn import PCN
+from morl_baselines.multi_policy.pgmorl.pgmorl import PGMORL
+from morl_baselines.multi_policy.pareto_q_learning.pql import PQL
+from morl_baselines.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import MPMOQLearning
+from morl_baselines.multi_policy.morld.morld import MORLD
+from morl_baselines.multi_policy.ipro.ipro_2d import IPRO2D
+from morl_baselines.multi_policy.ipro.ipro import IPRO
+from morl_baselines.multi_policy.capql.capql import CAPQL
+from morl_baselines.multi_policy.envelope.envelope import Envelope
+from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
+from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
+from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
+from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
+from morl_baselines.multi_policy.gpi_ls_jax.gpi_ls_continuous_action_jax import GPILSContinuousAction as GPILSContinuousActionJax
+import sbx
+from rlrom.extra_algos.tabular_q_learning import TabularQLearning
+from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
 from huggingface_sb3 import load_from_hub
 from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepoId
 import re
-import os, sys, glob
+import os, sys, glob, shutil
 import numpy as np
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
@@ -12,10 +34,51 @@ from datetime import datetime, date
 from ruamel.yaml import YAML
 import torch as th
 import polars as pl
+import pandas as pd
 
 ALGO_NAMES_CLASSES = {
-  "ppo": PPO, "a2c": A2C, "sac": SAC, "td3": TD3,
-  "trpo": TRPO, "dqn": DQN, "ddpg": DDPG, "qrdqn": QRDQN
+    # Stable Baselines 3 (single objective)
+    "ppo": PPO,
+    "a2c": A2C,
+    "sac": SAC,
+    "td3": TD3,
+    "dqn": DQN,
+    "ddpg": DDPG,
+    # SBX variants (Stable Baselines Jax)
+    "sbx_ppo": sbx.PPO,
+    "sbx_sac": sbx.SAC,
+    "sbx_td3": sbx.TD3,
+    "sbx_dqn": sbx.DQN,
+    "sbx_ddpg": sbx.DDPG,
+    "sbx_crossq": sbx.CrossQ,
+    # sb3-contrib (more RL algos)
+    "trpo": TRPO,
+    "crossq": CrossQ,
+    "qrdqn": QRDQN,
+    # Other algos
+    "qlearning": TabularQLearning,
+    # MORL single-policy
+    "moppo": MOPPO,
+    "nlmoppo": NLMOPPO,
+    "moql": MOQLearning,
+    "mosac": MOSAC,
+    "mosac_discrete": MOSACDiscrete,
+    "eupg": EUPG,
+    # MORL multi-policy
+    "pcn": PCN,
+    "pgmorl": PGMORL,
+    "pql": PQL,
+    "mpmoql": MPMOQLearning,
+    "morld": MORLD,
+    "ipro2d": IPRO2D,
+    "ipro": IPRO,
+    "capql": CAPQL,
+    "envelope": Envelope,
+    "gpipd": GPIPD,
+    "gpils": GPILS,
+    "gpipd_continuous_action": GPIPDContinuousAction,
+    "gpils_continuous_action": GPILSContinuousAction,
+    "gpils_continuous_action_jax": GPILSContinuousActionJax
 }
 
 yaml = YAML(typ='safe')
@@ -26,33 +89,22 @@ yaml.representer.add_representer(np.ndarray, lambda dumper, data: dumper.represe
 yaml.representer.add_representer(np.float64, lambda dumper, data: dumper.represent_float(float(data)))
 
 def disp_df_metric(df, m): 
-    metric_values = df.collect()[m].to_numpy()
+    metric_values = df[m].to_numpy()
     print(m+':', metric_values)
 
 def disp_df_formula_metrics(df, f):
-    dff = df.select(f).unnest(f)
+    if isinstance(df[f].iloc[0], dict):
+        dff = pd.DataFrame(df[f].tolist(), index=df.index)
+    else:
+        dff = df[[f]]
     print(f)
-    metrics= dff.collect_schema().names()
+    metrics = dff.columns
+    
     for m in metrics:
         print(' - ', end='')
         disp_df_metric(dff,m)
 
 
-def set_rec_cfg_field(cfg, **kargs):
-    def rec_set(cfg, key, value):
-        for item in cfg:
-            if item==key:
-                cfg[item]=value
-            elif isinstance(cfg[item], dict):
-                cfg[item]= rec_set(cfg[item],key,value)
-        return cfg    
-    for item in kargs:
-        cfg = rec_set(cfg,item,kargs[item])
-    return cfg
-
-
-
-# helper function to concat new values in a dict field array
 def append_to_field_array(res, metric, val):
     vals = res.get(metric,None)
     if vals is None:
@@ -104,71 +156,6 @@ def tb_extract_from_tag(file_path_list, tag='rollout/ep_rew_mean'):
     return all_data    
 
 # load cfg recursively 
-def load_cfg(cfg, verbose=1):
-    def recursive_load(cfg):
-        exclude_load_file = ['res_file']
-        for key, value in cfg.items():
-            #print('reading', key, 'with value', value)
-            if isinstance(value, str) and value.endswith('.yml'):
-                if verbose>=1:
-                    if  key not in exclude_load_file:
-                        print('loading field [', key, '] from YAML file [', value, ']')
-                        with open(value, 'r') as f:                        
-                            cfg[key] = recursive_load(yaml.load(f))                
-                    else:
-                        cfg[key] = value
-                else:
-                    cfg[key] = value
-                    print('WARNING: file', value,'not found!')
-            elif isinstance(value, str) and value.endswith('.stl'):
-                if verbose>=1:
-                    print('loading field [', key, '] from STL file [', value, ']')            
-                with open(value,'r') as F: 
-                    cfg[key]= F.read()
-            elif key=='import_module':                
-                to_import = cfg.get('import_module')                
-                if to_import is not None:
-                    imported = importlib.import_module(to_import)
-                    print(f'Imported module {to_import}')
-
-            elif isinstance(value, dict):
-                cfg[key]= recursive_load(value)
-
-        return cfg
-    
-    if isinstance(cfg, str) and os.path.exists(cfg):        
-        # here cfg is a path and we found it so we can already load it at the top level
-        cfg_file = cfg
-        with open(cfg_file, 'r') as f:
-            cfg= yaml.load(f)
-
-        # now we should check if it has a path where we should be         
-        this_cfg_pathdir = cfg.get('this_cfg_pathdir', '')
-        if this_cfg_pathdir == '':
-            # no cfg_pathdir is explicitly specified. We try the folder of cfg file 
-            this_cfg_pathdir, _ = os.path.split(cfg_file)
-            if this_cfg_pathdir == '':  
-                this_cfg_pathdir ='.'            
-        
-        this_cfg_pathdir = os.path.abspath(this_cfg_pathdir)
-        cfg['this_cfg_pathdir'] = this_cfg_pathdir                        
-    elif not isinstance(cfg, dict): 
-        raise TypeError(f"Expected file name or dict.")
-    else:
-        this_cfg_pathdir = cfg.get('this_cfg_pathdir', '.')
-    # now we have defined this_cfg_pathdir. Might be that it don't exist. We issue warning in that case
-    if os.path.exists(this_cfg_pathdir):        
-        os.chdir(this_cfg_pathdir)      
-    else:
-        print(f'WARNING: {this_cfg_pathdir} does not exist, assume current folder for working directory.')
-              
-    if '' not in sys.path:
-        sys.path.append('')
-    if '.' not in sys.path:
-        sys.path.append('.')
-        
-    return recursive_load(cfg)
-
 def get_model_fullpath(cfg):
     # returns absolute path for model, as well as for yaml config (may not exist yet)
     # The yml file (second output), if it exists, contains the full configuration used 
@@ -384,16 +371,7 @@ def policy_cfg2kargs(cfg_policy):
   
   return cfg_policy
 
-def list_trained_models(folder='./models'):
-    list_models = []
-    with os.scandir(folder) as d:
-        for e in d:
-            m, ext=  os.path.splitext(e.name)
-            if ext=='.yml': 
-                list_models.append(m)
-    return list_models
-
-def get_training_folders(cfg):
+def list_training_folders(cfg):
     cfg= load_cfg(cfg)
     mpath,_ = get_model_fullpath(cfg)
     patt = os.path.splitext(mpath)[0]
@@ -417,104 +395,192 @@ def get_date_num_training(cfg, training_folder):
     
     return dt, int(training)
 
-
-def get_df_training(cfg, idx=-1):
-    dfallt= get_df_all_training_files(cfg)
-    df_files_lastt = dfallt.collect()['training_files'][idx]
-    return get_df_load_training_res(df_files_lastt)
-
-
-def get_df_all_trainings(cfg):
-    dfallt= get_df_all_training_files(cfg)
-    return get_df_load_all_training_res(dfallt)
-
-
-def get_df_all_training_files(cfg):
+#######################
+### DataFraming results 
+def get_training_folders(cfg, verbose=0):
     # returns a dataframe with all non empty folders containing checkpoints models and tests
-    list_folders = get_training_folders(cfg)    
-    dict_trainings = dict({'date':[], 'num':[], 'training_files':[], 'path':[]})
-
+    
+    list_folders = list_training_folders(cfg)    
+    dict_trainings = dict({'best_reward':[], 'date':[], 'num':[], 'training_files':[], 'path':[]})
+    if list_folders:
+        print('Scanning models in ',os.path.dirname(list_folders[0]))
+    else:
+        mpath,_ = get_model_fullpath(cfg)
+        print('No model found in ', os.path.dirname(mpath))
+    
     for fd in list_folders:             
         l = os.scandir(fd)
         steps = []
         res_files = []
         model_files = []
+        best_reward = 0
         for f in l:
-            if f.name.startswith('res_step_'):                
+            if f.name.startswith('res_step_'):
                 step = f.name.removesuffix('.yml').removeprefix('res_step_')
+                with open(f.path, 'r') as fn:
+                        res = yaml.load(fn)
+                        mean_reward  = res['res_all_ep']['basics']['mean_ep_rew']
+                        if mean_reward>best_reward:
+                            best_reward=mean_reward   
+                                
                 steps.append(int(step))
                 res_files.append(os.path.join(fd,f.name))
                 model_files.append(f.name.replace('res','model').replace('.yml','.zip'))
-
+                
         if len(steps)>0:    
-            dict_cp = { 'steps':steps, 
-                        'res_files':res_files,
-                        'model_files':model_files,
-                        'path': fd}
-            df_cp = pl.LazyFrame(dict_cp)
-            
+            dict_cp = {
+                'path': fd,
+                'steps':steps, 
+                'res_files':res_files,
+                'model_files':model_files
+            }
+            df_cp = pd.DataFrame(dict_cp).sort_values('steps').reset_index(drop=True)
             dt, num = get_date_num_training(cfg,fd)
             dict_trainings['date'].append(dt)
             dict_trainings['num'].append(num)            
-            dict_trainings['training_files'].append(df_cp.sort('steps'))                        
+            dict_trainings['best_reward'].append(best_reward)
+            dict_trainings['training_files'].append(df_cp)                        
             dict_trainings['path'].append(fd)
+            if verbose>0:
+                print(f'{os.path.basename(fd)}: {best_reward}')                            
 
-    df = pl.LazyFrame(dict_trainings)
-    df= df.sort('date', 'num')
-    
+    df = pd.DataFrame(dict_trainings)
+    if not df.empty:
+        df = df.sort_values(['date', 'num']).reset_index(drop=True)
+
     return df
 
-def get_df_load_training_res(df_training_files, label='Training0'):
-# load res files from a df_training_files (dataframe with list of res and model files)
+def get_training_res(training_folders, training_idx=-1):
+# load res files from a training_folders (dataframe with list of res and model files)
+
+    if isinstance(training_folders, dict):
+        cfg = training_folders
+        training_folders = get_training_folders(cfg)
 
     def load_result_fn(p):                    
-        with open(p,'r') as f:
+        with open(p, 'r') as f:
             res = yaml.load(f)    
         return res
 
-    def get_dtype_from_res(res):
-        df_res = pl.DataFrame(res)
-        res_typ = df_res['res'].dtype
-        res_all_ep_typ = df_res['res_all_ep'].dtype
-        typ= pl.Struct([pl.Field('res', res_typ), pl.Field('res_all_ep', res_all_ep_typ)])
-        return typ
+    if training_idx == 'all': # load all of them 
+        training_idx = training_folders.index
 
-    p = df_training_files.collect()['res_files'][-1]
-    res = load_result_fn(p)
-    typ = get_dtype_from_res(res)
-    expr = pl.col('res_files').map_elements(load_result_fn, return_dtype=typ)
-    out = df_training_files.with_columns(
-         expr.alias('results')
-    )
-    out = out.unnest('results').unnest('res_all_ep').unnest('basics').unnest('eval_formulas')
+    if np.isscalar(training_idx):
+        out = training_folders.iloc[training_idx]['training_files']
+        results = pd.DataFrame(out['res_files'].apply(load_result_fn).tolist(), index=out.index)
 
-    return out.with_columns(pl.lit(label).alias('label'))
+        if 'res_all_ep' in results.columns:
+            res_all_ep = pd.DataFrame(results['res_all_ep'].tolist(), index=out.index)
+            results = results.drop(columns=['res_all_ep']).join(res_all_ep)
 
-def get_df_load_all_training_res(df_all_trainings):
+        if 'basics' in results.columns:
+            basics = pd.DataFrame(results['basics'].tolist(), index=out.index)
+            results = results.drop(columns=['basics']).join(basics)
+
+        out = out.join(results)
+        out['training_idx'] = training_idx
+    else:
+        out_list = []
+        for idx in training_idx:
+            out_list.append(get_training_res(training_folders,idx))
+        out = pd.concat(out_list, ignore_index=True)
+
+    return out
+
+
+def get_df_mean_min_max_val(df, feature):
+    df_envelope = df.groupby('steps')[feature].agg(
+        **{
+            f'{feature}_mean': 'mean',
+            f'{feature}_min': 'min',
+            f'{feature}_max': 'max'
+        }
+    ).reset_index().sort_values('steps').reset_index(drop=True)
+    
+    return df_envelope
+
+
+def get_best_models(cfg,train_idx=-1):
+    if isinstance(cfg, dict):
+        df = get_training_res(cfg, train_idx)
+    else:
+        df=cfg
+    dff = df[df["mean_ep_rew"] == df["mean_ep_rew"].max()].sort_values("steps")
+
+    dff['mdl_path'] = dff['path']+'/'+dff["model_files"]
+    dff['cfg_path'] = dff["path"] + "/cfg0.yml"
+    mdl_file = dff['mdl_path'].iloc[0]
+    cfg_file = dff['cfg_path'].iloc[0]
+        
+    return cfg_file, mdl_file, dff[['steps', 'mean_ep_rew', 'mdl_path', 'cfg_path']]
+
+def get_training_cfg_path(cfg, train_idx=-1):
+    df = get_training_res(cfg, train_idx)    
+    dff = df[df["mean_ep_rew"] == df["mean_ep_rew"].max()].sort_values("steps")
+    cfg_path = (dff["path"] + "/cfg0.yml").iloc[0]
+    return cfg_path
+
+def get_step_model(cfg,step, train_idx=-1):
+    if isinstance(cfg, dict):
+        df = get_training_res(cfg, train_idx)
+    else:
+        df=cfg
+    dff = df[df['steps'] > step].sort_values('steps')
+    
+    mdl_file = (dff['path'] + '/' + dff['model_files']).iloc[0]
+    cfg_file = (dff["path"] + "/cfg0.yml").iloc[0]
+
+    return cfg_file, mdl_file
+    
+def set_active_model(cfg, cfg_file, mdl_file):
+    mdl_path, cfg_path  = get_model_fullpath(cfg)
+
+    target = mdl_file
+    link = mdl_path
+    if os.path.islink(link) or os.path.exists(link):
+        os.remove(link)
+    os.symlink(target, link)
+    
+    target = cfg_file
+    link = cfg_path
+
+    if os.path.islink(link) or os.path.exists(link):
+        os.remove(link)
+    os.symlink(target, link)
+    show_active_model(cfg)
+
+def show_active_model(cfg):
+    mdl_path, cfg_path  = get_model_fullpath(cfg)
+    p = os.path.realpath(mdl_path)
+    filename = os.path.basename(p)
+    top_folder = os.path.basename(os.path.dirname(p))
+    print(f"{top_folder}/{filename}")
+    return p
+
+## DEPRECATED
+def get_df_all_trainings(cfg):
+    dfallt= get_training_folders(cfg)
+    return get_df_all_training_res(dfallt)
+
+def get_df_all_training_res(df_all_trainings, select = None):
 # load res files for trainings found by get_df_all_trainings, concat them vertically
 
-    df_all_training_res = None
-    idx =0
-    for r in df_all_trainings.collect()['training_files']:
-        r = get_df_load_training_res(r,f'Training{idx}')
-        if df_all_training_res is None:
-            df_all_training_res = r
-        else:
-            df_all_training_res = pl.concat([   df_all_training_res,
-                                                r])
-        idx = idx+1
-    return df_all_training_res
-        
-def get_df_mean_min_max_val(df, feature):
-# returns mean, min and max values for a dataframe df of (steps,feature) concat vertically with label
-    expr_min =  pl.col(feature).list.min().name.suffix('_min')
-    expr_max =  pl.col(feature).list.max().name.suffix('_max')
-    expr_mean = pl.col(feature).list.mean().name.suffix('_mean')
-
-    df = df.select('label','steps',feature)
-    df_enveloppe = df.group_by(pl.col('steps')).agg(pl.col(feature)
-                            ).sort(pl.col('steps'))                        
-    df_enveloppe = df_enveloppe.collect().select('steps',expr_mean, expr_min, expr_max)
-
+    # In case inconsistent result structure prevent concat:
+    # safe_select = ['label', 'steps', 'mean_ep_rew', 'mean_ep_len', 'res', 'res_files', 'model_files', 'path']
     
-    return df_enveloppe
+    res_list = []
+    for idx, r in enumerate(df_all_trainings['training_files']):
+        df_res = get_training_res(r, f'Training{idx}')
+        if select is not None:
+            cols = [c for c in select if c in df_res.columns]
+            df_res = df_res[cols]
+        res_list.append(df_res)
+    if not res_list:
+        return pd.DataFrame()
+    return pd.concat(res_list, ignore_index=True)
+    
+# Re-export lightweight config helpers so existing callers of
+# ``utils.load_cfg`` / ``utils.set_rec_cfg_field`` keep working.
+# The implementations now live in :mod:`rlrom.cfg_utils` to avoid
+# importing the heavy dependency stack for config-only operations.
+from rlrom.cfg_utils import load_cfg, set_rec_cfg_field

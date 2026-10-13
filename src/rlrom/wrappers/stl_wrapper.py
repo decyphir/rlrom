@@ -3,6 +3,7 @@ from gymnasium import spaces
 import numpy as np
 import stlrom
 from rlrom.utils import append_to_field_array as add_metric
+from rlrom.wrappers.reward_machine import RewardMachine
 import importlib
 
 def stl_wrap_env(env, cfg):  # keeping this for compatibility no reason
@@ -39,12 +40,17 @@ class STLWrapper(gym.Wrapper):
                     stl_specs_str += ','+ o
             stl_specs_str += ',reward'                                 
     
-        stl_driver.parse_string(stl_specs_str)        
+        stl_driver.parse_string(stl_specs_str)
+        self.stl_specs_str = stl_specs_str
         self.real_time_step = cfg_specs.get('real_time_step',1)
         self.obs_formulas = cfg_specs.get('obs_formulas',{})        
         self.reward_formulas = cfg_specs.get('reward_formulas',{})
+        self.env_reward_weight = cfg_specs.get('env_reward_weight', 1.0)
+        self.multi_objective = cfg_specs.get('multi_objective',False)
         self.eval_formulas = cfg_specs.get('eval_formulas',{})
         self.end_formulas = cfg_specs.get('end_formulas',{})
+        self.label_formulas = cfg_specs.get('label_formulas',{})
+        self._reward_machines_cfg = cfg_specs.get('reward_machines',[])
         self.debug_signals=  cfg_specs.get('debug_signals',False)
         self.debug_formulas= cfg_specs.get('debug_formulas',False)
         self.BigM = cfg_specs.get('BigM')
@@ -85,12 +91,44 @@ class STLWrapper(gym.Wrapper):
             idx+=1
 
         num_obs_formulas = len(self.obs_formulas)
+
+        # Build the reward machines (FSMs) declared under cfg_specs.reward_machines.
+        self.reward_machines = []
+        for rm_cfg in self._reward_machines_cfg:
+            rm_cfg = dict(rm_cfg)
+            machine_cfg = rm_cfg.pop('reward_machine', None)
+            if machine_cfg is None:
+                raise ValueError("reward_machines entry missing required 'reward_machine' sub-config")
+            self.reward_machines.append({
+                'name': rm_cfg.pop('name', f'rm_{len(self.reward_machines)}'),
+                'weight': rm_cfg.pop('weight', 1.0),
+                'in_observation': rm_cfg.pop('in_observation', False),
+                'machine': RewardMachine(machine_cfg),
+                'cfg': rm_cfg,
+            })
+
         if self.BigM is None:
             self.BigM = stlrom.Signal.get_BigM()
-                
-        obs_formula_space = spaces.Box(np.array([-self.BigM]*num_obs_formulas), np.array([self.BigM]*num_obs_formulas))
-        dict_obs = {'unwrapped': env.observation_space, 'obs_formulas': obs_formula_space}        
-        self.observation_space =  spaces.Dict(dict_obs)        
+
+        # Build the (possibly dict) observation space: always has 'unwrapped';
+        # adds 'obs_formulas' if obs formulas exist, and 'rm_states' if reward
+        # machines exist. A dict-based obs supports any underlying obs space.
+        num_rm = len(self.reward_machines)
+        dict_fields = {'unwrapped': env.observation_space}
+        if num_obs_formulas > 0:
+            obs_formula_space = spaces.Box(
+                np.array([-self.BigM]*num_obs_formulas),
+                np.array([self.BigM]*num_obs_formulas))
+            dict_fields['obs_formulas'] = obs_formula_space
+        if num_rm > 0:
+            rm_states_space = spaces.Box(
+                low=0, high=num_rm, shape=(num_rm,), dtype=np.int_)
+            dict_fields['rm_states'] = rm_states_space
+
+        if len(dict_fields) == 1:
+            self.observation_space = env.observation_space
+        else:
+            self.observation_space = spaces.Dict(dict_fields)
 
         # adding mapping from stl signal to its config
         for f_name, f_opt in self.obs_formulas.items():                                     
@@ -98,6 +136,15 @@ class STLWrapper(gym.Wrapper):
                 f_opt=dict()            
             obs_name = f_opt.get('obs_name', f_name)            
             self.signals_map[obs_name]= f_opt
+        
+        if self.multi_objective:
+            # See https://mo-gymnasium.farama.org/tutorials/custom_env/
+            self.reward_dim = len(self.reward_formulas)
+            if self.keep_old_reward:
+                self.reward_dim += 1
+            self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,))
+            self.unwrapped.reward_dim = self.reward_dim
+            self.unwrapped.reward_space = self.reward_space
 
     def reset(self, **kwargs):        
         self.time_step = 0
@@ -105,37 +152,93 @@ class STLWrapper(gym.Wrapper):
         obs0, info = self.env.reset(**kwargs)
         self.wrapped_obs = obs0        
         robs0 = self.reset_monitor()
-        obs = dict()
-        obs['unwrapped'] = obs0
-        obs['obs_formulas'] = robs0
+        self.reset_rm()
+        rm_states0 = self._rm_states_obs()
+        obs = self._build_obs(obs0, robs0, rm_states0)
         self.last_obs = obs
         self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[], 'last_obs':[obs], 
-                      'stl_data':[]}        
+                      'stl_data':[], 'labels':[], 'rm_states':[], 'rm_rewards':[]}        
         # initialize res_f. It will store monitoring of formulas computed during the episode
         res_f={}
         for f_name, _ in self.obs_formulas.items():                     
             res_f[f_name]=[]  
         for f_name, _ in self.reward_formulas.items():                     
             res_f[f_name]=[]  
+        for f_name, _ in self.label_formulas.items():                     
+            res_f[f_name]=[]  
         for f_name, _ in self.end_formulas.items():                     
             res_f[f_name]=[]  
         self.episode['res_f'] = res_f
         return obs, info
 
+    def reset_rm(self):
+        """Reset all reward machines to their initial state."""
+        for rm in self.reward_machines:
+            rm['machine'].reset()
+
+    def _rm_states_obs(self):
+        """Current RM state indices (one per reward machine) as a numpy array."""
+        return np.array([rm['machine'].state_idx for rm in self.reward_machines], dtype=np.int_)
+
+    def _build_obs(self, unwrapped, robs, rm_states):
+        """Assemble the (possibly dict) observation returned to the agent."""
+        if not isinstance(self.observation_space, spaces.Dict):
+            return unwrapped
+        obs = {'unwrapped': unwrapped}
+        if 'obs_formulas' in self.observation_space.spaces:
+            obs['obs_formulas'] = robs
+        if 'rm_states' in self.observation_space.spaces:
+            obs['rm_states'] = rm_states
+        return obs
+
+    def show_reward_machines(self):
+        """Print a readable, text summary of the configured reward machines.
+
+        Intended as a lightweight visual/text diagnostic of the RM structure
+        (states, transitions, priorities) and the label formulas that drive them.
+        """
+        if not self.reward_machines:
+            print("No reward machines configured.")
+            return
+        if self.label_formulas:
+            print("Label formulas:")
+            for f_name, f_opt in self.label_formulas.items():
+                print(f"  {f_name}: {f_opt}")
+        for i, rm in enumerate(self.reward_machines):
+            m = rm['machine']
+            print(f"\nReward machine [{i}] '{rm['name']}' (weight={rm['weight']})")
+            print("  States:")
+            for sid in m.states:
+                flags = []
+                if m.is_final_state(sid):
+                    flags.append('final')
+                if m._is_initial.get(sid):
+                    flags.append('initial')
+                tag = (' [' + ', '.join(flags) + ']') if flags else ''
+                print(f"    {sid}{tag}: reward={m.state_rewards[sid]} idx={m.states_idx_map[sid]}")
+            print("  Transitions:")
+            for t in m.transitions:
+                print(f"    {t['id']}: {t['from']} -> {t['to']} if '{t['condition']}'"
+                      f" reward={t['reward']} priority={t['priority']}")
+
     def reset_monitor(self):        
-        self.stl_driver.data = [] 
+        # recreate the driver to reset the data (stlrom has no dedicated reset API,
+        # and re-parsing the same driver accumulates parse state)
+        self.stl_driver = stlrom.STLDriver()
+        self.stl_driver.parse_string(self.stl_specs_str)
         return [0]*len(self.obs_formulas) 
 
     def step(self, action):
         
         # steps the wrapped env
-        obs, reward, terminated, truncated, info = self.env.step(action)                
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        
         # collect the sample for monitoring 
         s = self.get_sample(obs, action, reward)
         self.episode['stl_data'].append(s)               
         
         # add sample and compute robustness
-        self.stl_driver.add_sample(s)        
+        self.stl_driver.add_sample(s,False)
         idx_formula = 0
         num_obs_formulas= len(self.obs_formulas)
         robs = [0]*num_obs_formulas
@@ -150,31 +253,64 @@ class STLWrapper(gym.Wrapper):
                 print(f_name+f': {robs_f:.3}', end=' ')
                 if idx_formula==num_obs_formulas:
                     print('')
-         
+        
         for f_name, f_opt in self.end_formulas.items():                     
-            _, eval_res = self.eval_formula_cfg(f_name,f_opt)                  
+            _, eval_res = self.eval_formula_cfg(f_name,f_opt)                 
             self.episode['res_f'][f_name].append(robs_f)
             if eval_res['lower_rob'] > 0:
                 print('Episode terminated because of formula', f_name)
                 terminated = True
 
-        new_reward = reward                         
-        # add stl robustness to reward
-        for f_name, f_opt in self.reward_formulas.items():                         
-            robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
-            self.episode['res_f'][f_name].append(robs_f)
-            w = f_opt.get('weight',1)        
-            new_reward += w*robs_f   
+        # Evaluate label formulas -> set of names that are *true* this step
+        # (a label is true when its monitored robustness lower bound is > 0).
+        labels = []
+        for f_name, f_opt in self.label_formulas.items():
+            _, eval_res = self.eval_formula_cfg(f_name, f_opt)
+            self.episode['res_f'][f_name].append(eval_res['lower_rob'])
+            if eval_res['lower_rob'] > 0:
+                labels.append(f_name)
+
+        # Step every reward machine with the current true-label set.
+        rm_states = []
+        rm_rewards = []
+        for rm in self.reward_machines:
+            r = rm['machine'].step(labels)
+            rm_states.append(rm['machine'].state_idx)
+            rm_rewards.append(r)
+            if rm['machine'].is_final:
+                terminated = True
+        self.episode['labels'].append(labels)
+        self.episode['rm_states'].append(rm_states)
+        self.episode['rm_rewards'].append(rm_rewards)
+        rm_states_array = np.array(rm_states, dtype=np.int_)
+
+        if not self.multi_objective:
+            # The returned new_reward is a scalar
+            new_reward = reward * self.env_reward_weight
+            # add stl robustness to reward
+            for f_name, f_opt in self.reward_formulas.items():                         
+                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
+                self.episode['res_f'][f_name].append(robs_f)
+                w = f_opt.get('weight',1)        
+                new_reward += w*robs_f   
+            # add weighted reward-machine rewards to the overall reward
+            for rm, r in zip(self.reward_machines, rm_rewards):
+                new_reward += rm['weight'] * r
+        else:
+            # The returned new_reward is a vector
+            new_reward = [reward * self.env_reward_weight] if self.env_reward_weight else []
+            for f_name, f_opt in self.reward_formulas.items():                         
+                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
+                self.episode['res_f'][f_name].append(robs_f)
+                new_reward.append(robs_f)
+            new_reward = np.asarray(new_reward)
         
         # update current time
         self.time_step += 1
         self.current_time += self.real_time_step
         
-        # return obs with added robustness
-        
-        new_obs = dict()
-        new_obs['unwrapped'] = obs
-        new_obs['obs_formulas'] = robs
+        # return obs with added robustness / rm states
+        new_obs = self._build_obs(obs, robs, rm_states_array)
 
         self.episode['observations'].append(self.last_obs)               
         self.episode['actions'].append(action)
@@ -199,7 +335,11 @@ class STLWrapper(gym.Wrapper):
         for sig in self.signals_specs:
             value= self.signals_map[sig]
             i_sig = i_sig+1           
-            s[i_sig] = eval(value)
+            signal = eval(value)
+            if isinstance(signal, np.ndarray):
+                assert signal.size == 1, "Signal must be float or an np.ndarray with a single element"
+                signal = signal.flatten()[0]
+            s[i_sig] = signal
             if self.debug_signals is True:
                 print(f'{sig}: {s[i_sig]:.3}', end=' ')
         if self.debug_signals is True:
@@ -216,10 +356,11 @@ class STLWrapper(gym.Wrapper):
         return self.env.reset(seed=seed)
     
     def get_time(self):
-        if self.stl_driver.data == []:
+        stl_data = self.episode.get('stl_data', [])
+        if stl_data == []:
             raise ValueError("No data to plot.")
         
-        return [s[0] for s in self.stl_driver.data]
+        return [s[0] for s in stl_data]
         
     def get_sig(self, sig_name):
         # recover a signal computed during an episode, either observation, reward, reward formula, 
@@ -298,8 +439,8 @@ class STLWrapper(gym.Wrapper):
         while self.time_step<len(observations):
             i_step = self.time_step
             s = stl_data[i_step]
-            self.stl_driver.add_sample(s)            
-            self.time_step +=1
+            self.stl_driver.add_sample(s, False) # we use constant interpolation and extrapolation
+            self.time_step += 1
             self.current_time += self.real_time_step
    
     def eval_formula_cfg(self, f_name, f_opt, eval_res=None):
@@ -313,9 +454,12 @@ class STLWrapper(gym.Wrapper):
         t0 = f_opt.get('t0',0.)
         tend = f_opt.get('tend',self.current_time)
         online = f_opt.get('eval_all_steps', False) or f_opt.get('online', False) # eval_all_steps and online are equivalent. online should prevail.
-        if online is True:
-            t0 = max(t0, tend-f_hor)
-                    
+        if online is True:    # For now, we eval online formulas at t0= current_time - horizon 
+            t0 = max(t0, tend-f_hor)   # FIXME: For now too, at the start, t0 cannot be negative
+                                       # So, if horizon is more than current_time, the interpration 
+                                       # of the formula might be as intended. 
+                                       # Eventually we should either force past formulas, or provide another 
+                                       # option: 'offline', 'online' (as now), 'past'
         robs = self.stl_driver.get_online_rob(f_name, t0)
         val = robs[0]
         if eval_res is None:
@@ -384,7 +528,7 @@ class STLWrapper(gym.Wrapper):
         if self.reward_formulas != dict():
             
             res_f = episode['res_f']
-            # Synthesize 
+            # Summarize
             for f_name,f_cfg in self.reward_formulas.items():
                 if f_name not in res:
                     res[f_name] = dict()
@@ -429,7 +573,7 @@ class STLWrapper(gym.Wrapper):
             for f_name,f_cfg in self.eval_formulas.items():                
                 if f_cfg is None:
                     f_cfg = {}
-                eval_all_steps = f_cfg.get('eval_all_steps', False)                
+                eval_all_steps = f_cfg.get('eval_all_steps', False) or f_cfg.get('online', False)                
                 if eval_all_steps:
                     w = f_cfg.get('weight', 1)
                     res[f_name] = add_metric(res[f_name], 'mean', w*res_f[f_name].mean())               
@@ -460,7 +604,7 @@ class STLWrapper(gym.Wrapper):
                     f_cfg = {}                
               if isinstance(res[f_name], dict):                    
                 res_all_ep['eval_formulas'][f_name] = dict()                
-                eval_all_steps = f_cfg.get('eval_all_steps', False)
+                eval_all_steps = f_cfg.get('eval_all_steps', False) or f_cfg.get('online', False)           
                 if eval_all_steps:
                     res_all_ep['eval_formulas'][f_name]['mean_sum'] = res[f_name]['sum'].mean()
                     res_all_ep['eval_formulas'][f_name]['mean_mean'] = res[f_name]['mean'].mean()

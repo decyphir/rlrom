@@ -3,14 +3,17 @@ model_path: huggingface
 model_name: sb3/ppo-CartPole-v1
 
 cfg_specs:
+  debug_formulas: False
+  debug_signals: False
   action_names: 
     push: "action"
   obs_names:
     x: "obs[0]"
     x_dot: "obs[1]"
     theta: "obs[2]"
-    theta_dot: "obs[3]"  
+    theta_dot: "obs[3]"
   specs: cartpole.stl
+  
   eval_formulas:
     phi_goal_keep_up:
     

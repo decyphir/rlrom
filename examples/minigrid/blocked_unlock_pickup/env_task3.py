@@ -14,7 +14,6 @@ import numpy as np
 import pygame
 from minigrid.core.actions import Actions
 
-
 class BlockedUnlockPickupBoxEnv(RoomGrid):
     """
 
@@ -170,7 +169,7 @@ class BlockedUnlockPickupBoxEnv(RoomGrid):
             terminated = True   
         return obs, reward, terminated, truncated, info
     
-    def manual_control(self, obs):
+    def keyboard_control(self, obs):
         action=None
         for event in pygame.event.get():                        
             if event.type == pygame.KEYDOWN:                

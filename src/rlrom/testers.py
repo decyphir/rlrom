@@ -53,7 +53,7 @@ class RLTester:
         
         cfg = rlu.load_cfg(cfg)
         self.cfg = cfg        
-        self.manual_control = False
+        self.keyboard_control = False
         self.env_name = cfg.get('env_name')
         self.env = None
         self.model = None
@@ -61,16 +61,27 @@ class RLTester:
         self.fig_layout = None
         self.test_results = []
         self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
+        if self.has_stl_wrapper:
+            self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment            
+            cfg_specs = cfg.get('cfg_specs')
+            if 'obs_formulas' in cfg_specs.keys():
+                num_obs_formulas = len(cfg_specs.get('obs_formulas'))
+            else:
+                num_obs_formulas = 0
+            if num_obs_formulas==0: 
+                self.model_use_specs = True
         self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
-        self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment
+        
+
+        self.model_action_function = None # if None, model.predict() is used; otherwise, model_action_function(model, obs) is called
         
     def load_model(self, model_file=None):
         
         cfg_env = self.cfg.get('cfg_env',dict())
-        if cfg_env.get('manual_control', False):
-            model = 'manual'
+        if cfg_env.get('keyboard_control', False):
+            model = 'keyboard'
             print("INFO: manual_control set to True, stay alert.")    
-            self.manual_control = True        
+            self.keyboard_control = True        
         else:            
             self.manual_control = False
             model_path = self.cfg.get('model_path', './models')
@@ -95,22 +106,23 @@ class RLTester:
 
     def _get_action(self, obs):        
         
-        if self.manual_control is True:
-            manual_control = self.env.get_wrapper_attr('manual_control')
+        if self.keyboard_control is True:
+            keyboard_control = self.env.get_wrapper_attr('keyboard_control')
             action = None 
             while action==None: # wait for action to come (note: we'll want to change that for real time control)
-                action = manual_control(obs)           
-        elif self.model=='random':
-            action = self.env.action_space.sample()
+                action = keyboard_control(obs)           
+        elif isinstance(self.model, str):  # includes "random" and "manual_control" which is bypassed anyway for hw env 
+            action = self.env.action_space.sample()            
         else:
-            if self.has_stl_wrapper:  
+            if self.has_stl_wrapper:                  
                 if self.model_use_specs is False:
                     # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action                    
                     last_obs= self.env.get_wrapper_attr('last_obs')
                     obs = last_obs['unwrapped']
                 else:
                     pass # use the obs that we were given                
-            action, _ = self.model.predict(obs)
+            action = self.model.predict(obs)[0] if self.model_action_function is None \
+                else self.model_action_function(self.model, obs)
         return action
 
     def init_env(self, **kargs):      # **kargs allows to override self.cfg fields without changing self.cfg
@@ -129,7 +141,7 @@ class RLTester:
         if self.fig_layout is not None:
             rl_fig = rlp.RLFig(self, self.fig_layout)
             rl_fig.fig.show()
-            time.sleep(.1)
+            time.sleep(.1)  # TODO probably cfg that 
         else:
             rl_fig = None
         # We actually might want to reload every time to enforce determinism     
@@ -279,7 +291,7 @@ class RLTester:
             for f_name,f_cfg in eval_formulas.items():
                 if f_cfg is None:
                     f_cfg = {}                
-                is_local_formula = f_cfg.get('eval_all_steps', False)
+                is_local_formula = f_cfg.get('eval_all_steps', False) or f_cfg.get('online', False)
                 if is_local_formula:                                                
                     print(f_name, end=': ')
                     print("sum=",f"{res_all_ep['eval_formulas'][f_name]['mean_sum']:.4g}",end=' | ')
@@ -371,3 +383,4 @@ class RLTester:
             cfg_tmp = rlu.set_rec_cfg_field(cfg_tmp,render_mode=None,**kargs)
             T = RLTester(cfg_tmp)
             T.run_cfg_test()
+    

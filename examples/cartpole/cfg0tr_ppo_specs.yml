@@ -4,6 +4,8 @@ model_name: ppo_specs
 model_use_specs: true
 
 cfg_specs:
+  debug_formulas: False
+  debug_signals: False
   action_names: 
     push: "action"
   obs_names:
@@ -22,7 +24,7 @@ cfg_specs:
       
   eval_formulas:
     cart_on_left:
-      online: True
+      online: true
       past_horizon: 0      
     phi_left_goal:
       t0: 0
@@ -30,14 +32,20 @@ cfg_specs:
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 10
+  num_ep: 1
   num_steps: 500 
-  render_mode: None
+  render_mode: human
 
 cfg_train:
-  n_envs: 4
+  n_envs: 1
   eval_freq: 10000  
-  total_timesteps: 200_000
+  total_timesteps: 500_000
   
   algo:
     ppo: cartpole_ppo.yml
+  
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500 
+    render_mode: None

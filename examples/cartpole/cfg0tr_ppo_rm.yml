@@ -1,0 +1,78 @@
+env_name: CartPole-v1
+model_path: ./models
+model_name: ppo_rm
+model_use_specs: true
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  action_names:
+    push: "action"
+  obs_names:
+    x:     "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"
+  specs: cartpole.stl
+
+  # Label formulas: monitored each step; a label is *true* when lower_rob > 0.
+  # The set of true labels is fed to the reward machines at every step.
+  # Formula names must exist in the STL specs (cartpole.stl).
+  label_formulas:
+    cart_on_left:
+      online: True
+      past_horizon: 0
+    cart_on_right:
+      online: True
+      past_horizon: 0
+
+  # Reward machines driven by the labels above.
+  reward_machines:
+    - name: left_then_right
+      weight: 1.0
+      reward_machine:
+        states:
+          - id: go_left
+            initial: true
+            reward: 0
+          - id: on_right_target
+            final: true
+            reward: 1
+        transitions:
+          - from: go_left
+            to: on_right_target
+            condition: cart_on_right
+            reward: 1
+            priority: 1
+
+  reward_formulas:
+    cart_on_left:
+      online: True
+      past_horizon: 0
+      weight: 10
+      lower_bound: 0
+
+  eval_formulas:
+    cart_on_left:
+      online: true
+      past_horizon: 0
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 500
+  render_mode: human
+
+cfg_train:
+  n_envs: 1
+  eval_freq: 10000
+  total_timesteps: 500_000
+
+  algo:
+    ppo: cartpole_ppo.yml
+
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500
+    render_mode: None

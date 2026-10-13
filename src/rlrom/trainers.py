@@ -4,6 +4,7 @@ import os
 import sys
 import importlib
 import copy #for deep copy of dicts (*not* default !)
+import datetime
 #import functools
 
 # Gym and sb3 stuff
@@ -13,6 +14,8 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 from gymnasium.wrappers import FlattenObservation
+
+from mo_gymnasium.wrappers.vector import MOSyncVectorEnv, MORecordEpisodeStatistics
 
 # rlrom stuff
 from rlrom.testers import RLTester
@@ -82,8 +85,11 @@ class RlromCallback(BaseCallback):
     print(f'n_envs: {self.n_envs}, Eval freq: {self.eval_freq}, Checkpoints folder: {self.chkpt_dir}')
     print(f'Saving configuration file to {cfg_filename}')
     
-    with open(cfg_filename,'w') as f:
-         rlu.yaml.dump(self.cfg, f)
+    try:
+      with open(cfg_filename,'w') as f:
+           rlu.yaml.dump(self.cfg, f)
+    except Exception as e:
+      print(f"Could not save configuration file: {e}")
 
 
   def _on_step(self):
@@ -101,16 +107,27 @@ class RlromCallback(BaseCallback):
     Tres = self.eval_policy()
     Tres.pop('episodes',[]) # TODO make a more generic save result thing, with options to keep episodes maybe
     print(f'saving test results to {res_filename}...')
-    with open(res_filename,'w') as f:
-       rlu.yaml.dump(Tres, f)
+    try:
+      with open(res_filename,'w') as f:
+         rlu.yaml.dump(Tres, f)
+    except Exception as e:
+      print(f"Could not save test results to {res_filename}: {e}")
 
   def _on_training_end(self):
     self.eval_and_save_model()
     return super()._on_training_end()
 
   def eval_policy(self):
-  # This might go eventually - log stuff from Tres into tensorboard      
-    self.tester = RLTester(self.cfg)
+  # This might go eventually - log stuff from Tres into tensorboard
+  # Also, maybe this can be made more efficient, like, not create a Tester each time ? 
+    cfg= copy.deepcopy(self.cfg) 
+    cfg_train = cfg.get('cfg_train')
+    cfg_eval = cfg_train.get('eval')
+    if  cfg_eval is not None:    
+      cfg['cfg_test']=cfg_eval
+      
+    
+    self.tester = RLTester(cfg)
     self.tester.model = self.model
     Tres = self.tester.run_cfg_test(reload_model=False)                
           
@@ -166,18 +183,33 @@ class RLTrainer:
        
     model = self.init_rl_algo(cfg_algo) if self.model is None else self.model
 
-    # Training
-    total_timesteps = self.cfg_train.get('total_timesteps',1000)    
+    # Training          
+    total_timesteps = int(self.cfg_train.get('total_timesteps',1000))
     progress_bar = self.cfg_train.get('progress_bar',True)    
     tb_prefix =  rlu.add_now_suffix(self.model_name)
 
-    # Train the agent
-    model.learn(
-      total_timesteps = total_timesteps,
-      callback = callbacks,
-      tb_log_name = tb_prefix,
-      progress_bar= progress_bar,
-    )
+    # algo_train_kwargs contains algorithm-specific configurations that are only
+    # used when calling train(); these are used heavily in morl-baselines
+    algo_train_kwargs = self.cfg_train.get('train_kwargs', {})
+    if "ref_point" in algo_train_kwargs:
+      algo_train_kwargs["ref_point"] = np.asarray(algo_train_kwargs["ref_point"])
+
+    # Train the agent: Method is "learn" or "train" depending on whether it's a
+    # SB3 or morl-baselines model
+    assert hasattr(model, "learn") or hasattr(model, "train")
+    if hasattr(model, "learn"):
+      model.learn(
+        total_timesteps = total_timesteps,
+        callback = callbacks,
+        tb_log_name = tb_prefix,
+        progress_bar= progress_bar,
+      )
+    else:
+      model.train(
+        total_timesteps = total_timesteps,
+        eval_env = self.make_env(),
+        **algo_train_kwargs
+      )
     
     # Saving the agent
     self.save_model()
@@ -186,10 +218,20 @@ class RLTrainer:
 
   def save_model(self,path=None):
     model_name, cfg_name = rlu.get_model_fullpath(self.cfg)
+  
+    if os.path.islink(model_name) or os.path.exists(model_name):
+      os.remove(model_name)
+    if os.path.islink(cfg_name) or os.path.exists(cfg_name):
+      os.remove(cfg_name)
+  
     print(f'saving model to {model_name} trained with cfg {cfg_name}')
-    self.model.save(model_name) #TODO try except 
-    with open(cfg_name,'w') as f:
-         rlu.yaml.dump(self.cfg, f)
+    try:
+      #self.model.save(f"{model_name}_{datetime.datetime.now():%Y-%m-%d_%H:%M:%S}")
+      self.model.save(model_name)
+      with open(cfg_name,'w') as f:
+           rlu.yaml.dump(self.cfg, f)
+    except Exception as e:
+      print(f"Could not save model: {e}")
 
   def set_checkpoint_dir(self):
     cfg= self.cfg
@@ -230,8 +272,17 @@ class RLTrainer:
     if cfg_algo.get(algo_name) is not None:                     
       cfg_rl_algo = copy.deepcopy(cfg_algo.get(algo_name))
 
+    env = self.make_env()        
+    try: 
+      is_multiobjective = env.get_wrapper_attr("multi_objective")
+    except:
+      is_multiobjective = False # likely env is vanilla, not wrapped
+
+    
+    del env
+
     # Policy     
-    if 'policy' not in cfg_rl_algo:
+    if 'policy' not in cfg_rl_algo and not is_multiobjective: # TODO: Handle multiobjective policy
       cfg_rl_algo['policy']= 'MlpPolicy'
 
     if 'policy_kwargs' in cfg_rl_algo:
@@ -240,12 +291,11 @@ class RLTrainer:
     
     # Environments
     n_envs = int(self.cfg_train.get('n_envs',1))
-    if n_envs>1:
+    if n_envs>1 and not is_multiobjective: # TODO: Handle multiobjective vector envs, see MOSyncVectorEnv
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
        env = self.make_env()
 
-    print(cfg_rl_algo)
     algo_class = rlu.ALGO_NAMES_CLASSES[algo_name]
     self.model= algo_class(env=env, **cfg_rl_algo )
 
