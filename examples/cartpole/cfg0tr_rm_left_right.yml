@@ -82,7 +82,7 @@ cfg_test:
 cfg_train:
   n_envs: 4
   eval_freq: 10000
-  total_timesteps: 500_000
+  total_timesteps: 200_000
 
   algo:
     ppo: cartpole_ppo.yml

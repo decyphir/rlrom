@@ -2,7 +2,7 @@
 
 ## Session start (do this first)
 
-1. Read `docs/CODEBASE_OVERVIEW.md`. Do **not** re-read the whole code base from scratch;
+1. Read `.pidocs/CODEBASE_OVERVIEW.md`. Do **not** re-read the whole code base from scratch;
    the overview is the reference map (package structure, wrapper pipeline, config system,
    canonical example configs, known issues).
 2. From the request, identify the relevant area and read **only those files**, e.g.:
@@ -13,7 +13,7 @@
    - Testing / evaluation / plotting → `src/rlrom/testers.py`, `src/rlrom/plots.py`
    - Config format / CLI → `src/rlrom/rlrom_run.py`, `src/rlrom/utils.py` (`load_cfg`),
      `examples/cartpole/cfg0tr_ppo_specs.yml` (simplest complete example)
-3. Keep `docs/CODEBASE_OVERVIEW.md` up to date: after any change that alters structure,
+3. Keep `.pidocs/CODEBASE_OVERVIEW.md` up to date: after any change that alters structure,
    APIs, config keys, or the known-issues list, update the corresponding section in the
    same change.
 
@@ -37,7 +37,7 @@
 - Python env: `uv`-managed, venv at repo root (`.venv`). Use `uv run ...` for commands
   (e.g. `uv run python ...`, `uv run rlr test <cfg.yml>`).
 - **Run the test suite before committing logic changes:** `uv run pytest tests/`
-  (fast, no models/downloads needed). See `docs/CODEBASE_OVERVIEW.md`, "Test suite".
+  (fast, no models/downloads needed). See `.pidocs/CODEBASE_OVERVIEW.md`, "Test suite".
 - Quick smoke test with a real model: `uv run rlr test examples/cartpole/cfg0tr_ppo_specs.yml`
   (uses the locally trained `examples/cartpole/models/ppo_specs.zip`; override with
   `--set-params num_ep=1 num_steps=50 render_mode=None`).
