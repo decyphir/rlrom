@@ -17,7 +17,6 @@ def plot_rob(env, formula, ax, past_horizon=0, online=True):
     ax.legend()
     ax.grid()
 
-
 class live_line:
     def __init__(self, T, st, ax):
         self.get_time = T.env.get_wrapper_attr('get_time')
@@ -135,19 +134,18 @@ def plot_tb_training_logs(data, ax=None, label=None, color='gray', linestyle='-'
 
 
 def plot_df_training(df, formula=None, metric='mean_ep_rew', 
-                     label='auto',ax=None,**kargs):
-    
-    steps = df.collect()['steps'].to_numpy()
-    
-    if formula is None:
-        metric_values = df.collect()[metric].to_numpy()
-    else:
-        df_phi = df.select('label', #training id 
-                           'steps',
-                            formula).unnest(formula)        
-        metric_values = df_phi.collect()[metric].to_numpy()
+                     label='auto', ax=None, **kargs):
+    """Plot a single metric against training steps.
 
-
+    df: results DataFrame (see rlrom.utils.get_training_res).
+    formula and metric: either a flat column name (metric only, e.g.
+    'mean_ep_rew') or a formula name plus sub-metric looked up in the
+    eval/reward formulas (e.g. formula='phi_left_goal',
+    metric='ratio_init_sat').
+    """
+    metric_spec = f'{formula}/{metric}' if formula is not None else metric
+    steps = df['steps'].to_numpy()
+    metric_values = utils.get_metric_series(df, metric_spec).to_numpy()
 
     if ax is None:
        _, ax = plt.subplots(figsize=(8, 4))
@@ -156,7 +154,7 @@ def plot_df_training(df, formula=None, metric='mean_ep_rew',
     if label is None:    
         ax.plot(steps, metric_values,**kargs)
     elif label=='auto':
-        ax.plot(steps, metric_values,label=metric,**kargs)
+        ax.plot(steps, metric_values,label=metric_spec,**kargs)
     else:
         ax.plot(steps, metric_values,label=label,**kargs)
     
@@ -165,3 +163,55 @@ def plot_df_training(df, formula=None, metric='mean_ep_rew',
     ax.set_ylabel('Value')
 
     return  ax
+
+
+def plot_training_results(df, metrics=None, style='line', label_col='training_idx',
+                          title=None, log_y=False, figsize=(9, 4), **kargs):
+    """Plot training results collected in a DataFrame.
+
+    df: results DataFrame with a 'steps' column, as returned by
+    rlrom.utils.get_training_res() (one training) or
+    rlrom.utils.get_df_all_trainings() (several, labeled by 'training_idx').
+    metrics: a metric name or list of names (see rlrom.utils.get_metric_series).
+    style: 'line' (one line per training), 'envelope' (mean/min-max band
+    across trainings at each step) or 'both'.
+
+    Returns the matplotlib Figure.
+    """
+    if metrics is None:
+        metrics = ['mean_ep_rew']
+    elif isinstance(metrics, str):
+        metrics = [metrics]
+
+    df = df.copy()
+    if label_col not in df.columns:
+        df[label_col] = 'training'
+
+    n_metrics = len(metrics)
+    fig, axs = plt.subplots(n_metrics, 1, sharex=True,
+                            figsize=(figsize[0], figsize[1]*n_metrics), squeeze=False)
+    axs = axs[:, 0]
+
+    for iax, metric in enumerate(metrics):
+        ax = axs[iax]
+        ax.grid(True)
+        dfm = df[['steps', label_col]].copy()
+        dfm[metric] = utils.get_metric_series(df, metric)
+        dfm = dfm.sort_values('steps')
+
+        if style in ('envelope', 'both'):
+            plot_df_enveloppe(dfm, metric, ax=ax, label='mean', linestyle='--')
+        if style in ('line', 'both') or df[label_col].nunique() <= 1:
+            for lab, grp in dfm.groupby(label_col, sort=False):
+                ax.plot(grp['steps'], grp[metric], label=str(lab), **kargs)
+
+        if log_y:
+            ax.set_yscale('log')
+        ax.set_xlabel('Training Steps')
+        ax.set_ylabel(metric)
+        ax.legend()
+
+    if title:
+        fig.suptitle(title)
+    fig.tight_layout(rect=(0, 0, 1, 0.96) if title else None)
+    return fig

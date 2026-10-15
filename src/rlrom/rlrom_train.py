@@ -6,8 +6,23 @@ from rlrom import rlrom_run, utils
 from pprint import pprint
 
 def main_train(custom_cfg):
-    trainer = RLTrainer(custom_cfg)
-    trainer.train()
+    # Resolve the config once: after a --cfg-train override, cfg_train may
+    # still be a file path string at this point.
+    cfg = utils.load_cfg(custom_cfg)
+    n_repeats = int(cfg.get('cfg_train', {}).get('repeat_training', 1))
+    if n_repeats < 1:
+        raise ValueError(f'cfg_train.repeat_training must be >= 1 (got {n_repeats})')
+
+    for i in range(n_repeats):
+        if n_repeats > 1:
+            print(f'=================== training run {i + 1} of {n_repeats} ===================')
+        # A fresh trainer per run, so the model is re-initialized from scratch
+        # each time, as if `rlr train` had been called again. Each run gets its
+        # own <model>_<date>__trainingN checkpoint folder.
+        RLTrainer(cfg).train()
+
+    if n_repeats > 1:
+        print(f'=================== {n_repeats} training run(s) completed ===================')
 
 def main():
     # rlrom_test cfg_main.yml [--cfg-test cfg_test.yml]    [--cfg-specs cfg_specs.yml]    

@@ -3,17 +3,23 @@ import sys
 import argparse
 from pprint import pprint
 
+from rlrom.rlrom_plot import add_results_arguments, add_plot_options, main_plot, _merge_negative_values
+from rlrom.rlrom_select_model import add_select_model_options, main_select_model
+
 
 def main():
-    # rlr [test|train|show] cfg_main.yml [--cfg-train cfg_train.yml] [--cfg-test cfg_test.yml]
+    # rlr <test|train|show|plot> cfg_main.yml [action-specific options, see --help]
 
-    parser = argparse.ArgumentParser(description='Run a configuration file in YAML format for testing or training.')
-    parser.add_argument('action', type=str, help='action should be either "test", "train" or "show"')
-    parser.add_argument('main_cfg', type=str, default='cfg_main.yml', help='Path to main configuration file in YAML format.')
-    parser.add_argument('--cfg-train', type=str, help='Override cfg_train section in main with content of a YAML file.')
-    parser.add_argument('--cfg-test', type=str, help='Override cfg_test with content of a YAML file.')
-    parser.add_argument('--cfg-specs', type=str, help='Override cfg_specs with content of a YAML file.')
-    parser.add_argument('--set-params', nargs='*', action=ParseKwargs, help='list of key=value overriding keys existing in the cfg file.')
+    parser = argparse.ArgumentParser(description='Run a configuration file in YAML format: '
+                                                 'test an agent, train, show the config, plot training results, '
+                                                 'or select a trained model.')
+    parser.add_argument('action', type=str, help='the action to perform: "test", "train", "show", "plot" or "select-model"')
+    parser.add_argument('main_cfg', type=str, default='cfg_main.yml',
+                        help='Path to the main configuration file in YAML format (default: cfg_main.yml).')
+    parser.add_argument('--cfg-train', type=str, help='[test, train] Override cfg_train section in main with content of a YAML file.')
+    parser.add_argument('--cfg-test', type=str, help='[test, train] Override cfg_test with content of a YAML file.')
+    parser.add_argument('--cfg-specs', type=str, help='[test, train] Override cfg_specs with content of a YAML file.')
+    parser.add_argument('--set-params', nargs='*', action=ParseKwargs, help='[test, train] list of key=value overriding keys existing in the cfg file.')
     parser.add_argument('--verbose', type=int, default=0, help='Verbosity level')
     parser.add_argument('--expand', action='store_true',
                         help='[show] Recursively expand nested .yml/.stl/import_module references. '
@@ -22,7 +28,12 @@ def main():
                         help='[show] Display only a sub-configuration selected by KEY '
                              '(dot-separated path, or first occurrence found at any depth). '
                              'The --expand option applies.')
-    args = parser.parse_args()
+    # Options shared by the 'plot' and 'select-model' actions, then the
+    # action-specific ones (must not be registered twice in this flat parser)
+    add_results_arguments(parser, prefix='[plot, select-model] ')
+    add_plot_options(parser, prefix='[plot] ')
+    add_select_model_options(parser, prefix='[select-model] ')
+    args = parser.parse_args(_merge_negative_values(sys.argv[1:]))
     
     # Start with default configuration
     custom_cfg = dict()
@@ -70,7 +81,9 @@ def main():
         from rlrom.cfg_utils import set_rec_cfg_field
         custom_cfg = set_rec_cfg_field(custom_cfg, **args.set_params)
         
-    if args.verbose>=1:
+    # Note: for 'plot' and 'select-model', --verbose is handled by their
+    # main functions (list the training folders)
+    if args.verbose>=1 and args.action not in ('plot', 'select-model'):
         pprint(custom_cfg)
                     
     if args.action=='test':
@@ -81,8 +94,17 @@ def main():
         main_train(custom_cfg)
     elif args.action=='show':
         main_show(custom_cfg, subcfg=args.subcfg)
+    elif args.action=='plot':
+        sys.exit(main_plot(custom_cfg, trainings=args.trainings, metrics=args.metric,
+                           envelope=args.envelope, output=args.output, title=args.title,
+                           log_y=args.log_y, list_metrics=args.list_metrics, verbose=args.verbose))
+    elif args.action=='select-model':
+        sys.exit(main_select_model(custom_cfg, trainings=args.trainings, metric=args.metric,
+                                   min_=args.min, step=args.step, top=args.show_top,
+                                   show_selected=args.show_selected,
+                                   list_metrics=args.list_metrics, verbose=args.verbose))
     else: 
-        print(f'Unrecognized action {args.action}. It has to be "test", "train" or "show".')
+        print(f'Unrecognized action {args.action}. It has to be "test", "train", "show", "plot" or "select-model".')
 
 class ParseKwargs(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):

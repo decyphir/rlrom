@@ -14,3 +14,5 @@ go_right := x_dot[t] > 0
 cart_on_right := x[t] > 0.1
 cart_in_B := x[t] < 0.7 and x[t]> 0.5
 phi_right_goal := ev_[0,400] alw_[0, 100] cart_on_right
+
+stuck_left := alw_[0, 400] (not cart_on_right)

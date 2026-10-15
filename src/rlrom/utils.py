@@ -450,42 +450,64 @@ def get_training_folders(cfg, verbose=0):
 
     return df
 
-def get_training_res(training_folders, training_idx=-1):
-# load res files from a training_folders (dataframe with list of res and model files)
+def _res_from_training_df(training_df):
+    """Load and expand the res files of a single training.
 
-    if isinstance(training_folders, dict):
-        cfg = training_folders
-        training_folders = get_training_folders(cfg)
-
-    def load_result_fn(p):                    
+    training_df: DataFrame with at least the columns 'steps' and 'res_files'
+    (as found in the 'training_files' column of get_training_folders()), one
+    row per checkpoint evaluation. Returns a DataFrame with the same rows
+    plus the res file fields expanded: 'res' (dict), 'eval_formulas' (dict),
+    'reward_formulas' (dict) and the 'basics' fields flattened (e.g.
+    'mean_ep_rew'). A 'training_idx' label (training folder name) is added
+    when a 'path' column is present.
+    """
+    def load_result_fn(p):
         with open(p, 'r') as f:
-            res = yaml.load(f)    
-        return res
+            return yaml.load(f)
 
-    if training_idx == 'all': # load all of them 
-        training_idx = training_folders.index
+    results = pd.DataFrame(training_df['res_files'].apply(load_result_fn).tolist(), index=training_df.index)
 
-    if np.isscalar(training_idx):
-        out = training_folders.iloc[training_idx]['training_files']
-        results = pd.DataFrame(out['res_files'].apply(load_result_fn).tolist(), index=out.index)
+    if 'res_all_ep' in results.columns:
+        res_all_ep = pd.DataFrame(results['res_all_ep'].tolist(), index=training_df.index)
+        results = results.drop(columns=['res_all_ep']).join(res_all_ep)
 
-        if 'res_all_ep' in results.columns:
-            res_all_ep = pd.DataFrame(results['res_all_ep'].tolist(), index=out.index)
-            results = results.drop(columns=['res_all_ep']).join(res_all_ep)
+    if 'basics' in results.columns:
+        basics = pd.DataFrame(results['basics'].tolist(), index=training_df.index)
+        results = results.drop(columns=['basics']).join(basics)
 
-        if 'basics' in results.columns:
-            basics = pd.DataFrame(results['basics'].tolist(), index=out.index)
-            results = results.drop(columns=['basics']).join(basics)
-
-        out = out.join(results)
-        out['training_idx'] = training_idx
-    else:
-        out_list = []
-        for idx in training_idx:
-            out_list.append(get_training_res(training_folders,idx))
-        out = pd.concat(out_list, ignore_index=True)
-
+    out = training_df.join(results)
+    if 'path' in training_df.columns:
+        out['training_idx'] = os.path.basename(str(training_df['path'].iloc[0]))
     return out
+
+
+def get_training_res(training_folders, training_idx=-1):
+    """Load res files for one or several trainings, as a flat DataFrame.
+
+    training_folders: a cfg dict (resolved through get_training_folders()),
+    the DataFrame returned by get_training_folders(), or a single-training
+    DataFrame (columns 'steps', 'res_files', ...).
+    training_idx: an integer position (negative allowed), a list of
+    positions, or 'all'. Ignored when a single-training DataFrame is given.
+    """
+    if isinstance(training_folders, dict):
+        training_folders = get_training_folders(training_folders)
+
+    # single training already selected
+    if 'training_files' not in training_folders.columns:
+        return _res_from_training_df(training_folders)
+
+    if training_idx == 'all':
+        idxs = list(training_folders.index)
+    elif np.isscalar(training_idx):
+        idxs = [training_idx]
+    else:
+        idxs = list(training_idx)
+
+    out_list = []
+    for i in idxs:
+        out_list.append(_res_from_training_df(training_folders.iloc[i]['training_files']))
+    return pd.concat(out_list, ignore_index=True)
 
 
 def get_df_mean_min_max_val(df, feature):
@@ -500,37 +522,103 @@ def get_df_mean_min_max_val(df, feature):
     return df_envelope
 
 
-def get_best_models(cfg,train_idx=-1):
+def add_model_paths(df):
+    """Return a copy of a training results DataFrame with 'mdl_path' and
+    'cfg_path' columns added (the checkpoint model file and the cfg0.yml of
+    the training folder, for each row)."""
+    df = df.copy()
+    df['mdl_path'] = df['path'] + '/' + df['model_files']
+    df['cfg_path'] = df['path'] + '/cfg0.yml'
+    return df
+
+
+def get_training_num(folder):
+    """Return the integer training number of a training folder name or path
+    (e.g. 'ppo_specs_2026_09_30__training12' -> 12), or None if it cannot be
+    parsed."""
+    m = re.search(r'__training(\d+)$', os.path.basename(str(folder)))
+    return int(m.group(1)) if m else None
+
+
+def short_model_path(p):
+    """Return 'model_folder/model_name.ext' for a file path: the basename of
+    the containing folder plus the basename of the file."""
+    d, f = os.path.split(str(p))
+    return os.path.basename(d) + '/' + f
+
+
+def get_selection_df(cfg, trainings='last'):
+    """Return the flat results DataFrame for a pool of trainings.
+
+    cfg: a cfg dict, the DataFrame returned by get_training_folders(), or a
+    results DataFrame (passed through unchanged).
+    trainings: 'last' (most recent training), 'all', or a list of integer
+    positions into the (date, num) sorted list of training folders.
+    """
+    if isinstance(cfg, dict):
+        cfg = get_training_folders(cfg)
+    if 'training_files' not in cfg.columns:
+        return cfg  # already a results DataFrame
+    if trainings == 'all':
+        return get_df_all_training_res(cfg)
+    if trainings == 'last':
+        trainings = -1
+    return get_training_res(cfg, trainings)
+
+
+def get_model_ranking(df, metric='mean_ep_rew', mode='max', top=5):
+    """Return the top checkpoint rows of a results DataFrame ranked by
+    `metric` (see get_metric_series; mode 'max' or 'min'), with 'mdl_path'
+    and 'cfg_path' columns added."""
+    s = get_metric_series(df, metric)
+    order = s.sort_values(ascending=(mode == 'min'), na_position='last').head(top).index
+    return add_model_paths(df.loc[order])
+
+
+def get_best_models(cfg, train_idx=-1, *, metric='mean_ep_rew', mode='max'):
+    """Select the checkpoint with the best (or worst) value of a metric.
+
+    cfg: a cfg dict (train_idx then selects the training pool, as in
+    get_training_res) or a results DataFrame (train_idx ignored).
+    metric: a flat name or 'formula/metric' pair (see get_metric_series).
+    mode: 'max' (default) selects the highest value, 'min' the lowest.
+    Ties are broken by the lowest steps (earliest checkpoint to reach the
+    value). Rows with no value for the metric are ignored.
+
+    Returns (cfg_file, mdl_file, dff) where dff is the DataFrame of the
+    candidate rows (ties), with 'mdl_path' and 'cfg_path' columns added.
+    """
+    if mode not in ('max', 'min'):
+        raise ValueError(f"mode must be 'max' or 'min', got '{mode}'")
     if isinstance(cfg, dict):
         df = get_training_res(cfg, train_idx)
     else:
-        df=cfg
-    dff = df[df["mean_ep_rew"] == df["mean_ep_rew"].max()].sort_values("steps")
-
-    dff['mdl_path'] = dff['path']+'/'+dff["model_files"]
-    dff['cfg_path'] = dff["path"] + "/cfg0.yml"
+        df = cfg
+    values = get_metric_series(df, metric).dropna()
+    if values.empty:
+        raise ValueError(f"metric '{metric}' has no value in the selected trainings")
+    extremum = values.max() if mode == 'max' else values.min()
+    dff = add_model_paths(df.loc[values[values == extremum].index]).sort_values('steps')
     mdl_file = dff['mdl_path'].iloc[0]
     cfg_file = dff['cfg_path'].iloc[0]
-        
-    return cfg_file, mdl_file, dff[['steps', 'mean_ep_rew', 'mdl_path', 'cfg_path']]
+    return cfg_file, mdl_file, dff
+
 
 def get_training_cfg_path(cfg, train_idx=-1):
-    df = get_training_res(cfg, train_idx)    
-    dff = df[df["mean_ep_rew"] == df["mean_ep_rew"].max()].sort_values("steps")
-    cfg_path = (dff["path"] + "/cfg0.yml").iloc[0]
+    cfg_path, _, _ = get_best_models(cfg, train_idx)
     return cfg_path
 
-def get_step_model(cfg,step, train_idx=-1):
+def get_step_model(cfg, step, train_idx=-1):
+    """Select the first checkpoint with steps > step. Same input handling as
+    get_best_models. Returns (cfg_file, mdl_file)."""
     if isinstance(cfg, dict):
         df = get_training_res(cfg, train_idx)
     else:
-        df=cfg
-    dff = df[df['steps'] > step].sort_values('steps')
-    
-    mdl_file = (dff['path'] + '/' + dff['model_files']).iloc[0]
-    cfg_file = (dff["path"] + "/cfg0.yml").iloc[0]
-
-    return cfg_file, mdl_file
+        df = cfg
+    dff = add_model_paths(df[df['steps'] > step]).sort_values('steps')
+    if dff.empty:
+        raise ValueError(f"no checkpoint with steps > {step}")
+    return dff['cfg_path'].iloc[0], dff['mdl_path'].iloc[0]
     
 def set_active_model(cfg, cfg_file, mdl_file):
     mdl_path, cfg_path  = get_model_fullpath(cfg)
@@ -557,20 +645,20 @@ def show_active_model(cfg):
     print(f"{top_folder}/{filename}")
     return p
 
-## DEPRECATED
 def get_df_all_trainings(cfg):
-    dfallt= get_training_folders(cfg)
-    return get_df_all_training_res(dfallt)
+    """Load the res files of all trainings found for cfg, vertically
+    concatenated. See get_df_all_training_res()."""
+    return get_df_all_training_res(get_training_folders(cfg))
 
-def get_df_all_training_res(df_all_trainings, select = None):
-# load res files for trainings found by get_df_all_trainings, concat them vertically
 
-    # In case inconsistent result structure prevent concat:
-    # safe_select = ['label', 'steps', 'mean_ep_rew', 'mean_ep_len', 'res', 'res_files', 'model_files', 'path']
-    
+def get_df_all_training_res(df_all_trainings, select=None):
+    """Load the res files of the trainings in df_all_trainings (output of
+    get_training_folders()), vertically concatenated. Each row is one
+    checkpoint evaluation of one training, labeled by 'training_idx' (the
+    training folder name)."""
     res_list = []
-    for idx, r in enumerate(df_all_trainings['training_files']):
-        df_res = get_training_res(r, f'Training{idx}')
+    for r in df_all_trainings['training_files']:
+        df_res = get_training_res(r)
         if select is not None:
             cols = [c for c in select if c in df_res.columns]
             df_res = df_res[cols]
@@ -578,6 +666,55 @@ def get_df_all_training_res(df_all_trainings, select = None):
     if not res_list:
         return pd.DataFrame()
     return pd.concat(res_list, ignore_index=True)
+
+
+_NON_METRIC_COLS = ('path', 'steps', 'res_files', 'model_files', 'res',
+                    'eval_formulas', 'reward_formulas', 'training_idx')
+
+
+def list_available_metrics(df):
+    """List the metric names plottable from a training results DataFrame:
+    the flat metric columns plus the 'formula/metric' pairs found in the
+    'eval_formulas' and 'reward_formulas' dict columns."""
+    metrics = [c for c in df.columns if c not in _NON_METRIC_COLS]
+    for col in ('eval_formulas', 'reward_formulas'):
+        if col in df.columns:
+            for row in df[col]:
+                if isinstance(row, dict):
+                    for f, fm in row.items():
+                        if isinstance(fm, dict):
+                            metrics.extend(f'{f}/{m}' for m in fm)
+    return sorted(set(metrics))
+
+
+def get_metric_series(df, metric):
+    """Return a numeric Series with the values of `metric` for each row of df.
+
+    `metric` is either a flat column name (e.g. 'mean_ep_rew') or a
+    'formula/metric' pair looked up in the 'eval_formulas' and
+    'reward_formulas' dict columns (e.g. 'phi_left_goal/ratio_init_sat').
+    """
+    if metric in df.columns:
+        return pd.to_numeric(df[metric], errors='coerce')
+
+    if '/' in metric:
+        formula, submetric = metric.split('/', 1)
+        vals = []
+        for _, row in df.iterrows():
+            v = np.nan
+            for col in ('eval_formulas', 'reward_formulas'):
+                if col not in row.index:
+                    continue
+                d = row[col]
+                if isinstance(d, dict):
+                    fd = d.get(formula)
+                    if isinstance(fd, dict) and submetric in fd:
+                        v = fd[submetric]
+                        break
+            vals.append(v)
+        return pd.Series(vals, index=df.index, dtype=float)
+
+    raise KeyError(f"metric '{metric}' not found. Available metrics: {list_available_metrics(df)}")
     
 # Re-export lightweight config helpers so existing callers of
 # ``utils.load_cfg`` / ``utils.set_rec_cfg_field`` keep working.
