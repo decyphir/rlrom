@@ -35,9 +35,9 @@ STL_CFG = {
 
 @pytest.fixture(scope="module")
 def stl_env():
-    from rlrom.wrappers.stl_wrapper import STLWrapper
+    from rlrom.wrappers.spec_wrapper import SpecWrapper
     env = gym.make(CARTPOLE_CFG["env_name"])
-    env = STLWrapper(env, STL_CFG)
+    env = SpecWrapper(env, STL_CFG)
     yield env
     env.close()
 
@@ -53,7 +53,7 @@ def test_unwrapped_episode():
     assert Tres["res_all_ep"]["basics"]["mean_ep_len"] > 0
 
 
-def test_stl_wrapper_step(stl_env):
+def test_spec_wrapper_step(stl_env):
     env = stl_env
     env.reset()
     obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
@@ -65,7 +65,7 @@ def test_stl_wrapper_step(stl_env):
     assert len(env.episode["res_f"]["cart_left"]) == 1
 
 
-def test_stl_wrapper_metrics(stl_env):
+def test_spec_wrapper_metrics(stl_env):
     env = stl_env
     env.reset()
     while True:
@@ -83,7 +83,7 @@ def test_stl_wrapper_metrics(stl_env):
     assert np.max(np.abs(res_rew_f[0]["cart_left"])) <= 5.0 + 1e-6
 
 
-def test_stl_wrapper_reset_reuses_driver(stl_env):
+def test_spec_wrapper_reset_reuses_driver(stl_env):
     """Reset must clear monitored data (regression: reset_monitor was broken)."""
     env = stl_env
     env.reset()

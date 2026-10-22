@@ -2,6 +2,7 @@
 import pytest
 
 import rlrom.utils as rlu
+import rlrom.plots as rlp
 from rlrom.rlrom_plot import main_plot, _parse_trainings, _resolve_trainings, _merge_negative_values
 
 from conftest import training_folder_name
@@ -107,6 +108,27 @@ def test_rlrom_plot_module_e2e(training_tree, tmp_path):
 
 
 # ------------------------------------------------- --trainings parsing helpers
+
+@pytest.mark.parametrize("line, expected", [
+    ("x,theta", ["x", "theta"]),
+    ("x_dot", ["x_dot"]),
+    ("label_formulas/go_left", ["label_formulas/go_left"]),
+    ("obs_formulas/f1, reward_formulas/f2", ["obs_formulas/f1", "reward_formulas/f2"]),
+    ("rm_states/left_right", ["rm_states/left_right"]),
+    ("rm_reward/left_right:weighted", ["rm_reward/left_right:weighted"]),
+    ("total_reward, left_right:weighted", ["total_reward", "left_right:weighted"]),
+    ("rho(phi, 50), sat(gamma)", ["rho(phi, 50)", "sat(gamma)"]),
+    ("set_ep_idx(0)", ["set_ep_idx(0)"]),
+])
+def test_get_layout_from_string(line, expected):
+    """cfg_test.plot signal names must survive the layout tokenizer intact."""
+    assert rlp.get_layout_from_string(line) == [expected]
+
+
+def test_get_layout_from_string_multi_line():
+    lay = rlp.get_layout_from_string("x,theta\n\nx_dot")
+    assert lay == [["x", "theta"], ["x_dot"]]
+
 
 @pytest.mark.parametrize("spec, n, expected", [
     ('last', 5, 'last'),

@@ -3,8 +3,8 @@ import minigrid
 import gymnasium as gym
 import os
 from rlrom.wrappers.reward_machine import RewardMachine
-from rlrom.wrappers.stl_wrapper import STLWrapper
-from rlrom.wrappers.stl_wrapper import stl_wrap_env
+from rlrom.wrappers.spec_wrapper import SpecWrapper
+from rlrom.wrappers.spec_wrapper import spec_wrap_env
 from rlrom import utils
 from gymnasium.wrappers import FlattenObservation
 import pygame
@@ -22,7 +22,7 @@ file = './examples/minigrid/blocked_unlock_pickup/cfg_specs.yml'
 env = gym.make("MiniGrid-BlockedUnlockPickup-v4",render_mode="human")
 env = FlattenObservation(env) 
 # print("cfg", cfg)
-# env = stl_wrap_env(env, cfg)
+# env = spec_wrap_env(env, cfg)
 # env = RewardMachine(env, cfg_rm) 
 
 obs, info = env.reset()

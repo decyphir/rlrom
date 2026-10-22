@@ -1,0 +1,107 @@
+env_name: CartPole-v1
+model_path: ./models
+model_name: rm_AB
+model_use_specs: True
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  
+  action_names:
+    push: "action"
+  obs_names:
+    x:     "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"
+  specs: cartpole.stl
+
+  # Reward machines driven by the labels above.
+  env_reward_weight: 0.25
+  
+  label_formulas:
+    go_left:
+      online: True
+      past_horizon: 0  
+    cart_in_A:
+      online: True
+      past_horizon: 0
+    not_A:
+      online: True
+      past_horizon: 0
+    stay_A:
+      online: True
+      past_horizon: 50
+    go_right:
+      online: True
+      past_horizon: 0
+    cart_in_B:
+      online: True
+      past_horizon: 0
+    not_B:
+      online: True
+      past_horizon: 0
+    stay_B:
+      online: True
+      past_horizon: 50
+
+    phi_stuck_left:
+      t0: 0
+
+  reward_machines:
+    - rm_stuck_left.yml
+    - rm_AB.yml
+
+  eval_formulas:
+    go_left:
+      online: True
+    go_right:
+      online: True
+    cart_on_left:
+      online: True
+    cart_on_right:
+      online: True
+    cart_in_A:
+      online: True
+    stay_A: 
+      online: True
+      past_horizon: 50    
+    cart_in_B:
+      online: True
+    stay_B: 
+      online: True
+      past_horizon: 50
+    phi_stuck_left:
+    phi_right_goal:
+    phi_stay_A:
+    phi_stay_B:
+    phi_AB:
+      
+cfg_test:
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 500
+  render_mode: human
+  plot:
+    - title: Observations 
+      ax: 
+        - reward:weighted
+        - rm_AB:weighted
+        - rm_states/rm_AB
+        - x_dot
+
+
+cfg_train:
+  n_envs: 8
+  eval_freq: 10000
+  total_timesteps: 500_000
+  repeat_training: 1
+
+  algo:
+    ppo: cartpole_ppo.yml
+
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500
+    render_mode: None

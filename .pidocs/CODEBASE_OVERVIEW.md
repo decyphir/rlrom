@@ -38,8 +38,10 @@ rlrom/
 **Ignore when exploring:** `examples/*/models/*__training*`, `examples/*/tb_logs`,
 `.venv`, `uv.lock` (huge). Trained checkpoints are experiment artifacts, not code.
 
-**Separate sub-project:** `stlclash/` is a standalone benchmark repo (its own
-`pyproject.toml`, not a dependency of rlrom) for multi-objective RL with STL specs.
+**Separate sub-projects:**
+- `stlclash/` – a standalone benchmark repository (its own `pyproject.toml`, not a dependency of rlrom) for multi‑objective RL with STL specifications.
+- `stlrom/` – the external C++/Python library that provides STL parsing, monitoring and robustness evaluation. It is bundled in this repository and built as a Python wheel; `rlrom` relies on it via `stlrom.STLDriver`.
+
 
 ## Package structure (`src/rlrom`)
 
@@ -50,30 +52,28 @@ rlrom/
 | `rlrom_train.py` | 53 | Thin wrapper: CLI → `RLTrainer(cfg).train()`. |
 | `rlrom_test.py` | 58 | Thin wrapper: CLI → `RLTester(cfg).run_cfg_test()`. |
 | `trainers.py` | 304 | `RLTrainer`: env creation, algorithm instantiation, SB3 `model.learn()`, checkpoints, periodic eval via `RlromCallback` (saves `model_step_*.zip` + `res_step_*.yml` per eval, logs metrics to tensorboard). |
-| `testers.py` | 385 | `RLTester`: runs episodes with a trained model (or `random`/keyboard), collects episodes, computes metrics (`eval_episode`), bokeh plotting of signals (`get_fig`), re-testing checkpoints (`retest_checkpoints_models`). |
-| `wrappers/stl_wrapper.py` | 619 | **Core of the project.** `STLWrapper(gym.Wrapper)` — see below. |
-| `wrappers/reward_machine.py` | 266 | `RewardMachine` (pure FSM, no gym/STL, drives RM dynamics) + `RewardMachineWrapper(gym.Wrapper)` (legacy, see below). |
-| `wrappers/specs_wrapper.py` | 18 | `wrap_env_specs(env, cfg)`: composes the wrapper stack (STLWrapper → RewardMachineWrapper or FlattenObservation). |
+| `testers.py` | 440 | `RLTester`: runs episodes with a trained model (or `random`/keyboard), collects episodes, computes metrics (`eval_episode`), matplotlib plotting of episode signals via stlrom `Signal.plot` (`get_fig`), static and live `cfg_test.plot` figures (see below), re-testing checkpoints (`retest_checkpoints_models`). |
+| `wrappers/spec_wrapper.py` | 766 | **Core of the project.** `SpecWrapper(gym.Wrapper)` — see below. Also `wrap_env_specs(env, cfg)`: composes the wrapper stack (SpecWrapper → optional FlattenObservation). |
+| `wrappers/reward_machine.py` | 153 | `RewardMachine` (pure FSM, no gym/STL, drives RM dynamics). The legacy `RewardMachineWrapper` has been removed (2026-10). |
 | `utils.py` | 586 | Algorithm registry `ALGO_NAMES_CLASSES` (SB3, sbx/jax, sb3-contrib, morl-baselines, tabular Q), HuggingFace model loading, training-results dataframes (`get_training_folders`, `get_training_res`, `get_best_models`, ...), misc. Config helpers moved to `cfg_utils.py` but re-exported (`utils.load_cfg`, `utils.set_rec_cfg_field` still work). |
-| `plots.py` | 166 | matplotlib live-plotting helpers used in notebooks. |
+| `plots.py` | 325 | matplotlib live-plotting helpers: `LivePlot` (driven by `cfg_test.plot` items with `live: True`), legacy `RLFig`/`live_line` used in notebooks, `get_layout_from_string` signal-layout tokenizer. |
 | `extra_algos/tabular_q_learning.py` | 102 | `TabularQLearning`, SB3-compatible-ish tabular Q for discrete envs (MiniGrid). |
 | `cfgs/*.yml` | — | Per-gym-env default config templates (CartPole, MountainCar, highway-env, ...). |
 
 ## The wrapper pipeline (central concept)
 
-Built by `wrap_env_specs` in `wrappers/specs_wrapper.py`:
+Built by `wrap_env_specs` in `wrappers/spec_wrapper.py`:
 
 ```
 gym env
-  → STLWrapper(env, cfg)               # if cfg has 'cfg_specs'
-      → RewardMachineWrapper(env, cfg_rm)   # if cfg_specs has 'cfg_rm'
-      → FlattenObservation(env)              # else (if cfg_specs.flatten_obs, default True)
+  → SpecWrapper(env, cfg)                # if cfg has 'cfg_specs' (reward machines included)
+      → FlattenObservation(env)         # if cfg_specs.flatten_obs (default True)
 ```
 
 `model_use_specs` (top-level cfg): whether the *agent* was trained with the wrapped
 observations/rewards (`true`) or with the raw env (then tests use `last_obs['unwrapped']`).
 
-### STLWrapper (`wrappers/stl_wrapper.py`) — read this file first
+### SpecWrapper (`wrappers/spec_wrapper.py`) — read this file first
 
 - Driven by `cfg['cfg_specs']`:
   - `specs` / `stl_specs`: STL signal declarations + formula definitions. Either an
@@ -127,12 +127,12 @@ observations/rewards (`true`) or with the raw env (then tests use `last_obs['unw
 - The `conditions:`/`debug_rm`/`in_observation`/`rm_id` keys in `cfg_rm` are *not* part of
   the FSM — they belong to the wrapping/STL layer.
 
-### RewardMachineWrapper (`wrappers/reward_machine.py`)
+### RewardMachineWrapper — removed (2026-10)
 
-- Legacy inline implementation, coupled to STLWrapper (uses `get_wrapper_attr('eval_formula_cfg')`)
-  with its own transition logic — **to be rewired to `RewardMachine` in a later step**.
-- Config `cfg_rm` dict: `states`, `transitions`, plus `conditions` (STL formula name + eval
-  options), `in_observation` (append RM state index to obs), `debug_rm`, `rm_id`.
+The legacy `RewardMachineWrapper` (inline transition logic coupled to
+`SpecWrapper.eval_formula_cfg`) has been **removed** from
+`wrappers/reward_machine.py`; only the pure `RewardMachine` FSM class remains.
+SpecWrapper now drives reward machines directly via `cfg_specs.reward_machines`.
 
 ## Configuration system (how everything is wired)
 
@@ -154,6 +154,82 @@ observations/rewards (`true`) or with the raw env (then tests use `last_obs['unw
   `model_step_*.zip`, `res_step_*.yml`; final model symlinked/copied to
   `models/<model_name>.zip` (+ `.yml`).
 
+## Test-time plotting (`cfg_test.plot`)
+
+`RLTester.run_cfg_test` (via `rlr test`) can display one matplotlib figure per item of a
+`cfg_test.plot` list (episode 0), after all episodes are run. Figures are built with
+`stlrom.Signal.plot` (discrete signals are encoded as `Signal` with derivative 0 and
+rendered as step functions):
+
+```yaml
+cfg_test:
+  ...
+  plot:
+    - title: Observations            # optional figure title
+      out: plots/obs.png             # optional: also save the figure to file
+                                     # (relative paths resolve from the cfg's dir)
+      ax:                            # each item = one axis (stacked, shared x)
+        - x,theta                    # comma-separated signal names on the same axis
+        - x_dot
+    - title: Formulas
+      ax:
+        - label_formulas/go_left
+        - [label_formulas/cart_in_A, label_formulas/stay_A]   # list form also works
+```
+
+Signal names (resolved to `stlrom.Signal` by `SpecWrapper.get_signal_from_str`,
+values by `SpecWrapper.get_values_from_str`):
+
+- bare names from `action_names` / `obs_names` / `aux_sig_names` (e.g. `push`, `x`)
+- `reward` — the raw environment reward
+- `obs_formulas/<f>`, `reward_formulas/<f>`, `label_formulas/<f>` — the per-step
+  values recorded in the episode (robustness for obs/reward formulas, lower-bound
+  robustness for labels)
+- `eval_formulas/<f>` — offline robustness over the trace
+- `rm_states/<machine>` — per-step state index of a reward machine
+- `<machine>` (bare name) or `rm_reward/<machine>` — per-step (unweighted) reward
+  issued by that machine
+- `:weighted` suffix on formulas, RM rewards or bare machine names — value × weight
+- `total_reward` — the final wrapped reward (put it on the same axis line as
+  `:weighted` sub-rewards to compare contributions)
+- `rho(<f>[,past_horizon])`, `rob(<f>[,past_horizon])`, `sat(<f>)`, bare `<f>` —
+  offline robustness / satisfaction
+- `set_ep_idx(<n>)` — switch episode mid-layout (as before)
+
+Example: `examples/cartpole/cfg0tr_rm_stay_left_right.yml` (two figures:
+"Observations" and "Formulas").
+
+### Live-updating plots (`live: True`)
+
+A `plot` item can instead of a static end-of-run figure open a live window that
+updates every environment step, per episode (`rlr test` only; headless/Agg
+backends skip it silently):
+
+```yaml
+cfg_test:
+  plot:
+    - title: Live observations
+      live: True                  # open a live window during the episodes
+      live_window: 20             # optional: trailing x window in time units
+                                  # (default: show the whole episode so far)
+      out: plots/live.png         # still supported: saved from the last episode
+      ax:
+        - x, theta
+        - reward
+```
+
+Implemented by `rlrom.plots.LivePlot` (figures are created in
+`RLTester.run_episode`, one `step()` per env step, closed when the episode ends):
+
+- **space** pauses/resumes the live updates (the episode itself keeps running;
+  the window stays responsive while paused)
+- **Escape** closes the windows and stops the current episode early
+- discrete signals (derivative 0, e.g. `reward`, RM states) are drawn as steps,
+  matching the static `Signal.plot` rendering
+- `live: True` items are skipped in the static post-run display (only their
+  `out:` file is written); non-live items are displayed as before
+
+
 ## Canonical example configs (start here)
 
 - `examples/cartpole/cfg0tr_ppo_specs.yml` + `cartpole.stl` — simplest full
@@ -161,13 +237,15 @@ observations/rewards (`true`) or with the raw env (then tests use `last_obs['unw
   Also the smoke-test config used by `.pi/AGENTS.md` (`uv run rlr test ...`).
 - `examples/cartpole/cfg0tr_ppo_rm.yml` — minimal **label-formula + reward-machine**
   example (2-state FSM on CartPole left/right, drives the new
-  `cfg_specs.reward_machines` path, covered by `tests/test_reward_machine_stl.py`).
+  `cfg_specs.reward_machines` path, covered by `tests/test_reward_machine_spec.py`).
   Related direction variants: `cfg0tr_ppo_go_left.yml` / `cfg0tr_ppo_go_right.yml`.
 - `examples/highway_env/cfg0tr.yml` (+ `cfg_specs.yml`, `hw-env_specs.stl`,
   `highway.py` with custom `make_env_*`) — richer: obs_names expressions, eval +
   reward formulas, custom module.
 - `examples/highway_env/cfg0tr_rmf.yml` + `cfg_specs_rmf.yml` — legacy reward-machine
-  example (old `cfg_rm` + `RewardMachineWrapper` path).
+  example (old `cfg_rm` path). **Currently non-functional:** the
+  `RewardMachineWrapper` it relied on was removed in 2026-10; use
+  `cfg_specs.reward_machines` instead.
 - `examples/minigrid/` and `minigrid/blocked_unlock_pickup/` — FSM/RM case study
   with multi-state RM, negative rewards, `TabularQLearning`.
 - `examples/simglucose/` — moved from `tests/` (2026-07): simglucose experiment
@@ -184,31 +262,30 @@ observations/rewards (`true`) or with the raw env (then tests use `last_obs['unw
 
 0. **`wrap_env_specs` flattens dict obs when reward machines / obs formulas are
    present.** The `cfg_specs.reward_machines` (and `obs_formulas`) paths make
-   `STLWrapper` return a dict obs (`unwrapped` + `rm_states`/`obs_formulas`), but
+   `SpecWrapper` return a dict obs (`unwrapped` + `rm_states`/`obs_formulas`), but
    `wrap_env_specs` adds `FlattenObservation` by default (when `cfg_specs.cfg_rm` is
    absent), flattening that dict away. Follow-up needed: in `wrap_env_specs`, don't
    flatten when `reward_machines` (or `obs_formulas`) are present and the user wants
    to keep those fields.
    **`multi_objective` ignores RM rewards** as well: the vector-reward branch of
-   `STLWrapper.step` does not append reward-machine rewards.
+   `SpecWrapper.step` does not append reward-machine rewards.
 0b. **`rlr show` without `--expand` bypasses `load_cfg`**, so the raw top-level YAML
    is printed (nested `.yml`/`.stl` fields shown as paths, `import_module` not
    imported, no chdir). With `--expand` it goes through `load_cfg`. `--subcfg KEY`
    selects a dot-path or first-occurrence sub-configuration.
-1. ~~`STLWrapper.step` used `self.old_reward_weight` while `__init__` only sets
+1. ~~`SpecWrapper.step` used `self.old_reward_weight` while `__init__` only sets
    `env_reward_weight`~~ — **fixed** (now uses `env_reward_weight` consistently).
-2. ~~`STLWrapper.reset_monitor` was broken (`stl_driver.data.reset_signal_data`),
-   so `STLWrapper` crashed on the first `reset()`~~ — **fixed**: `reset_monitor`
+2. ~~`SpecWrapper.reset_monitor` was broken (`stl_driver.data.reset_signal_data`),
+   so `SpecWrapper` crashed on the first `reset()`~~ — **fixed**: `reset_monitor`
    recreates the `stlrom.STLDriver` (stlrom has no reset API; re-parsing the same
    driver accumulates parse state). `get_time` now reads `episode['stl_data']`
    instead of iterating `stl_driver.data` (not iterable in stlrom).
 3. `RewardMachine` standalone class: was dead/broken code, now a **decoupled pure FSM**
    (`cfg_rm` parsing, priority-based transitions, `step(labels)` → reward). The legacy
-   `RewardMachineWrapper` still duplicates its own inline transition logic and has not
-   been rewired to it yet (upcoming work).
-4. `RewardMachineWrapper.step` multiplies RM reward by `self.unwrapped._reward()` —
-   suspicious scaling; verify intended semantics before relying on it.
-5. `STLWrapper.eval_formula_cfg` online-mode `t0 = max(t0, tend - f_hor)` is marked
+   `RewardMachineWrapper` has been **removed** (2026-10); SpecWrapper drives the FSM directly.
+4. ~~`RewardMachineWrapper.step` multiplied RM reward by `self.unwrapped._reward()`~~
+   — moot, the class has been removed.
+5. `SpecWrapper.eval_formula_cfg` online-mode `t0 = max(t0, tend - f_hor)` is marked
    FIXME in code (start-of-episode interpretation issues for past formulas).
    Also: in `step`, `end_formulas` appends the *last* `obs_formulas` robustness value
    (`robs_f`) to their `res_f` entry instead of their own — `label_formulas` and
@@ -228,11 +305,11 @@ observations/rewards (`true`) or with the raw env (then tests use `last_obs['unw
 - `tests/test_utils.py` — `parse_signal_spec`, `get_formulas`, `set_rec_cfg_field`,
   `load_cfg` expansion on a real example cfg.
 - `tests/test_smoke.py` — fast end-to-end on CartPole with a random policy: unwrapped
-  `RLTester` run, `STLWrapper` step/metrics, reset/data-reuse, reward-shaping bounds.
+  `RLTester` run, `SpecWrapper` step/metrics, reset/data-reuse, reward-shaping bounds.
 - `tests/test_reward_machine.py` — unit tests of the pure `RewardMachine` FSM
   (parsing, state validation, priority transitions, tie guard, state rewards).
-- `tests/test_reward_machine_stl.py` — `cfg_specs.reward_machines` integration through
-  `STLWrapper`: label evaluation, RM stepping, episode recording, obs `rm_states` field,
+- `tests/test_reward_machine_spec.py` — `cfg_specs.reward_machines` integration through
+  `SpecWrapper`: label evaluation, RM stepping, episode recording, obs `rm_states` field,
   `show_reward_machines()`.
 
 Old scratch material (gradio app tests, stale-API `RLModelTester` tests, simglucose

@@ -50,6 +50,7 @@ cfg_specs:
             to: u1
             condition: cart_in_A
             priority: 1
+            reward: 10
           - from: u1
             to: u1
             condition: go_right
@@ -82,7 +83,7 @@ cfg_train:
   n_envs: 4
   eval_freq: 10000
   total_timesteps: 200_000
-  repeat_training: 3
+  repeat_training: 10
 
   algo:
     ppo: cartpole_ppo.yml

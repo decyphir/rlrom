@@ -1,0 +1,144 @@
+env_name: CartPole-v1
+model_path: ./models
+model_name: rm_stay_left_right_200k_32N
+model_use_specs: True
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  
+  action_names:
+    push: "action"
+  obs_names:
+    x:     "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"
+  specs: cartpole.stl
+
+  # Reward machines driven by the labels above.
+  env_reward_weight: 0.25
+  
+  label_formulas:
+    go_left:
+      online: True
+      past_horizon: 0  
+    cart_in_A:
+      online: True
+      past_horizon: 0
+    not_A:
+      online: True
+      past_horizon: 0
+    go_right:
+      online: True
+      past_horizon: 0
+    stay_A:
+      online: True
+      past_horizon: 50
+    stuck_left:
+      online: True
+      past_horizon: 300
+
+
+  reward_machines:
+    - name: left_right
+      weight: 0.75
+      reward_machine:
+        in_observation: True
+        states:
+          - id: u0
+            initial: True
+            reward: 0
+          - id: u1
+            reward: 1
+          - id: u2
+            reward: 0
+          - id: u3
+            reward: 0
+            final: True
+        transitions:
+          - from: u0
+            to: u0
+            condition: go_left
+            reward: 1
+          - from: u0
+            to: u1
+            condition: cart_in_A
+            priority: 1
+            reward: 1
+          - from: u1
+            to: u2
+            condition: stay_A
+            reward: 1          
+          - from: u1
+            to: u3
+            condition: not_A
+            reward: 0
+            priority: 1          
+          - from: u2
+            to: u2
+            condition: go_right
+            reward: 1
+    - name: stuck_left
+      weight: 0
+      reward_machine:        
+        states:
+          - id: u0
+            initial: True
+            reward: 0
+          - id: u1
+            final: true
+            reward: 0
+        transitions:
+          - from: u0
+            to: u1
+            condition: stuck_left
+            reward: 0          
+
+  eval_formulas:
+    go_left:
+      online: True
+    go_right:
+      online: True
+    cart_on_left:
+      online: True
+    cart_on_right:
+      online: True
+    cart_in_A:
+      online: True
+    stay_A: 
+      online: True
+      past_horizon: 50
+    phi_stuck_left:
+    phi_right_goal:
+    phi_stay_A:
+
+      
+cfg_test:
+  init_seeds: 0
+  num_ep: 1
+  num_steps: 500
+  render_mode: human
+  plot:
+    - title: Observations 
+      ax: 
+        - x
+        - total_reward, reward:weighted, left_right:weighted
+        - rm_states/left_right
+        - eval_formulas/phi_stay_A
+      live: True 
+
+cfg_train:
+  n_envs: 8
+  eval_freq: 10000
+  total_timesteps: 200_000
+  repeat_training: 1
+
+  algo:
+    ppo: cartpole_ppo.yml
+
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 500
+    render_mode: None

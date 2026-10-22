@@ -5,12 +5,13 @@ model_name: vanilla_ppo
 cfg_test: 
   init_seeds: 0
   num_ep: 10
-  num_steps: 500 
+  num_steps: 200 
   render_mode: 'human'
 
 cfg_train:
-  n_envs: 4
+  n_envs: 8
   total_timesteps: 100_000
-  eval_freq: 15_000  
+  eval_freq: 10_000  
+  repeat_training: 5
   algo:
     ppo: cartpole_ppo.yml

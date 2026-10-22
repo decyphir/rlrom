@@ -53,7 +53,7 @@ cfg_specs:
             to: u1
             condition: cart_in_A
             priority: 1
-            reward: 1
+            reward: 10
           - from: u1
             to: u1
             condition: go_right
@@ -87,7 +87,7 @@ cfg_specs:
     cart_on_right:
       online: True
       past_horizon: 0
-    stuck_left:
+    phi_stuck_left:
       t0: 0
       eval_all_steps: false
     phi_right_goal:

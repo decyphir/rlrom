@@ -76,16 +76,52 @@ def find_subcfg(cfg, key):
 
 
 def load_cfg(cfg, verbose=1):
+    exclude_load_file = ['res_file']
+
+    def load_yml_file(field, path):
+        """Import the YAML file at ``path`` and recursively process its content.
+
+        Shared by dict values (subsections) and list items (e.g. the
+        ``reward_machines`` section) so that both are imported the same way.
+        """
+        print('loading field [', field, '] from YAML file [', path, ']')
+        with open(path, 'r') as f:
+            content = yaml.load(f)
+        if content is None:
+            print('WARNING: YAML file [', path, '] is empty; field [', field, '] is set to None.')
+        return recursive_load(content)
+
+    def load_list(key, items):
+        """Process the items of a list-valued section (e.g. ``reward_machines``).
+
+        An item that is a single string pointing to an existing ``.yml`` file is
+        imported the same way as a subsection. Dict and list items are processed
+        recursively; any other item is left untouched.
+        """
+        for i, item in enumerate(items):
+            if isinstance(item, str) and item.endswith('.yml'):
+                if verbose >= 1 and os.path.exists(item):
+                    items[i] = load_yml_file(f'{key}[{i}]', item)
+                elif verbose >= 1:
+                    print('WARNING: field [', f'{key}[{i}]',
+                          '] points to YAML file [', item, '] which does not exist!')
+            elif isinstance(item, dict):
+                items[i] = recursive_load(item)
+            elif isinstance(item, list):
+                items[i] = load_list(f'{key}[{i}]', item)
+        return items
+
     def recursive_load(cfg):
-        exclude_load_file = ['res_file']
+        if cfg is None:
+            return None
+        if isinstance(cfg, list):
+            return load_list('', cfg)
         for key, value in cfg.items():
             #print('reading', key, 'with value', value)
             if isinstance(value, str) and value.endswith('.yml'):
                 if verbose >= 1:
                     if key not in exclude_load_file:
-                        print('loading field [', key, '] from YAML file [', value, ']')
-                        with open(value, 'r') as f:
-                            cfg[key] = recursive_load(yaml.load(f))
+                        cfg[key] = load_yml_file(key, value)
                     else:
                         cfg[key] = value
                 else:
@@ -104,6 +140,8 @@ def load_cfg(cfg, verbose=1):
 
             elif isinstance(value, dict):
                 cfg[key] = recursive_load(value)
+            elif isinstance(value, list):
+                cfg[key] = load_list(key, value)
 
         return cfg
 

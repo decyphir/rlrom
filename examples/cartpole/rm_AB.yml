@@ -1,0 +1,47 @@
+name: rm_AB
+weight: 0.75
+reward_machine:
+    in_observation: True
+    states:
+      - id: u_go_left
+        initial: True
+      - id: u_stay_A  
+        reward: 1
+      - id: u_go_right
+      - id: u_stay_B
+        reward: 1
+      - id: u_fail
+        final: True
+    transitions:
+      - from: u_go_left
+        to: u_go_left
+        condition: go_left
+        reward: 1
+      - from: u_go_left
+        to: u_stay_A  
+        condition: cart_in_A
+        priority: 1
+        reward: 1
+      - from: u_stay_A  
+        to: u_go_right
+        condition: stay_A
+        reward: 1          
+      - from: u_stay_A  
+        to: u_fail
+        condition: not_A
+        reward: 0
+        priority: 1          
+      - from: u_go_right
+        to: u_go_right
+        condition: go_right
+        reward: 1
+      - from: u_go_right
+        to: u_stay_B  
+        condition: cart_in_B
+        priority: 1
+        reward: 1
+      - from: u_stay_B  
+        to: u_stay_B
+        condition: not_B        
+        reward: 0
+        priority: 1              

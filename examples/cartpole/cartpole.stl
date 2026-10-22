@@ -5,14 +5,27 @@ pole_up := abs(theta[t]) < epsi
 keep_up := alw_[0,100] pole_up
 phi_goal_keep_up := ev_[0, 400] keep_up
 
+# Formulas monitoring the movement of the cartpole toward A
 go_left := x_dot[t] < 0
-cart_on_left := x[t] < -0.1
-cart_in_A := x[t]> -1.1 and x[t] < -0.9
+cart_on_left := x[t] < -1
+cart_in_A := x[t]> -0.7 and x[t] < -0.5
+stay_A := alw_[0,50] cart_in_A
+not_A := not cart_in_A
+phi_stay_A := ev_[0,450] stay_A
 phi_left_goal := ev_[0,400] alw_[0, 100] cart_on_left
 
+# Formulas monitoring the movement of the cartpole toward B
 go_right := x_dot[t] > 0
 cart_on_right := x[t] > 0.1
-cart_in_B := x[t] < 0.7 and x[t]> 0.5
+cart_in_B := x[t]> 0.5 and x[t] < 0.7 
+stay_B := alw_[0,50] cart_in_B
+not_B := not cart_in_B
+phi_stay_B := ev_[0,450] stay_B
 phi_right_goal := ev_[0,400] alw_[0, 100] cart_on_right
 
-stuck_left := alw_[0, 400] (not cart_on_right)
+
+phi_AB := phi_stay_A and phi_stay_B
+
+# Checks whether the cartpole stayed for a long time on the left
+stuck_left := alw_[0, 300] (x[t]<0.1)
+phi_stuck_left := ev_[0,200] stuck_left

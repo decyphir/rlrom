@@ -1,0 +1,12 @@
+name: stuck_left
+weight: 0
+reward_machine:        
+  states:
+    - id: u0
+      initial: True      
+    - id: u1
+      final: true      
+  transitions:
+    - from: u0
+      to: u1
+      condition: stuck_left      

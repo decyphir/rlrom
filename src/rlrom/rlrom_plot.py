@@ -207,6 +207,7 @@ def main_plot(cfg, trainings='last', metrics=None, envelope=False,
         print(f'no interactive display available, saved plot to {default_out}')
     else:
         plt.show()
+        
     return 0
 
 

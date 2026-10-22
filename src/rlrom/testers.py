@@ -4,11 +4,9 @@ import itertools
 import os,sys,copy
 import time
 
+import matplotlib.pyplot as plt
+
 # Plotting (?)
-from bokeh.models.annotations import Title
-from bokeh.layouts import gridplot
-from bokeh.plotting import figure, show
-from bokeh.palettes import Dark2_5 as palette
 
 # Gym and co
 import gymnasium as gym
@@ -17,7 +15,7 @@ from gymnasium.wrappers import FlattenObservation
 
 #rlrom
 import rlrom.utils as rlu
-from rlrom.wrappers.specs_wrapper import wrap_env_specs
+from rlrom.wrappers.spec_wrapper import wrap_env_specs
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.utils import yaml
 import rlrom.plots as rlp
@@ -60,8 +58,8 @@ class RLTester:
         self.callbacks = []
         self.fig_layout = None
         self.test_results = []
-        self.has_stl_wrapper = cfg.get('cfg_specs', None) is not None
-        if self.has_stl_wrapper:
+        self.has_spec_wrapper = cfg.get('cfg_specs', None) is not None
+        if self.has_spec_wrapper:
             self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment            
             cfg_specs = cfg.get('cfg_specs')
             if 'obs_formulas' in cfg_specs.keys():
@@ -114,9 +112,9 @@ class RLTester:
         elif isinstance(self.model, str):  # includes "random" and "manual_control" which is bypassed anyway for hw env 
             action = self.env.action_space.sample()            
         else:
-            if self.has_stl_wrapper:                  
+            if self.has_spec_wrapper:                  
                 if self.model_use_specs is False:
-                    # agent was trained without stl_wrapper, so we need to use wrapped_obs to predict action                    
+                    # agent was trained without spec_wrapper, so we need to use wrapped_obs to predict action                    
                     last_obs= self.env.get_wrapper_attr('last_obs')
                     obs = last_obs['unwrapped']
                 else:
@@ -144,11 +142,24 @@ class RLTester:
             time.sleep(.1)  # TODO probably cfg that 
         else:
             rl_fig = None
+
+        # Live-updating figures requested in cfg_test.plot (live: True)
+        self._live_plot = None
+        live_items = self._live_plot_items()
+        if live_items:
+            live_window = None
+            for item in live_items:
+                if item.get('live_window') is not None:
+                    live_window = float(item['live_window'])
+                    break
+            lp = rlp.LivePlot(self, live_items, live_window=live_window)
+            lp.create()
+            self._live_plot = lp
         # We actually might want to reload every time to enforce determinism     
         if load_model:
              self.load_model()
         
-        if self.has_stl_wrapper is False:
+        if self.has_spec_wrapper is False:
             episode = {'observations':[], 'actions':[],'rewards':[], 'dones':[], 'last_obs':None}
 
         if seed is not None:
@@ -163,8 +174,8 @@ class RLTester:
 
             action = self._get_action(last_obs)
             obs, reward, terminated, truncated, info = self.env.step(action)
-            # we collect episode here if no stl_wrapper
-            if self.has_stl_wrapper is False:
+            # we collect episode here if no spec_wrapper
+            if self.has_spec_wrapper is False:
                 episode['observations'].append(last_obs)               
                 episode['last_obs'] = obs
                 episode['actions'].append(action)
@@ -178,6 +189,10 @@ class RLTester:
                 c()
             if rl_fig is not None:
                 rl_fig.update()
+            if self._live_plot is not None:
+                self._live_plot.step()
+                if self._live_plot.quit:
+                    break
 
             if terminated:                
                 break    
@@ -186,12 +201,26 @@ class RLTester:
             if step >= num_steps :
                 truncated = True
                         
-        if self.has_stl_wrapper:
+        if self.has_spec_wrapper:
             episode = self.env.get_wrapper_attr('episode')
 
+        if self._live_plot is not None:
+            self._live_plot.close()
+            self._live_plot = None
         self.env.close()
         return episode
     
+    def _live_plot_items(self):
+        """cfg_test.plot items with live: True (None if none)."""
+        cfg_test = self.cfg.get('cfg_test') or {}
+        plot_cfgs = cfg_test.get('plot')
+        if plot_cfgs == 'None':
+            plot_cfgs = None
+        if not plot_cfgs:
+            return None
+        live_items = [p for p in plot_cfgs if p.get('live')]
+        return live_items or None
+
     def run_cfg_test(self, reload_model=True):
         
         cfg_test = self.cfg.get('cfg_test') 
@@ -228,14 +257,58 @@ class RLTester:
                 Tres.pop('episodes', []) 
                 with open(res_file,'w') as f:
                    yaml.dump(Tres, f)
-            
+            # Optional plotting defined in cfg_test['plot']
+            plot_cfgs = cfg_test.get('plot')
+            if plot_cfgs == 'None':  # --set-params passes strings
+                plot_cfgs = None
+            if plot_cfgs:
+                live_items = self._live_plot_items() or []
+                for p in plot_cfgs:
+                    if p in live_items:
+                        # already displayed during run_episode; only save out:
+                        out_file = p.get('out')
+                        if out_file:
+                            layout_lines = []
+                            for ax in p.get('ax', []):
+                                if isinstance(ax, (list, tuple)):
+                                    layout_lines.append(', '.join(str(sig) for sig in ax))
+                                else:
+                                    layout_lines.append(str(ax))
+                            fig, _ = self.get_fig("\n".join(layout_lines), ep_idx=0, test_result=test_result)
+                            fig.savefig(out_file, dpi=150, bbox_inches='tight')
+                            plt.close(fig)  # not displayed: it was shown live already
+                            print(f"Plot saved to {out_file}")
+                        continue
+                    title = p.get('title')
+                    ax_cfg = p.get('ax', [])
+                    # Each item of 'ax' is one axis: either a comma-separated
+                    # string of signal names, or a list/tuple of signal names.
+                    layout_lines = []
+                    for ax in ax_cfg:
+                        if isinstance(ax, (list, tuple)):
+                            layout_lines.append(', '.join(str(sig) for sig in ax))
+                        else:
+                            layout_lines.append(str(ax))
+                    layout_str = "\n".join(layout_lines)
+                    fig, status = self.get_fig(layout_str, ep_idx=0, test_result=test_result)
+                    if title:
+                        fig.suptitle(title)
+                    out_file = p.get('out')
+                    if out_file:
+                        fig.savefig(out_file, dpi=150, bbox_inches='tight')
+                        print(f"Plot saved to {out_file}")
+                    print(status)
+                # Show all figures together (a single non-per-loop show() opens
+                # every built window at once instead of blocking per figure).
+                plt.show()
+
         return test_result
     
     def eval_episode(self, episode, test_result):
         test_result['episodes'].append(episode)                
         res = test_result.get('res',{})
             
-        if self.has_stl_wrapper:
+        if self.has_spec_wrapper:
             res_rew_f_list = test_result.get('res_rew_f_list',[])
             res_eval_f_list = test_result.get('res_eval_f_list',[])
             eval_specs_episode = self.env.get_wrapper_attr('eval_specs_episode')
@@ -286,7 +359,7 @@ class RLTester:
         print('mean_ep_rew:', f"{res_all_ep['basics']['mean_ep_rew']:.4g}")
         #for f_name,_ in self.env.reward_formulas.items():
         #    print(f_name+':',f"{res_all_ep['reward_formulas'][f_name]['mean_sum']:.4g}",end=' | ')      
-        if self.has_stl_wrapper:
+        if self.has_spec_wrapper:
             eval_formulas = self.env.get_wrapper_attr('eval_formulas')
             for f_name,f_cfg in eval_formulas.items():
                 if f_cfg is None:
@@ -310,62 +383,44 @@ class RLTester:
         return models, models_ids
 
     def get_fig(self, signals_layout, ep_idx=0, test_result=-1):
-    # plots stuff in bokeh from episodes in test_results
-        
+    # plots episode signals with matplotlib, using stlrom Signal.plot
+    # (discrete signals are encoded with derivative 0 and rendered as steps)
+
         if isinstance(test_result, int):
-            if self.test_results == []: 
+            if self.test_results == []:
                 print('PROBLEM: No result computed yet.')
             else:
                 test_result = self.test_results[test_result]
         episodes = test_result['episodes']
-        current_ep = episodes[ep_idx]         
+        current_ep = episodes[ep_idx]
         self.init_env(render_mode=None)
         set_ep = self.env.get_wrapper_attr('set_episode_data')
         set_ep(current_ep)
         num_ep = len(episodes)
         lay = rlp.get_layout_from_string(signals_layout)
-        status = "Plot ok. Hit reset on top right if not visible."
+        status = "Plot ok."
 
-        figs = []
-        colors = itertools.cycle(palette)    
-        get_time_fn= self.env.get_wrapper_attr('get_time')
-        get_values_from_str_fn = self.env.get_wrapper_attr('get_values_from_str')
-        for signal_list in enumerate(lay):
-            f=None
-            for signal in signal_list[1]:                
-                try: 
-                    color=colors.__next__()                                        
-                    print(signal.strip())                    
-                    if signal.strip().startswith("set_ep_idx(") or signal.strip().startswith("_ep("):            
-                        ep_idx = int(signal.split('(')[1][:-1])
-                        current_ep = episodes[ep_idx]                         
+        n_ax = max(len(lay), 1)
+        fig, axs = plt.subplots(n_ax, 1, sharex=True, figsize=(9, 2.5*n_ax), squeeze=False)
+        colors = itertools.cycle(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        get_sig_fn = self.env.get_wrapper_attr('get_signal_from_str')
+        for iax, signals in enumerate(lay):
+            ax = axs[iax, 0]
+            for signal in signals:
+                s = signal.strip()
+                try:
+                    if s.startswith("set_ep_idx(") or s.startswith("_ep("):
+                        ep_idx = int(s.split('(')[1][:-1])
+                        current_ep = episodes[ep_idx]
                         set_ep(current_ep)
-                    else: 
-                        if f is None:
-                            if figs == []:
-                                f = figure(height=200)
-                            else:
-                                f = figure(height=200, x_range=figs[0][0].x_range)
-                            figs.append([f])
-
-                        ttime = get_time_fn()                        
-                        labl = signal                                                
-                        if num_ep>1:                                                            
-                            labl += ', ep '+str(ep_idx)
-
-                        sig_values, sig_type = get_values_from_str_fn(signal)
-                        if sig_type == 'val':
-                            f.scatter(ttime, sig_values, legend_label=labl, color=color)
-                            f.line(ttime, sig_values, legend_label=labl, color=color)
-                        elif sig_type == 'rob':
-                            f.step(ttime, sig_values, legend_label=labl, color=color)                        
-
-                        elif sig_type == 'sat':
-                            f.step(ttime, sig_values, legend_label=labl, color=color)                        
-
-                except:
-                     status = "Warning: error getting values for " + signal
-        fig = gridplot(figs, sizing_mode='stretch_width')        
+                        continue
+                    sig = get_sig_fn(s)
+                    labl = s
+                    if num_ep > 1:
+                        labl += f', ep {ep_idx}'
+                    sig.plot(label=labl, ax=ax, color=next(colors), draw_canvas=False)
+                except Exception as e:
+                    status = f"Warning: error getting values for {signal}: {e}"
         self.env.close()
         return fig, status
 

@@ -1,4 +1,4 @@
-"""Tests for reward machines integrated into STLWrapper (cfg_specs.reward_machines).
+"""Tests for reward machines integrated into SpecWrapper (cfg_specs.reward_machines).
 
 Covers: config parsing, FSM creation, per-step label evaluation (lower_rob > 0),
 reward-machine stepping, episode recording, and the text display helper.
@@ -7,7 +7,7 @@ import gymnasium as gym
 import numpy as np
 import pytest
 
-from rlrom.wrappers.stl_wrapper import STLWrapper
+from rlrom.wrappers.spec_wrapper import SpecWrapper
 
 RM_CFG = {
     "env_name": "CartPole-v1",
@@ -45,7 +45,7 @@ RM_CFG = {
 @pytest.fixture(scope="module")
 def rm_env():
     env = gym.make(RM_CFG["env_name"])
-    env = STLWrapper(env, RM_CFG)
+    env = SpecWrapper(env, RM_CFG)
     yield env
     env.close()
 
@@ -121,7 +121,7 @@ def test_multiple_reward_machines():
         },
     }
     env = gym.make("CartPole-v1")
-    env = STLWrapper(env, cfg)
+    env = SpecWrapper(env, cfg)
     assert len(env.reward_machines) == 2
     assert env.reward_machines[0]["name"] == "rm_0"  # auto-generated default name
     assert env.reward_machines[1]["name"] == "second"
@@ -146,7 +146,7 @@ def test_no_reward_machines_is_fine():
         "cfg_specs": {"specs": "signal x, reward\n", "obs_names": {"x": "obs[0]"}},
     }
     env = gym.make("CartPole-v1")
-    env = STLWrapper(env, cfg)
+    env = SpecWrapper(env, cfg)
     assert env.reward_machines == []
     env.reset()
     obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
@@ -187,7 +187,7 @@ REWARDS_CFG = {
 
 
 def _rewards_env():
-    return STLWrapper(gym.make("CartPole-v1"), REWARDS_CFG)
+    return SpecWrapper(gym.make("CartPole-v1"), REWARDS_CFG)
 
 
 def test_rm_states_in_dict_observation():

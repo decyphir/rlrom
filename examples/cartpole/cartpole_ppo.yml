@@ -1,15 +1,14 @@
 device: cpu
 verbose: 0 
-tensorboard_log: ./tb_logs
 
-# Additional hyper parameters for ppo
+policy_kwargs:
+  net_arch: [32, 32]
 
-#policy_kwargs:
-#  net_arch: [128, 128, 128]
-#  activation_fn: "ReLU"
+n_steps: 1024
+learning_rate: 3e-4
 #batch_size: 128
 #clip_range: 0.3
 #ent_coef: 0.0
 #gae_lambda: 0.9
 #gamma: 0.99
-#learning_rate: !!float 3e-4
+

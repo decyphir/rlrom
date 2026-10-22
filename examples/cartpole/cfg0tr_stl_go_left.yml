@@ -44,10 +44,10 @@ cfg_test:
   render_mode: human
 
 cfg_train:
-  n_envs: 4
+  n_envs: 8
   eval_freq: 10000  
-  total_timesteps: 500_000
-  
+  total_timesteps: 200_000
+  repeat_training: 5
   algo:
     ppo: cartpole_ppo.yml
   

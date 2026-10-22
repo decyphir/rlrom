@@ -21,7 +21,7 @@ from mo_gymnasium.wrappers.vector import MOSyncVectorEnv, MORecordEpisodeStatist
 from rlrom.testers import RLTester
 import rlrom.utils as rlu
 from rlrom.utils import policy_cfg2kargs
-from rlrom.wrappers.specs_wrapper import wrap_env_specs
+from rlrom.wrappers.spec_wrapper import wrap_env_specs
 
 def make_env_train(cfg):
         

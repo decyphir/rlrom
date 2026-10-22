@@ -6,7 +6,7 @@
    the overview is the reference map (package structure, wrapper pipeline, config system,
    canonical example configs, known issues).
 2. From the request, identify the relevant area and read **only those files**, e.g.:
-   - STL monitoring / reward shaping / obs augmentation → `src/rlrom/wrappers/stl_wrapper.py`
+   - STL monitoring / reward shaping / obs augmentation → `src/rlrom/wrappers/spec_wrapper.py`
    - Reward machines / FSMs → `src/rlrom/wrappers/reward_machine.py`,
      `examples/highway_env/cfg_specs_rmf.yml`, `examples/minigrid/blocked_unlock_pickup/`
    - Training flow / algorithms / checkpoints → `src/rlrom/trainers.py`, `src/rlrom/utils.py`
