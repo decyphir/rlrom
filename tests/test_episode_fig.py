@@ -45,6 +45,33 @@ def test_get_signal_from_str_returns_signal(tester):
         S = g(name)
         assert isinstance(S, stlrom.Signal), name
         assert len(S.get_samples_list()) > 0, name
+    # env_reward:weighted must scale by env_reward_weight (default 1.0 here,
+    # so the values match the raw env_reward)
+    raw = np.asarray([s.value for s in g('env_reward').get_samples_list()])
+    wgt = np.asarray([s.value for s in g('env_reward:weighted').get_samples_list()])
+    assert np.allclose(wgt, raw * T.env.get_wrapper_attr('env_reward_weight'))
+    T.env.close()
+
+
+def test_env_reward_weighted_scales_by_env_reward_weight():
+    """env_reward:weighted must multiply the raw reward by env_reward_weight."""
+    import stlrom
+
+    cfg = dict(STL_CFG)
+    cfg['cfg_specs'] = dict(STL_CFG['cfg_specs'])  # don't leak into other tests
+    cfg['cfg_specs']['env_reward_weight'] = 2.0
+    T = RLTester(cfg)
+    T.run_cfg_test()
+    T.init_env(render_mode=None)
+    T.env.get_wrapper_attr('set_episode_data')(T.test_results[-1]['episodes'][0])
+    g = T.env.get_wrapper_attr('get_signal_from_str')
+    raw = np.asarray([s.value for s in g('env_reward').get_samples_list()], dtype=float)
+    w = g('env_reward:weighted')
+    assert isinstance(w, stlrom.Signal)
+    wv = np.asarray([s.value for s in w.get_samples_list()], dtype=float)
+    n = min(len(raw), len(wv))
+    assert n > 0
+    np.testing.assert_allclose(wv[:n], 2.0 * raw[:n])
     T.env.close()
 
 

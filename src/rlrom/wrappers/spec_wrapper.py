@@ -375,15 +375,17 @@ class SpecWrapper(gym.Wrapper):
         return self.env.reset(seed=seed)
 
     def get_ep_len(self):
-        stl_data = self.episode.get('stl_data', [])
-        if stl_data == []:  
+        stl_data = self.episode.get('stl_data')
+        # stl_data is a stlrom.STLData (live handle on the driver's data);
+        # it is only set after the first reset (before that it may be missing
+        # or still the initial empty list)
+        if not isinstance(stl_data, stlrom.STLData):
             return 0
-        else:
-            return len(stl_data.get_signal(0).get_samples_list())
-    
+        return len(stl_data.get_signal(0).get_samples_list())
+
     def get_time(self):
-        stl_data = self.episode.get('stl_data', [])
-        if stl_data == []:
+        stl_data = self.episode.get('stl_data')
+        if not isinstance(stl_data, stlrom.STLData):
             raise ValueError("No data to plot.")
         samples = stl_data.get_signal(0).get_samples_list()
         return [s.time for s in samples]
@@ -436,12 +438,15 @@ class SpecWrapper(gym.Wrapper):
         return idx
 
     def _resolve_signal_str(self, name):
-        """Resolve a plot/signal string to (values, sig_type, discrete).
+        """Resolve a plot/signal string to (values, sig_type, discrete, sig).
 
         Returns a 1-D sequence of values, a ``sig_type`` in
-        {'val', 'rob', 'sat'} and a boolean flag telling whether the signal is
-        discrete (zero-order-hold / step) -- see CODEBASE_OVERVIEW for the
-        full grammar supported:
+        {'val', 'rob', 'sat'}, a boolean flag telling whether the signal is
+        discrete (zero-order-hold / step), and a ``stlrom.Signal`` when the
+        token maps directly to one (raw mapped signals) -- otherwise the
+        fourth element is None and the values must be re-encoded into a
+        Signal (see get_signal_from_str). See CODEBASE_OVERVIEW for the full
+        grammar supported:
 
           * bare mapped signal names (action_names / obs_names /
             aux_sig_names / env_reward)
@@ -453,7 +458,10 @@ class SpecWrapper(gym.Wrapper):
           * bare <f> (formula) -> offline robustness
 
         An optional ':weighted' suffix multiplies the values by the relevant
-        configured weight (formula weight, or reward-machine weight).
+        configured weight (formula weight, reward-machine weight, or
+        `env_reward_weight` for the `env_reward` raw signal). For
+        `env_reward:weighted` the returned Signal is a re-encoded, scaled
+        copy (the driver's Signal itself cannot be scaled).
         """
         weighted = False
         base = name
@@ -477,7 +485,7 @@ class SpecWrapper(gym.Wrapper):
                 discrete = (ftype == 'sat')
                 if ftype == 'sat':
                     values = (values > 0).astype(int)
-                return np.asarray(values, dtype=float), sig_type, discrete
+                return np.asarray(values, dtype=float), sig_type, discrete, None
 
         # -- prefix/name forms ----------------------------------------------
         if '/' in base:
@@ -486,7 +494,7 @@ class SpecWrapper(gym.Wrapper):
             if prefix == 'rm_states':
                 i = self._reward_machine_idx(sub)
                 values = [step[i] for step in self.episode['rm_states']]
-                return np.asarray(values, dtype=float), 'val', True
+                return np.asarray(values, dtype=float), 'val', True, None
 
             if prefix in ('rm_reward',):
                 i = self._reward_machine_idx(sub)
@@ -495,7 +503,7 @@ class SpecWrapper(gym.Wrapper):
                 values = np.asarray(values, dtype=float)
                 if weighted:
                     values = values * w
-                return values, 'val', True
+                return values, 'val', True, None
 
             if prefix in ('obs_formulas', 'reward_formulas', 'label_formulas'):
                 if sub not in self.episode['res_f']:
@@ -506,21 +514,27 @@ class SpecWrapper(gym.Wrapper):
                     values = values * w
                 # label formulas hold per-step lower-bound robustness (0/1-ish
                 # for Boolean semantics); treat as discrete-steps like states.
-                return values, 'rob', (prefix == 'label_formulas')
+                return values, 'rob', (prefix == 'label_formulas'), None
 
             if prefix == 'eval_formulas':
                 values = self.get_rob(sub, online=False)
-                return np.asarray(values, dtype=float), 'rob', False
+                return np.asarray(values, dtype=float), 'rob', False, None
 
         # -- bare names -----------------------------------------------------
         if base == 'reward':
             # agent-visible (shaped) reward, the actual SpecWrapper output.
             values = np.asarray(self.episode['rewards'], dtype=float)
-            return values, 'val', True
+            return values, 'val', True, None
 
         if base == 'env_reward':
-            values = self.get_sig('env_reward')
-            return np.asarray(values, dtype=float), 'val', True
+            sig = self.get_sig('env_reward')
+            values = np.asarray([s.value for s in sig.get_samples_list()], dtype=float)
+            if weighted:
+                # env_reward:weighted -> raw reward scaled by env_reward_weight;
+                # the scaled trace is re-encoded (Signal has no scalar mul, and
+                # returning the driver's Signal as-is would lose the scaling)
+                return values * self.env_reward_weight, 'val', True, None
+            return values, 'val', True, sig
 
         # bare reward-machine name -> its per-step (unweighted) reward
         for rm in self.reward_machines:
@@ -530,15 +544,21 @@ class SpecWrapper(gym.Wrapper):
                 values = np.asarray(values, dtype=float)
                 if weighted:
                     values = values * rm.get('weight', 1.0)
-                return values, 'val', True
+                return values, 'val', True, None
 
-        # mapped raw signals (obs/action/aux/env_reward...)
+        # mapped raw signals (obs/action/aux...): the token maps directly to
+        # the driver's stlrom.Signal, which is returned as-is (its own
+        # plotting handles interpolation); values are extracted from its
+        # samples for value-based consumers (live plots, ...). ('env_reward'
+        # is handled above, including ':weighted'.) ':weighted' has no effect
+        # on the other raw signals.
         env_signal_names = self.signals_map.keys()
         if base in env_signal_names:
-            values = self.get_sig(base)
+            sig = self.get_sig(base)
+            values = np.asarray([s.value for s in sig.get_samples_list()], dtype=float)
             discrete = (base == 'env_reward'
                         or base in getattr(self, '_action_signal_names', set()))
-            return np.asarray(values, dtype=float), 'val', discrete
+            return values, 'val', discrete, sig
 
         # bare formula name: prefer the per-step values already recorded in
         # res_f (reward/label/obs formulas), otherwise compute offline
@@ -549,10 +569,10 @@ class SpecWrapper(gym.Wrapper):
                 group = self._formula_group_of(base)
                 w = self._formula_cfg_weight(group, base) if group else 1.0
                 values = values * w
-            return values, 'rob', False
+            return values, 'rob', False, None
         try:
             values = self.get_rob(base, online=False)
-            return np.asarray(values, dtype=float), 'rob', False
+            return np.asarray(values, dtype=float), 'rob', False, None
         except Exception:
             pass
 
@@ -564,17 +584,23 @@ class SpecWrapper(gym.Wrapper):
 
     def get_values_from_str(self, str):
         # Backward-compatible value lookup; delegates to the shared resolver.
-        values, sig_type, _ = self._resolve_signal_str(str)
+        values, sig_type, _discrete, _sig = self._resolve_signal_str(str)
         return values, sig_type
 
     def get_signal_from_str(self, str):
         """Return an ``stlrom.Signal`` for a plot/signal name string.
 
-        Discrete (zero-order-hold) signals -- rewards, actions, label/states,
+        Raw mapped signals (obs/actions/aux, ``env_reward``) are returned
+        directly as the driver's ``stlrom.Signal`` -- its own plotting
+        handles interpolation. Other tokens (rewards, formula robustness,
+        RM states/rewards, ...) are re-encoded into a fresh ``Signal``:
+        discrete (zero-order-hold) signals -- rewards, actions, label/states,
         sat(...) -- are encoded with constant samples (derivative 0) so they
         render as steps; continuous signals use linear interpolation.
         """
-        values, _sig_type, discrete = self._resolve_signal_str(str)
+        values, _sig_type, discrete, sig = self._resolve_signal_str(str)
+        if sig is not None:
+            return sig
         times = self.get_time()
         values = np.asarray(values, dtype=float)
         if len(times) != len(values):
@@ -595,23 +621,38 @@ class SpecWrapper(gym.Wrapper):
     # Compute robustness signal. If online is true, then 
     # compute it at each time as if future was not known, 
     # otherwise uses all data for all computation
-    # MAYBE careful with eval_formula_cfg
 
-        if self.stl_driver.data == []:
+        data = self.stl_driver.data
+        times = [s.time for s in data.get_signal(0).get_samples_list()]
+        if len(times) == 0:
             raise ValueError("No data/episode was computed.")
-        
-        monitor = self.stl_driver.get_monitor(formula)
-        
-        rob = np.zeros(len(self.stl_driver.data))
+
+        # stlrom does not raise for unknown formulas (it prints a warning and
+        # returns 0. / an empty list), so validate up front for a clear error
+        if self.stl_driver.get_monitor(formula).formula is None:
+            raise ValueError(f"Unknown formula '{formula}'.")
+
+        rob = np.zeros(len(times))
         if online:
-            monitor.data=[]
-        step = 0
-        for s in self.stl_driver.data:
-            t0 = max(0,step*self.real_time_step-horizon)
-            if online:
-                monitor.add_sample(s)
-            rob[step] = monitor.eval_rob(t0)
-            step= step+1
+            # Replay the trace sample-by-sample into a fresh driver so each
+            # step's online robustness is computed without the future
+            # (stlrom has no reset API, and the driver's data can only be
+            # appended to).
+            replay = stlrom.STLDriver()
+            replay.parse_string(self.stl_specs_str)
+            n_sig = len(self.signals_specs)
+            sig_samples = [data.get_signal(i).get_samples_list() for i in range(n_sig)]
+            for k, t in enumerate(times):
+                row = [t] + [sig_samples[i][k].value for i in range(n_sig)]
+                replay.add_sample(row, False)
+                t0 = max(0., t - horizon)
+                robs = replay.get_online_rob(formula, t0)
+                rob[k] = robs[0] if len(robs) > 0 else 0.
+        else:
+            # offline: the whole trace is known; evaluate the formula at
+            # each time of the trace
+            for k, t in enumerate(times):
+                rob[k] = self.stl_driver.get_rob(formula, max(0., t - horizon))
         return rob
 
     def set_episode_data(self, episode):

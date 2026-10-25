@@ -85,12 +85,11 @@ cfg_test:
   plot:
     - title: Observations 
       ax: 
-        - env_reward:weighted
-        - rm_AB:weighted
-        - rm_states/rm_AB
-        - x_dot
-#      live: True
-
+        - x
+        - eval_formulas/phi_AB
+        - sat(phi_AB,0)
+      live: True
+#      live_window: 100
 
 cfg_train:
   n_envs: 8

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import rlrom.utils as utils
 
 def plot_signal(env, st, ax):
-    get_sig = env.get_wrapper_attr('get_signal')
+    get_sig = env.get_wrapper_attr('get_sig')
     sig=  get_sig(st)
     sig.plot(ax=ax)
     ax.grid()
