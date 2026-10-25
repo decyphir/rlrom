@@ -22,7 +22,7 @@ STL_CFG = {
     "cfg_specs": {
         # Note: avoid bare negative literals (stlrom grammar limitation,
         # e.g. `x[t] < -0.2` fails to parse).
-        "specs": "signal x, theta, reward\ncart_left := x[t] < 0.5 and x[t] > 0.1",
+        "specs": "signal x, theta, env_reward\ncart_left := x[t] < 0.5 and x[t] > 0.1",
         "obs_names": {"x": "obs[0]", "theta": "obs[2]"},
         "reward_formulas": {
             "cart_left": {"online": True, "past_horizon": 0, "weight": 5.0},
@@ -61,7 +61,7 @@ def test_spec_wrapper_step(stl_env):
     # keep_old_reward=False: reward must come from the STL formula only
     assert -5.0 < reward < 5.0
     # episode data collected
-    assert len(env.episode["stl_data"]) == 1
+    assert len(env.episode["stl_data"].get_signal(0).get_samples_list()) == 1
     assert len(env.episode["res_f"]["cart_left"]) == 1
 
 
@@ -88,11 +88,11 @@ def test_spec_wrapper_reset_reuses_driver(stl_env):
     env = stl_env
     env.reset()
     env.step(env.action_space.sample())
-    assert len(env.episode["stl_data"]) == 1
+    assert env.get_ep_len() == 1
     env.reset()
-    assert len(env.episode["stl_data"]) == 0
+    assert env.get_ep_len() == 0
     obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-    assert len(env.episode["stl_data"]) == 1
+    assert env.get_ep_len() == 1
     # monitor restarted from t0: time must not accumulate across resets
     assert env.get_time()[0] == 0.0
 

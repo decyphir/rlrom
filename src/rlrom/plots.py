@@ -5,7 +5,7 @@ import rlrom.utils as utils
 
 def plot_signal(env, st, ax):
     get_sig = env.get_wrapper_attr('get_signal')
-    sig=  get_sig('st')
+    sig=  get_sig(st)
     sig.plot(ax=ax)
     ax.grid()
 
@@ -106,7 +106,7 @@ def get_layout_from_string(signals_layout):
 
     return out            
 
-def plot_enveloppe(steps, mean_val, min_val, max_val, 
+def plot_envelope(steps, mean_val, min_val, max_val, 
                       ax=None, label=None, color='blue', linestyle='-'):
     linestyle_mean = '-'
 
@@ -129,20 +129,20 @@ def plot_enveloppe(steps, mean_val, min_val, max_val,
 
     return ax
 
-def plot_df_enveloppe(df, feature, ax=None, label=None, color='gray', linestyle='-'):
+def plot_df_envelope(df, feature, ax=None, label=None, color='gray', linestyle='-'):
 # assumes df is a a dataframe df of (steps,feature) concat vertically with label
-    df_enveloppe = utils.get_df_mean_min_max_val(df, feature)
-    steps = df_enveloppe['steps'].to_numpy()
+    df_envelope = utils.get_df_mean_min_max_val(df, feature)
+    steps = df_envelope['steps'].to_numpy()
         
     feature_mean = f'{feature}_mean'
     feature_min = f'{feature}_min'
     feature_max = f'{feature}_max'
 
-    mean_val = df_enveloppe[feature_mean].to_numpy()
-    min_val = df_enveloppe[feature_min].to_numpy()
-    max_val = df_enveloppe[feature_max].to_numpy()
+    mean_val = df_envelope[feature_mean].to_numpy()
+    min_val = df_envelope[feature_min].to_numpy()
+    max_val = df_envelope[feature_max].to_numpy()
 
-    return plot_enveloppe(steps, mean_val, min_val, max_val, 
+    return plot_envelope(steps, mean_val, min_val, max_val, 
                       ax=ax, label=label, color=color, linestyle=linestyle)
 
 def plot_tb_training_logs(data, ax=None, label=None, color='gray', linestyle='-'):
@@ -153,7 +153,7 @@ def plot_tb_training_logs(data, ax=None, label=None, color='gray', linestyle='-'
     min_val = utils.get_lower_values(data)
     max_val = utils.get_upper_values(data)    
 
-    return plot_enveloppe(steps, mean_val, min_val, max_val, 
+    return plot_envelope(steps, mean_val, min_val, max_val, 
                       ax=ax, label=label, color=color, linestyle=linestyle)
 
 
@@ -224,7 +224,7 @@ def plot_training_results(df, metrics=None, style='line', label_col='training_id
         dfm = dfm.sort_values('steps')
 
         if style in ('envelope', 'both'):
-            plot_df_enveloppe(dfm, metric, ax=ax, label='mean', linestyle='--')
+            plot_df_envelope(dfm, metric, ax=ax, label='mean', linestyle='--')
         if style in ('line', 'both') or df[label_col].nunique() <= 1:
             for lab, grp in dfm.groupby(label_col, sort=False):
                 ax.plot(grp['steps'], grp[metric], label=str(lab), **kargs)

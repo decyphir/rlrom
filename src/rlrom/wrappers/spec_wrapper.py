@@ -4,13 +4,22 @@ import numpy as np
 import stlrom
 from rlrom.utils import append_to_field_array as add_metric
 from rlrom.wrappers.reward_machine import RewardMachine
+from gymnasium.wrappers import FlattenObservation
+
 import importlib
 
-def stl_wrap_env(env, cfg):  # keeping this for compatibility no reason
-    env = STLWrapper(env,cfg)   
+def wrap_env_specs(env,cfg):
+    
+    cfg_specs = cfg.get('cfg_specs', None)            
+    if cfg_specs is not None:
+        env = SpecWrapper(env, cfg)
+        
+        if cfg_specs.get("flatten_obs", True):
+            env = FlattenObservation(env)          
+    
     return env
 
-class STLWrapper(gym.Wrapper): 
+class SpecWrapper(gym.Wrapper): 
     
     def __init__(self,env,cfg):        
         
@@ -38,7 +47,7 @@ class STLWrapper(gym.Wrapper):
                     first = False
                 else:
                     stl_specs_str += ','+ o
-            stl_specs_str += ',reward'                                 
+            stl_specs_str += ',env_reward'                                 
     
         stl_driver.parse_string(stl_specs_str)
         self.stl_specs_str = stl_specs_str
@@ -71,6 +80,7 @@ class STLWrapper(gym.Wrapper):
         # define signals_map: map signal names to their expressions given in cfg_specs
         cfg_specs= cfg.get('cfg_specs')
         self.signals_map={}
+        self._action_signal_names = set(cfg_specs.get('action_names', {}))
         if 'action_names' in cfg_specs:
             for a_name,a_ref in cfg_specs['action_names'].items():                                    
                 self.signals_map[a_name]=a_ref            
@@ -80,7 +90,13 @@ class STLWrapper(gym.Wrapper):
         if 'aux_sig_names' in cfg_specs: # TODO document/test/example this
             for o_name,o_ref in cfg_specs['aux_sig_names'].items():                     
                 self.signals_map[o_name]=o_ref
-        self.signals_map['reward'] = 'reward'
+        # The env (original) reward is sampled into the STL driver under the signal
+        # name 'env_reward'. The value is the raw reward returned by the wrapped
+        # environment, i.e. the `reward` variable in scope (there is no local named
+        # 'env_reward'); get_sample evaluates this expression per step. The
+        # agent-visible/shaped reward (the SpecWrapper output) is exposed
+        # separately as 'reward' in the plotting / get_signal_from_str namespace.
+        self.signals_map['env_reward'] = 'reward'
 
         # signals in specs
         self.signals_specs = stl_driver.get_signals_names().split()               
@@ -149,6 +165,8 @@ class STLWrapper(gym.Wrapper):
     def reset(self, **kwargs):        
         self.time_step = 0
         self.current_time = 0
+        self.episode={'observations':[], 'actions':[],'rewards':[], 'env_rewards':[],'dones':[], 'last_obs':[], 
+                      'stl_data':[], 'labels':[], 'rm_states':[], 'rm_rewards':[]}        
         obs0, info = self.env.reset(**kwargs)
         self.wrapped_obs = obs0        
         robs0 = self.reset_monitor()
@@ -156,8 +174,8 @@ class STLWrapper(gym.Wrapper):
         rm_states0 = self._rm_states_obs()
         obs = self._build_obs(obs0, robs0, rm_states0)
         self.last_obs = obs
-        self.episode={'observations':[], 'actions':[],'rewards':[], 'rewards_wrapped':[],'dones':[], 'last_obs':[obs], 
-                      'stl_data':[], 'labels':[], 'rm_states':[], 'rm_rewards':[]}        
+        self.episode['last_obs'] = obs
+
         # initialize res_f. It will store monitoring of formulas computed during the episode
         res_f={}
         for f_name, _ in self.obs_formulas.items():                     
@@ -226,6 +244,7 @@ class STLWrapper(gym.Wrapper):
         # and re-parsing the same driver accumulates parse state)
         self.stl_driver = stlrom.STLDriver()
         self.stl_driver.parse_string(self.stl_specs_str)
+        self.episode['stl_data'] = self.stl_driver.data
         return [0]*len(self.obs_formulas) 
 
     def step(self, action):
@@ -235,7 +254,7 @@ class STLWrapper(gym.Wrapper):
         
         # collect the sample for monitoring 
         s = self.get_sample(obs, action, reward)
-        self.episode['stl_data'].append(s)               
+        #self.episode['stl_data'].append(s)               
         
         # add sample and compute robustness
         self.stl_driver.add_sample(s,False)
@@ -314,7 +333,7 @@ class STLWrapper(gym.Wrapper):
 
         self.episode['observations'].append(self.last_obs)               
         self.episode['actions'].append(action)
-        self.episode['rewards_wrapped'].append(reward)
+        self.episode['env_rewards'].append(reward)
         self.episode['rewards'].append(new_reward)
         self.episode['dones'].append(terminated)
         self.episode['last_obs'] = new_obs
@@ -354,56 +373,223 @@ class STLWrapper(gym.Wrapper):
 
     def seed(self, seed):
         return self.env.reset(seed=seed)
+
+    def get_ep_len(self):
+        stl_data = self.episode.get('stl_data', [])
+        if stl_data == []:  
+            return 0
+        else:
+            return len(stl_data.get_signal(0).get_samples_list())
     
     def get_time(self):
         stl_data = self.episode.get('stl_data', [])
         if stl_data == []:
             raise ValueError("No data to plot.")
-        
-        return [s[0] for s in stl_data]
+        samples = stl_data.get_signal(0).get_samples_list()
+        return [s.time for s in samples]
         
     def get_sig(self, sig_name):
         # recover a signal computed during an episode, either observation, reward, reward formula, 
-        sig_val=[]
+        sig= stlrom.Signal()
+        if self.get_ep_len()>0:
+            if sig_name in self.signals_specs:
+                sig= self.episode['stl_data'].get_signal(sig_name)   
+        return sig
 
-        if sig_name in self.signals_specs:
-            idx = self.signals_specs_idx[sig_name]            
-            for s in self.episode['stl_data']:
-                sig_val.append(s[idx])
-        elif sig_name in self.episode['res_f']:
-            sig_val = self.episode['res_f'][sig_name]               
-        return sig_val
+    def _formula_cfg_weight(self, prefix, fname):
+        """Configured weight (default 1.0) of formula `fname` in group `prefix`.
+
+        Only the groups that carry rewards / contribute to the wrapped reward
+        expose a meaningful `weight` ('reward_formulas', 'label_formulas',
+        'obs_formulas'); other groups default to 1.0.
+        """
+        if prefix == 'reward_formulas':
+            grp = self.reward_formulas
+        elif prefix == 'label_formulas':
+            grp = self.label_formulas
+        elif prefix == 'obs_formulas':
+            grp = self.obs_formulas
+        else:
+            return 1.0
+        opt = grp.get(fname)
+        if isinstance(opt, dict):
+            return opt.get('weight', 1.0)
+        return 1.0
+
+    def _formula_group_of(self, fname):
+        """Name of the formula group owning `fname`, or None if it is not a
+        monitored/recorded formula."""
+        for prefix, grp in (('reward_formulas', self.reward_formulas),
+                            ('label_formulas', self.label_formulas),
+                            ('obs_formulas', self.obs_formulas)):
+            if fname in grp:
+                return prefix
+        return None
+
+    def _reward_machine_idx(self, name):
+        idx = next((i for i, rm in enumerate(self.reward_machines)
+                    if rm.get('name') == name), None)
+        if idx is None:
+            raise ValueError(
+                f"Unknown reward machine '{name}'. Available reward machines: "
+                f"{[rm.get('name') for rm in self.reward_machines]}")
+        return idx
+
+    def _resolve_signal_str(self, name):
+        """Resolve a plot/signal string to (values, sig_type, discrete).
+
+        Returns a 1-D sequence of values, a ``sig_type`` in
+        {'val', 'rob', 'sat'} and a boolean flag telling whether the signal is
+        discrete (zero-order-hold / step) -- see CODEBASE_OVERVIEW for the
+        full grammar supported:
+
+          * bare mapped signal names (action_names / obs_names /
+            aux_sig_names / env_reward)
+          * 'reward' -> the agent-visible (shaped) reward
+          * '<prefix>/<f>'  prefix in obs_formulas, reward_formulas,
+            label_formulas, eval_formulas
+          * 'rm_states/<m>' and 'rm_reward/<m>' (or bare machine name <m>)
+          * 'rho(<f>[,h])', 'rob(<f>[,h])', 'sat(<f>)'
+          * bare <f> (formula) -> offline robustness
+
+        An optional ':weighted' suffix multiplies the values by the relevant
+        configured weight (formula weight, or reward-machine weight).
+        """
+        weighted = False
+        base = name
+        if base.endswith(':weighted'):
+            weighted = True
+            base = base[:-len(':weighted')]
+
+        sig_type = 'val'
+        discrete = False
+
+        # -- function forms -------------------------------------------------
+        for fn, ftype in (('rho(', 'rob'), ('rob(', 'rob'), ('sat(', 'sat')):
+            if base.startswith(fn):
+                arg_rho = base[len(fn):-1].split(',')
+                past_horizon = 0
+                phi = arg_rho[0]
+                if len(arg_rho) > 1:
+                    past_horizon = -float(arg_rho[1])
+                values = self.get_rob(phi, horizon=past_horizon, online=False)
+                sig_type = ftype
+                discrete = (ftype == 'sat')
+                if ftype == 'sat':
+                    values = (values > 0).astype(int)
+                return np.asarray(values, dtype=float), sig_type, discrete
+
+        # -- prefix/name forms ----------------------------------------------
+        if '/' in base:
+            prefix, sub = base.split('/', 1)
+
+            if prefix == 'rm_states':
+                i = self._reward_machine_idx(sub)
+                values = [step[i] for step in self.episode['rm_states']]
+                return np.asarray(values, dtype=float), 'val', True
+
+            if prefix in ('rm_reward',):
+                i = self._reward_machine_idx(sub)
+                values = [step[i] for step in self.episode['rm_rewards']]
+                w = self.reward_machines[i].get('weight', 1.0)
+                values = np.asarray(values, dtype=float)
+                if weighted:
+                    values = values * w
+                return values, 'val', True
+
+            if prefix in ('obs_formulas', 'reward_formulas', 'label_formulas'):
+                if sub not in self.episode['res_f']:
+                    raise ValueError(f"Unknown formula '{sub}' in '{name}'.")
+                values = np.asarray(self.episode['res_f'][sub], dtype=float)
+                if weighted:
+                    w = self._formula_cfg_weight(prefix, sub)
+                    values = values * w
+                # label formulas hold per-step lower-bound robustness (0/1-ish
+                # for Boolean semantics); treat as discrete-steps like states.
+                return values, 'rob', (prefix == 'label_formulas')
+
+            if prefix == 'eval_formulas':
+                values = self.get_rob(sub, online=False)
+                return np.asarray(values, dtype=float), 'rob', False
+
+        # -- bare names -----------------------------------------------------
+        if base == 'reward':
+            # agent-visible (shaped) reward, the actual SpecWrapper output.
+            values = np.asarray(self.episode['rewards'], dtype=float)
+            return values, 'val', True
+
+        if base == 'env_reward':
+            values = self.get_sig('env_reward')
+            return np.asarray(values, dtype=float), 'val', True
+
+        # bare reward-machine name -> its per-step (unweighted) reward
+        for rm in self.reward_machines:
+            if rm.get('name') == base:
+                i = self._reward_machine_idx(base)
+                values = [step[i] for step in self.episode['rm_rewards']]
+                values = np.asarray(values, dtype=float)
+                if weighted:
+                    values = values * rm.get('weight', 1.0)
+                return values, 'val', True
+
+        # mapped raw signals (obs/action/aux/env_reward...)
+        env_signal_names = self.signals_map.keys()
+        if base in env_signal_names:
+            values = self.get_sig(base)
+            discrete = (base == 'env_reward'
+                        or base in getattr(self, '_action_signal_names', set()))
+            return np.asarray(values, dtype=float), 'val', discrete
+
+        # bare formula name: prefer the per-step values already recorded in
+        # res_f (reward/label/obs formulas), otherwise compute offline
+        # robustness over the whole trace.
+        if base in self.episode['res_f']:
+            values = np.asarray(self.episode['res_f'][base], dtype=float)
+            if weighted:
+                group = self._formula_group_of(base)
+                w = self._formula_cfg_weight(group, base) if group else 1.0
+                values = values * w
+            return values, 'rob', False
+        try:
+            values = self.get_rob(base, online=False)
+            return np.asarray(values, dtype=float), 'rob', False
+        except Exception:
+            pass
+
+        # unknown -> error so get_fig reports a clear warning
+        raise ValueError(
+            f"Cannot resolve signal/formula name '{name}'. It is neither a "
+            "declared signal, a formula, a reward machine nor a known "
+            "plot token (see get_signal_from_str docs).")
 
     def get_values_from_str(self, str):
-        
-        env_signal_names = self.signals_map.keys() 
-        sig_type= 'val'                   
-        if str in env_signal_names or str.split('(')[0] in env_signal_names:                        
-            sig_val = self.get_sig(str)                        
-        elif str.startswith('rho(') or str.startswith('rob('):
-            arg_rho = str.split('(')[1][:-1]
-            arg_rho = arg_rho.split(',')            
-            past_horizon = 0            
-            phi = arg_rho[0]
-            if len(arg_rho)>1:                          
-                past_horizon = -float(arg_rho[1])            
-            sig_val = self.get_rob(phi, horizon=past_horizon, online=False)                                                                                                
-            sig_type = 'rob'
-        elif str.startswith('sat('):
-            arg_rho = str.split('(')[1][:-1]
-            arg_rho = arg_rho.split(',')
-            past_horizon = 0
-            phi = arg_rho[0]
-            if len(arg_rho)>1:                
-                past_horizon = -float(arg_rho[1])
-            sig_val = self.get_rob(phi, horizon=past_horizon, online=False)
-            sig_val = (sig_val >0).astype(int)         
-            sig_type = 'sat'
-        else: # try implicit rho(str), i.e., str is a formula name
-            sig_val = self.get_rob(str, online=False)                                                                                            
-            sig_type = 'rob'                        
-        
-        return sig_val, sig_type
+        # Backward-compatible value lookup; delegates to the shared resolver.
+        values, sig_type, _ = self._resolve_signal_str(str)
+        return values, sig_type
+
+    def get_signal_from_str(self, str):
+        """Return an ``stlrom.Signal`` for a plot/signal name string.
+
+        Discrete (zero-order-hold) signals -- rewards, actions, label/states,
+        sat(...) -- are encoded with constant samples (derivative 0) so they
+        render as steps; continuous signals use linear interpolation.
+        """
+        values, _sig_type, discrete = self._resolve_signal_str(str)
+        times = self.get_time()
+        values = np.asarray(values, dtype=float)
+        if len(times) != len(values):
+            # pad/trim robustness vectors that lag the trace length
+            n = min(len(times), len(values))
+            times, values = times[:n], values[:n]
+        S = stlrom.Signal()
+        for t, v in zip(times, values):
+            if discrete:
+                S.append_constant_sample(float(t), float(v))
+            else:
+                S.append_linear_sample(float(t), float(v))
+        if times:
+            S.end_time = float(times[-1])
+        return S
 
     def get_rob(self, formula, horizon=0, online=True):
     # Compute robustness signal. If online is true, then 
@@ -431,18 +617,12 @@ class STLWrapper(gym.Wrapper):
     def set_episode_data(self, episode):
         self.reset_monitor()
         self.episode = episode
-        stl_data = self.episode['stl_data']
+        self.stl_driver.data = self.episode['stl_data']
         observations = self.episode['observations']
-        self.time_step = 0
-        self.current_time=0
         
-        while self.time_step<len(observations):
-            i_step = self.time_step
-            s = stl_data[i_step]
-            self.stl_driver.add_sample(s, False) # we use constant interpolation and extrapolation
-            self.time_step += 1
-            self.current_time += self.real_time_step
-   
+        self.time_step = self.get_ep_len()-1
+        self.current_time = self.time_step*self.real_time_step
+           
     def eval_formula_cfg(self, f_name, f_opt, eval_res=None):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
     # it uses whatever is in the data of stl_driver at this point
@@ -524,7 +704,7 @@ class STLWrapper(gym.Wrapper):
         # maybe a mean mean reward ?
         
         stl_data = episode['stl_data']            
-        len_episode = len(stl_data)
+        len_episode = len(stl_data.get_signal(0).get_samples_list())
         if self.reward_formulas != dict():
             
             res_f = episode['res_f']

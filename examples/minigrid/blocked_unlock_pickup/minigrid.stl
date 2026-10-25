@@ -1,4 +1,4 @@
-signal ego, obj_front, distance, door_open, reward
+signal ego, obj_front, distance, door_open, env_reward
 
 far_from_door:= distance[t]>1
 has_key:= ego[t]>4 and ego[t]<6

@@ -1,4 +1,4 @@
-signal push,x,x_dot,theta,theta_dot,reward
+signal push,x,x_dot,theta,theta_dot,env_reward
 
 param epsi= 0.03
 pole_up := abs(theta[t]) < epsi

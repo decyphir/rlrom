@@ -85,10 +85,11 @@ cfg_test:
   plot:
     - title: Observations 
       ax: 
-        - reward:weighted
+        - env_reward:weighted
         - rm_AB:weighted
         - rm_states/rm_AB
         - x_dot
+#      live: True
 
 
 cfg_train:

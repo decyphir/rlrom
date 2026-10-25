@@ -2,7 +2,7 @@ signal action, ego_presence, ego_x, ego_y, ego_vx, ego_vy,
        car1_presence, car1_x, car1_y, car1_vx, car1_vy, 
        car2_presence, car2_x, car2_y, car2_vx, car2_vy, 
        car3_presence, car3_x, car3_y, car3_vx, car3_vy, 
-       reward
+       env_reward
 
 # Speed formulas
 ego_moves := ego_vx[t] > 0 # used for evaluation

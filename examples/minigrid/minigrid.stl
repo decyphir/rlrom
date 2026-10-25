@@ -1,4 +1,4 @@
-signal  ego, obj_front, reward, key_visible, action
+signal  ego, obj_front, env_reward, key_visible, action
 
 has_key:= ego[t]>4
 not_has_key:= not has_key

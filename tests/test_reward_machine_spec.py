@@ -13,7 +13,7 @@ RM_CFG = {
     "env_name": "CartPole-v1",
     "cfg_specs": {
         "specs": (
-            "signal x, theta, reward\n"
+            "signal x, theta, env_reward\n"
             "on_left := x[t] < -0.2\n"
             "on_right := x[t] > 0.2\n"
         ),
@@ -111,7 +111,7 @@ def test_multiple_reward_machines():
     cfg = {
         "env_name": "CartPole-v1",
         "cfg_specs": {
-            "specs": "signal x, reward\non_left := x[t] < -0.2\n",
+            "specs": "signal x, env_reward\non_left := x[t] < -0.2\n",
             "obs_names": {"x": "obs[0]"},
             "label_formulas": {"on_left": {"online": True, "past_horizon": 0}},
             "reward_machines": [
@@ -143,7 +143,7 @@ def test_show_reward_machines_prints(capsys, rm_env):
 def test_no_reward_machines_is_fine():
     cfg = {
         "env_name": "CartPole-v1",
-        "cfg_specs": {"specs": "signal x, reward\n", "obs_names": {"x": "obs[0]"}},
+        "cfg_specs": {"specs": "signal x, env_reward\n", "obs_names": {"x": "obs[0]"}},
     }
     env = gym.make("CartPole-v1")
     env = SpecWrapper(env, cfg)
@@ -159,7 +159,7 @@ def test_no_reward_machines_is_fine():
 REWARDS_CFG = {
     "env_name": "CartPole-v1",
     "cfg_specs": {
-        "specs": "signal x, reward\non_left := x[t] < -0.2\non_right := x[t] > 0.2\n",
+        "specs": "signal x, env_reward\non_left := x[t] < -0.2\non_right := x[t] > 0.2\n",
         "obs_names": {"x": "obs[0]"},
         "env_reward_weight": 1.0,
         "label_formulas": {

@@ -15,9 +15,17 @@ cfg_train:
   n_envs: 4
   algo:
     ppo: highway_env_ppo.yml
-     
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 100
+    
 cfg_test:
   init_seeds: 0
-  num_ep: 100
+  num_ep: 1
   num_steps: 100
   render_mode: 'human'
+  plot:
+    - ax:
+      - ego_y
+    - live: False 

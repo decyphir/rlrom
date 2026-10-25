@@ -295,8 +295,6 @@ Implemented by `rlrom.plots.LivePlot` (figures are created in
    fields (uses default `verbose=1`).
 7. `testers.py:make_env_test` does `sys.modules[cfg['import_module']]` — assumes the
    module was already imported (training path imports it; pure test runs may not).
-8. stlrom grammar quirk: a bare negative literal on the right of a comparison can
-   fail to parse (e.g. `x[t] < -0.2`); `x[t] < 0.2` / `x[t] > -0.7` are fine.
 
 ## Test suite
 
