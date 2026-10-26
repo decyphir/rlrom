@@ -67,9 +67,9 @@ def test_reset_initializes_episode_tracking(rm_env):
     assert env.episode["labels"] == []
     assert env.episode["rm_states"] == []
     assert env.episode["rm_rewards"] == []
-    # label formulas appear in res_f
-    assert "on_left" in env.episode["res_f"]
-    assert "on_right" in env.episode["res_f"]
+    # label formulas appear in res_f (namespaced by group)
+    assert "label_formulas/on_left" in env.episode["res_f"]
+    assert "label_formulas/on_right" in env.episode["res_f"]
 
 
 def test_step_records_labels_and_rm(rm_env):

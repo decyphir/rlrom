@@ -12,7 +12,6 @@ obs_names:
 
 obs_formulas:
   mu:
-   # obs_name: mu     
 
 
 real_time_step: 0.05

@@ -146,13 +146,6 @@ class SpecWrapper(gym.Wrapper):
         else:
             self.observation_space = spaces.Dict(dict_fields)
 
-        # adding mapping from stl signal to its config
-        for f_name, f_opt in self.obs_formulas.items():                                     
-            if f_opt is None:
-                f_opt=dict()            
-            obs_name = f_opt.get('obs_name', f_name)            
-            self.signals_map[obs_name]= f_opt
-        
         if self.multi_objective:
             # See https://mo-gymnasium.farama.org/tutorials/custom_env/
             self.reward_dim = len(self.reward_formulas)
@@ -176,16 +169,14 @@ class SpecWrapper(gym.Wrapper):
         self.last_obs = obs
         self.episode['last_obs'] = obs
 
-        # initialize res_f. It will store monitoring of formulas computed during the episode
+        # initialize res_f. It will store monitoring of formulas computed during the episode.
+        # Keys are namespaced by group ('obs_formulas/<f>', 'reward_formulas/<f>', ...):
+        # a formula may appear in several groups (e.g. obs_formulas and
+        # reward_formulas), and a shared key would be appended twice per step.
         res_f={}
-        for f_name, _ in self.obs_formulas.items():                     
-            res_f[f_name]=[]  
-        for f_name, _ in self.reward_formulas.items():                     
-            res_f[f_name]=[]  
-        for f_name, _ in self.label_formulas.items():                     
-            res_f[f_name]=[]  
-        for f_name, _ in self.end_formulas.items():                     
-            res_f[f_name]=[]  
+        for group in ('obs_formulas', 'reward_formulas', 'label_formulas', 'end_formulas'):
+            for f_name, _ in getattr(self, group).items():
+                res_f[f'{group}/{f_name}']=[]
         self.episode['res_f'] = res_f
         return obs, info
 
@@ -244,8 +235,34 @@ class SpecWrapper(gym.Wrapper):
         # and re-parsing the same driver accumulates parse state)
         self.stl_driver = stlrom.STLDriver()
         self.stl_driver.parse_string(self.stl_specs_str)
+        self._validate_formula_params()
         self.episode['stl_data'] = self.stl_driver.data
         return [0]*len(self.obs_formulas) 
+
+    def _validate_formula_params(self):
+        """Check that parameters referenced by formula_params are declared in
+        the spec string. stlrom parameters can only be created with a
+        'param <name> = <value>' statement in the spec; get_param/set_param
+        raise for undeclared names.
+        """
+        checked = set()
+        for group in ('obs_formulas', 'reward_formulas', 'label_formulas',
+                      'end_formulas', 'eval_formulas'):
+            for f_name, f_opt in getattr(self, group).items():
+                if not isinstance(f_opt, dict):
+                    continue
+                for p in (f_opt.get('formula_params') or {}):
+                    if p in checked:
+                        continue
+                    checked.add(p)
+                    try:
+                        self.stl_driver.get_param(p)
+                    except Exception:
+                        raise ValueError(
+                            f"formula_params of '{group}/{f_name}' references "
+                            f"parameter '{p}', which is not declared in "
+                            f"cfg_specs.specs. Declare it there, e.g.:\n"
+                            f"  param {p} = <default_value>")
 
     def step(self, action):
         
@@ -264,18 +281,18 @@ class SpecWrapper(gym.Wrapper):
         for f_name, f_opt in self.obs_formulas.items():                                     
             robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
             robs[idx_formula] = robs_f # forget about low and high robs for now                        
-            self.episode['res_f'][f_name].append(robs_f)
+            self.episode['res_f'][f'obs_formulas/{f_name}'].append(robs_f)
             idx_formula+=1     
             if self.debug_formulas is True:                
                 if idx_formula==1:
                     print('obs formulas', end='  --  ')                
-                print(f_name+f': {robs_f:.3}', end=' ')
+                print(f_name+f': {float(robs_f):.3}', end=' ')
                 if idx_formula==num_obs_formulas:
                     print('')
         
         for f_name, f_opt in self.end_formulas.items():                     
             _, eval_res = self.eval_formula_cfg(f_name,f_opt)                 
-            self.episode['res_f'][f_name].append(robs_f)
+            self.episode['res_f'][f'end_formulas/{f_name}'].append(eval_res['lower_rob'])
             if eval_res['lower_rob'] > 0:
                 print('Episode terminated because of formula', f_name)
                 terminated = True
@@ -285,7 +302,7 @@ class SpecWrapper(gym.Wrapper):
         labels = []
         for f_name, f_opt in self.label_formulas.items():
             _, eval_res = self.eval_formula_cfg(f_name, f_opt)
-            self.episode['res_f'][f_name].append(eval_res['lower_rob'])
+            self.episode['res_f'][f'label_formulas/{f_name}'].append(eval_res['lower_rob'])
             if eval_res['lower_rob'] > 0:
                 labels.append(f_name)
 
@@ -309,7 +326,7 @@ class SpecWrapper(gym.Wrapper):
             # add stl robustness to reward
             for f_name, f_opt in self.reward_formulas.items():                         
                 robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
-                self.episode['res_f'][f_name].append(robs_f)
+                self.episode['res_f'][f'reward_formulas/{f_name}'].append(robs_f)
                 w = f_opt.get('weight',1)        
                 new_reward += w*robs_f   
             # add weighted reward-machine rewards to the overall reward
@@ -320,7 +337,7 @@ class SpecWrapper(gym.Wrapper):
             new_reward = [reward * self.env_reward_weight] if self.env_reward_weight else []
             for f_name, f_opt in self.reward_formulas.items():                         
                 robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
-                self.episode['res_f'][f_name].append(robs_f)
+                self.episode['res_f'][f'reward_formulas/{f_name}'].append(robs_f)
                 new_reward.append(robs_f)
             new_reward = np.asarray(new_reward)
         
@@ -428,6 +445,17 @@ class SpecWrapper(gym.Wrapper):
                 return prefix
         return None
 
+    def _res_f_trace(self, fname):
+        """Recorded per-step trace of a formula from res_f (namespaced keys),
+        or None if it was not recorded. If a formula appears in several
+        groups, 'reward_formulas' takes precedence, then obs/label/end.
+        """
+        for prefix in ('reward_formulas', 'obs_formulas', 'label_formulas', 'end_formulas'):
+            key = f'{prefix}/{fname}'
+            if key in self.episode['res_f']:
+                return self.episode['res_f'][key]
+        return None
+
     def _reward_machine_idx(self, name):
         idx = next((i for i, rm in enumerate(self.reward_machines)
                     if rm.get('name') == name), None)
@@ -506,9 +534,10 @@ class SpecWrapper(gym.Wrapper):
                 return values, 'val', True, None
 
             if prefix in ('obs_formulas', 'reward_formulas', 'label_formulas'):
-                if sub not in self.episode['res_f']:
+                key = f'{prefix}/{sub}'
+                if key not in self.episode['res_f']:
                     raise ValueError(f"Unknown formula '{sub}' in '{name}'.")
-                values = np.asarray(self.episode['res_f'][sub], dtype=float)
+                values = np.asarray(self.episode['res_f'][key], dtype=float)
                 if weighted:
                     w = self._formula_cfg_weight(prefix, sub)
                     values = values * w
@@ -561,10 +590,11 @@ class SpecWrapper(gym.Wrapper):
             return values, 'val', discrete, sig
 
         # bare formula name: prefer the per-step values already recorded in
-        # res_f (reward/label/obs formulas), otherwise compute offline
+        # res_f (reward/label/obs/end formulas), otherwise compute offline
         # robustness over the whole trace.
-        if base in self.episode['res_f']:
-            values = np.asarray(self.episode['res_f'][base], dtype=float)
+        trace = self._res_f_trace(base)
+        if trace is not None:
+            values = np.asarray(trace, dtype=float)
             if weighted:
                 group = self._formula_group_of(base)
                 w = self._formula_cfg_weight(group, base) if group else 1.0
@@ -667,21 +697,53 @@ class SpecWrapper(gym.Wrapper):
     def eval_formula_cfg(self, f_name, f_opt, eval_res=None):
     # eval a formula based on f_opt configuration options AT CURRENT STEP
     # it uses whatever is in the data of stl_driver at this point
-    
+
         if f_opt is None:
             f_opt={}        
-        f_name = f_opt.get('formula_name',f_name)
+        # 'formula' (preferred) / 'formula_name' (legacy) select the actual STL
+        # formula to evaluate; when absent, the config key is the formula name.
+        # This lets the same formula be evaluated under several configurations
+        # (different past_horizon, t0, bounds, formula_params, ...).
+        f_name = f_opt.get('formula', f_opt.get('formula_name', f_name))
         f_hor = f_opt.get('past_horizon',0.)   
-        t0 = f_opt.get('t0',0.)
+        t0_cfg = f_opt.get('t0')
         tend = f_opt.get('tend',self.current_time)
-        online = f_opt.get('eval_all_steps', False) or f_opt.get('online', False) # eval_all_steps and online are equivalent. online should prevail.
-        if online is True:    # For now, we eval online formulas at t0= current_time - horizon 
-            t0 = max(t0, tend-f_hor)   # FIXME: For now too, at the start, t0 cannot be negative
-                                       # So, if horizon is more than current_time, the interpration 
-                                       # of the formula might be as intended. 
-                                       # Eventually we should either force past formulas, or provide another 
-                                       # option: 'offline', 'online' (as now), 'past'
-        robs = self.stl_driver.get_online_rob(f_name, t0)
+        # Anchoring of the evaluation time:
+        #  - default (no 'online'/'eval_all_steps'/'t0' option): at the
+        #    current time (minus past_horizon), i.e. the formula's value
+        #    "now". This keeps the per-step records (res_f, reward shaping,
+        #    labels, obs formulas) consistent with rho(f)/rob(f) plots;
+        #  - 'online: True' or 'eval_all_steps: True': explicit same anchoring;
+        #  - explicit 't0' (without 'online') or 'online: False': fixed t0
+        #    (default 0) -- e.g. whole-episode formulas tracked from the start.
+        online = f_opt.get('online', f_opt.get('eval_all_steps'))
+        if isinstance(online, str):  # --set-params passes strings
+            online = online.lower() in ('1', 'true', 'yes')
+        if online is None:
+            online = t0_cfg is None
+        if online:
+            t0 = max(t0_cfg or 0., tend-f_hor)
+        else:
+            t0 = t0_cfg or 0.
+        # FIXME: at the start, t0 cannot be negative: if past_horizon is more
+        # than current_time, max() falls back to the configured t0 (0 by
+        # default) and the interpretation of past formulas may differ from
+        # the intended one. Eventually we should either force past formulas,
+        # or provide another option: 'offline', 'online' (as now), 'past'
+        # Apply per-config formula parameters (e.g. close_dist: 3.0). stlrom
+        # parameters are driver-global, so save and restore them around the
+        # evaluation; different configs of the same formula can thus use
+        # different parameter values. Params must be declared in the spec
+        # string ('param <name> = <value>').
+        f_params = f_opt.get('formula_params') or {}
+        saved_params = [(p, self.stl_driver.get_param(p)) for p in f_params]
+        for p, v in f_params.items():
+            self.stl_driver.set_param(p, float(v))
+        try:
+            robs = self.stl_driver.get_online_rob(f_name, t0)
+        finally:
+            for p, v in saved_params:
+                self.stl_driver.set_param(p, v)
         val = robs[0]
         if eval_res is None:
             eval_res= dict()
@@ -754,12 +816,12 @@ class SpecWrapper(gym.Wrapper):
                 if f_name not in res:
                     res[f_name] = dict()
                 w = f_cfg.get('weight', 1)
-                res[f_name] = add_metric(res[f_name], 'mean', w*np.double(res_f[f_name]).mean())
+                res[f_name] = add_metric(res[f_name], 'mean', w*np.double(res_f[f'reward_formulas/{f_name}']).mean())
                 
-                sum_f = w*np.double(res_f[f_name]).sum()
+                sum_f = w*np.double(res_f[f'reward_formulas/{f_name}']).sum()
                 res[f_name] = add_metric(res[f_name], 'sum', sum_f)
                 
-                num_sat = (np.double(res_f[f_name])>0).sum()
+                num_sat = (np.double(res_f[f'reward_formulas/{f_name}'])>0).sum()
                 res[f_name] = add_metric(res[f_name], 'num_sat', num_sat)
 
             res_rew_f_list.append(res_f)            

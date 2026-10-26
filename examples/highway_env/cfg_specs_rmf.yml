@@ -30,18 +30,17 @@ real_time_step: 1.0
 
 obs_formulas: # will add parameters for normalization in particular
   car_left:
-    obs_name: 'obs_car_left'
     past_horizon: 0
     semantics: bool
   
   ego_right_lane:
-    obs_name: 'obs_right_lane'
     past_horizon: 0
     semantics: bool
   
   danger:
-    obs_name: 'obs_danger'
     past_horizon: 0
+    semantics: bool
+
 
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc

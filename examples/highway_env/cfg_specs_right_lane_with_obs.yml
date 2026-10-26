@@ -30,10 +30,8 @@ real_time_step: 1.0
 
 obs_formulas: # will add parameters for normalization in particular
   ego_right_lane:
-    obs_name: 'obs_ego_right_lane'
     past_horizon: 0
   danger:
-    obs_name: 'obs_danger'
     past_horizon: 0
 
 

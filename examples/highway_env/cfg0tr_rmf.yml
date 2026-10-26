@@ -6,7 +6,7 @@ model_name: rmf_right_lane
 model_path: ./models
 model_use_specs: True
 
-cfg_env: cfg_env.yml
+cfg_env: cfg_env_manual.yml #cfg_env.yml
 cfg_specs: cfg_specs_rmf.yml
 
 cfg_train:
@@ -23,9 +23,15 @@ cfg_train:
 cfg_test:
   init_seeds: 0
   num_ep: 1
-  num_steps: 100
+  num_steps: 200
   render_mode: 'human'
   plot:
     - ax:
-      - ego_y
-    - live: False 
+      - ego_vx
+      - env_reward
+      - obs_formulas/danger
+      - sat(danger)
+      - reward
+      live: True 
+      live_window: 50
+

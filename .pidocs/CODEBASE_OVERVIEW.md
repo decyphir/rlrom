@@ -1,8 +1,11 @@
 # RLRom — Code Base Overview
 
-*Generated: 2026-07 (initial analysis). Last updated: 2026-10-25 (STLData /
-stlrom 0.4.0 data-API migration + plotting fixes review). Update this file
-incrementally as the project evolves. The stlrom library itself is documented
+*Generated: 2026-07 (initial analysis). Last updated: 2026-10-26 (res_f
+per-group namespacing fix, `formula`/`formula_name` alias + `formula_params`
+support, end_formulas recording fix, vestigial `obs_name` option removed).
+Previous: 2026-10-25 (STLData / stlrom 0.4.0 data-API migration + plotting
+fixes review). Update this file incrementally as the project evolves. The
+stlrom library itself is documented
 in [`STLROM_OVERVIEW.md`](STLROM_OVERVIEW.md) — read both.*
 
 ## What is RLRom
@@ -130,16 +133,37 @@ Driven by `cfg['cfg_specs']`:
   `env_rewards` (raw), `dones`, `last_obs`, `stl_data` (STLData handle),
   `labels` (true label names per step), `rm_states` (state idx per machine per
   step), `rm_rewards` (per-machine rewards per step), `res_f` (per-step
-  robustness for obs/reward/label/end formulas).
+  robustness for obs/reward/label/end formulas; **namespaced keys** since
+  2026-10-26 — `'obs_formulas/<f>'`, `'reward_formulas/<f>'`, ... — so a
+  formula used in several groups is recorded once per step per group).
 - `get_ep_len()` / `get_time()` / `get_sig(name)` read `episode['stl_data']`
   via `get_signal(idx_or_name)` / `get_samples_list()`.
 - `eval_formula_cfg(f_name, f_opt)` — per-step evaluation via
-  `stl_driver.get_online_rob(f, t0)` → `[estimate, lower, upper]`; options:
-  `formula_name`, `past_horizon`, `t0`, `tend`, `online`/`eval_all_steps`,
-  `semantics` (`rob`/`lower_rob`/`upper_rob`/`bool`), `lower_bound`/
-  `upper_bound`. Note `self.semantics = 'Boolean'` in `__init__` is a **dead
-  string** — `stlrom.Signal.set_semantics` is never called, so stlrom runs in
-  its default `SPACE` semantics (TODO in code).
+  `stl_driver.get_online_rob(f, t0)` → `[estimate, lower, upper]`.
+  **Time anchoring** (changed 2026-10-25): by default the formula is
+  evaluated at the *current time* (minus `past_horizon`) — the formula's
+  value "now" — so the recorded per-step values (`res_f`: reward shaping,
+  labels, obs formulas) are consistent with `rho(f)`/`rob(f)` plots (exact
+  for state formulas; for temporal formulas the per-step value is online
+  (past-only) while `rho(f)` is offline (sees the future)). `online: True`
+  / `eval_all_steps: True` state that anchoring explicitly; an explicit
+  `t0` (without `online`) or `online: False` pins the evaluation to a fixed
+  time (default 0) — e.g. whole-episode formulas tracked from the start
+  (`init_sat`/`init_rob` metrics). Other options: `formula` (legacy alias
+  `formula_name`) — the actual STL formula to evaluate, defaulting to the
+  config key, so the same formula can be configured several times with
+  different options (e.g. `past_horizon` 0 vs 1 = value now vs one step
+  earlier); `formula_params: {<param>: <value>}` — overrides stlrom
+  parameters declared in the spec (`param <name> = <default>`) for this
+  config only (applied and restored around each evaluation, since the
+  driver's param map is global); `past_horizon`, `tend`, `semantics`
+  (`rob`/`lower_rob`/`upper_rob`/`bool`), `lower_bound`/`upper_bound`.
+  (Before the change the default was
+  fixed `t0=0`, which made recorded values flat for state formulas and
+  inconsistent with `rho(f)` — e.g. `danger` in the highway specs.)
+  Note `self.semantics = 'Boolean'` in `__init__` is a **dead string** —
+  `stlrom.Signal.set_semantics` is never called, so stlrom runs in its
+  default `SPACE` semantics (TODO in code).
 - `eval_specs_episode(episode, res, ...)` — per-episode metrics: `ep_len`,
   `ep_rew`, per-formula `mean`/`sum`/`num_sat` (reward formulas from `res_f`),
   eval formulas re-played step by step (offline or `eval_all_steps`),
@@ -350,6 +374,30 @@ No CI. `load_cfg` chdir's to the cfg file's folder before running.
    `get_monitor(f).formula is None`).
 3. ~~`data == []` / `stl_data == []` empty-checks never fired~~ — **fixed**:
    `get_ep_len`/`get_time` now use `isinstance(stl_data, stlrom.STLData)`.
+4. ~~`res_f` shared one key per formula name across groups~~ — **fixed
+   2026-10-26**: `reset()`/`step()` now use namespaced keys
+   (`'obs_formulas/<f>'`, `'reward_formulas/<f>'`, ...). Before, a formula
+   present in both `obs_formulas` and `reward_formulas` (e.g. `danger` in
+   the highway specs) was appended **twice per step** to one shared list
+   — the plot of `obs_formulas/<f>` / `reward_formulas/<f>` alternated
+   between the two evaluations (with a `lower_bound` on the reward side
+   this looked like "0 every second step"). Bare plot tokens resolve via
+   `_res_f_trace` (reward group first, then obs/label/end); prefer the
+   explicit `prefix/<f>` token. `eval_specs_episode` reward metrics read
+   the namespaced key.
+5. ~~`end_formulas` recorded the last `obs_formulas` value in `res_f`~~
+   — **fixed 2026-10-26**: the end-formula loop now appends its own
+   `eval_res['lower_rob']` (the value driving the termination check),
+   like the label loop.
+6. ~~Vestigial `obs_name` option (in `obs_formulas` configs)~~ — **removed
+   2026-10-26** (code + example cfgs). It only wrote the config dict into
+   `signals_map`, which (a) hijacked bare plot tokens of obs-formula names
+   into the raw-signal branch (empty signal instead of the recorded
+   `res_f` trace) and (b) was a crash landmine: a config key/`obs_name`
+   colliding with a declared signal made `get_sample` `eval(<dict>)` →
+   `TypeError`. Obs formulas still reach the agent as the positional
+   `obs['obs_formulas']` vector; `cfg_specs.obs_names` (the signal→env
+   expression map) is unchanged.
 
 **B. Latent bugs (not exercised by the suite):**
 
@@ -370,9 +418,10 @@ No CI. `load_cfg` chdir's to the cfg file's folder before running.
    *whole* trace, so `online`/`eval_all_steps` values at step t are computed
    with data from after t. (The old `get_rob(online=True)` replayed samples
    one-by-one into a fresh monitor; that path is currently broken — issue 2.)
-7. **`end_formulas` records the wrong value in `res_f`**: the step loop
-   appends the last `obs_formulas` robustness (`robs_f`) instead of the
-   end-formula's own evaluation (carried over from the pre-migration code).
+7. ~~**`end_formulas` records the wrong value in `res_f`**~~ — **fixed
+   2026-10-26**, see A.5 (the step loop appended the last `obs_formulas`
+   robustness `robs_f`; it now appends the end-formula's own
+   `lower_rob`).
 8. **`RLTester.eval_all_episodes` is dead/broken**: it calls
    `self.env.get_wrapper_attr('eval_episode')`, but no wrapper exposes
    `eval_episode` (SpecWrapper has `eval_specs_episode`).

@@ -9,7 +9,7 @@ def make_env_train(cfg):
     if cfg_env.get('manual_control', False):
         print("WARNING: manual_control was set to True. I'm setting it back to False")
         cfg_env['manual_control'] = False    
-    
+    print("using fast hw")
     env = gym.make("highway-fast-v0",render_mode=None)    
     env.unwrapped.configure(cfg_env)
                     
@@ -22,7 +22,9 @@ def make_env_test(cfg):
     cfg_env = cfg['cfg_env']                    
     cfg_test = cfg.get('cfg_test',{})    
     if 'render_mode' in cfg_test:
-        render_mode = cfg_test.get('render_mode', 'human')        
+        render_mode = cfg_test.get('render_mode', 'human')
+        if render_mode=='None' or render_mode is False:
+            render_mode = None        
     else: 
         render_mode='human'
     env = gym.make("highway-v0", render_mode=render_mode)    

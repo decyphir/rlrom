@@ -24,7 +24,6 @@ cfg_specs:
       eval_all_steps: False
   # obs_formulas:
   #   key_is_visible:
-  #     obs_name: 'obs_key_visible'
   #     past_horizon: 0  
   # end_formulas:
   #   drop_key:

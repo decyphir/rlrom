@@ -17,7 +17,7 @@ initial_lane_id: null
 duration: 100
 ego_spacing: 2
 vehicles_density: .75
-collision_reward: -10.
+collision_reward:  0.
 right_lane_reward: 0.
 high_speed_reward: 0.
 lane_change_reward: 0.
@@ -27,3 +27,4 @@ reward_speed_range:
 normalize_reward: false
 offroad_terminal: false
 manual_control: false
+see_behind: true

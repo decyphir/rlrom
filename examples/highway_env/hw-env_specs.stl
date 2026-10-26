@@ -10,16 +10,17 @@ ego_slow  := ego_vx[t] < 22
 ego_fast  := ego_vx[t] > 25
 
 # Danger formulas
-car1_same_lane  := abs(car1_y[t]) < 0.1  
-car1_too_close := abs(car1_x[t]) < 0.1 
+param close_dist=0.1 
+car1_same_lane  := abs(car1_y[t]) < close_dist  
+car1_too_close := abs(car1_x[t]) < close_dist 
 car1_danger := car1_same_lane and car1_too_close
 
-car2_same_lane  := abs(car2_y[t]) < 0.1
-car2_too_close  := abs(car2_x[t]) < 0.1 
+car2_same_lane  := abs(car2_y[t]) < close_dist
+car2_too_close  := abs(car2_x[t]) < close_dist 
 car2_danger := car2_same_lane and car2_too_close
 
-car3_same_lane  := abs(car3_y[t]) < 0.1
-car3_too_close  := abs(car3_x[t]) < 0.1 
+car3_same_lane  := abs(car3_y[t]) < close_dist
+car3_too_close  := abs(car3_x[t]) < close_dist 
 car3_danger := car3_same_lane and car3_too_close
 
 danger := car1_danger or car2_danger or car3_danger

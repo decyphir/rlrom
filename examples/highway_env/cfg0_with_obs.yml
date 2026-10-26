@@ -6,19 +6,43 @@ model_path: ./models
 model_name: basic_with_obs
 model_use_specs: True
 
+#cfg_env: cfg_env_manual.yml 
 cfg_env: cfg_env.yml
 cfg_specs: cfg_specs_with_obs.yml
 cfg_train: 
+  total_timesteps: 200_000
+  eval_freq: 10000
+  n_envs: 8
+  
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 100
+    render_mode: None
+ 
   algo:
-    total_timesteps: 200_000
-    n_envs: 12      
-    ppo:  
-      batch_size: 128      
+    ppo:
+      device: cpu
+      policy_kwargs:
+        net_arch: 
+          pi: [256, 256]
+          vf: [256, 256]
+      n_steps: 256      
+      ent_coef: 0.01
+      batch_size: 128  
+      gamma: 0.85    
       learning_rate: 5e-4    
       tensorboard_log: ./tb_logs    
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 5
-  num_steps: 100 
-  render: true
+  num_ep: 100
+  num_steps: 200 
+  render_mode: false
+  #plot:
+  # - ax: 
+  #    - obs_formulas/danger
+  #    - reward, reward_formulas/ego_moves:weighted,reward_formulas/ego_fast:weighted 
+  #   live: False
+#     live_window: 100
+  
