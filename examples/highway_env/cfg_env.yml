@@ -14,7 +14,7 @@ lanes_count: 4
 vehicles_count: 50
 controlled_vehicles: 1
 initial_lane_id: null
-duration: 100
+duration: 1000
 ego_spacing: 2
 vehicles_density: .75
 collision_reward:  0.

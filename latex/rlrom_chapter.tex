@@ -1,0 +1,133 @@
+% ===========================================================================
+%  RLROM — Implementation chapter template (PhD thesis)
+%  -------------------------------------------------------------------------
+%  Single-column, report-class template for a thesis "implementation" chapter
+%  describing the RLROM library (design + implementation), illustrated with the
+%  CartPole configuration files.
+%
+%  Compile with latexmk (pdflatex + bibtex):
+%      cd latex
+%      latexmk -pdf rlrom_chapter.tex
+%
+%  NOTE: this is a STANDALONE compile harness. In a real thesis this content is
+%  included via \input from the main thesis .tex, with the thesis.cls and
+%  preamble. Compile here to preview as one self-contained document.
+% ===========================================================================
+\documentclass[11pt,a4paper]{report}
+
+% --- geometry: thesis chapter uses a one-column, comfortable text block -------
+\usepackage[a4paper,margin=2.6cm,includeheadfoot]{geometry}
+
+% --- fonts & encoding ---------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- math ---------------------------------------------------------------------
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+
+% --- tables -------------------------------------------------------------------
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+
+% --- figures ------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{pgf}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+% --- code / config listings ---------------------------------------------------
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{cfgcomment}{RGB}{105,105,105}
+\definecolor{cfgkey}{RGB}{0,43,163}
+\lstdefinelanguage{rlromyaml}{
+  keywords={env_name,model_path,model_name,model_use_specs,cfg_specs,cfg_test,
+    cfg_train,algo,ppo,action_names,obs_names,specs,reward_formulas,eval_formulas,
+    label_formulas,reward_machines,reward_machine,online,past_horizon,weight,
+    lower_bound,t0,eval_all_steps,in_observation,states,transitions,from,to,
+    condition,priority,reward,initial,final,id,env_reward_weight,n_envs,eval_freq,
+    total_timesteps,eval,init_seeds,num_ep,num_steps,render_mode,repeat_training,
+    debug_formulas,debug_signals,name,online,device,verbose,tensorboard_log},
+  keywordstyle=\color{cfgkey}\bfseries,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{cfgcomment}\itshape,
+  string=[b]",
+  stringstyle=\color{black},
+  morekeywords={true,True,false,False},
+}
+\lstdefinestyle{rlromcfg}{
+  language=rlromyaml,
+  basicstyle=\ttfamily\small,
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{black!25},
+  backgroundcolor=\color{black!3},
+  xleftmargin=1.2em,
+  aboveskip=0.6em,
+  belowskip=0.4em,
+  captionpos=b,
+  columns=fullflexible,
+  breaklines=true,
+  keepspaces=true,
+}
+% STL listings: plain monospace, no keyword highlighting (kept simple)
+\lstdefinestyle{rlromstl}{
+  language={},
+  basicstyle=\ttfamily\small,
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{black!25},
+  backgroundcolor=\color{black!3},
+  xleftmargin=1.2em,
+  aboveskip=0.6em,
+  belowskip=0.4em,
+  captionpos=b,
+  columns=fullflexible,
+  breaklines=true,
+  keepspaces=true,
+}
+\lstnewenvironment{cfglisting}[1][]
+  {\lstset{style=rlromcfg,#1}}
+  {}
+\lstnewenvironment{stllisting}[1][]
+  {\lstset{style=rlromstl,#1}}
+  {}
+
+% --- cross-references ---------------------------------------------------------
+\usepackage[hidelinks]{hyperref}
+
+% --- chapter-like formatting for the standalone harness ----------------------
+% (In the real thesis these heading styles come from thesis.cls.)
+\usepackage{titlesec}
+\titleformat{\chapter}{\LARGE\bfseries}{\thechapter}{0.7em}{}
+\titleformat{\section}{\Large\bfseries}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.5em}{}
+\setcounter{secnumdepth}{3}
+
+% ===========================================================================
+
+\begin{document}
+
+% =============================================================================
+% The actual chapter content. In the thesis, include each section below.
+% The paths are relative to the sections/ folder.
+% =============================================================================
+
+\input{sections/rlrom_chapter_intro}      % chapter intro + workflows (replaces objectives/background)
+\input{sections/rlrom_chapter_testing}           % testing against STL specs 
+\input{sections/rlrom_chapter_stl_training}      % training with simple STL specifications
+\input{sections/rlrom_chapter_rm_stl_training}  % reward machines (WF4)
+\input{sections/rlrom_chapter_experimenting}        % workflow & tooling
+
+\bibliographystyle{plain}
+\bibliography{rlrom}
+
+\end{document}

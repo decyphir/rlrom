@@ -7,5 +7,12 @@ cfg_specs: cfg_specs.yml
 cfg_test: 
   init_seeds: 1
   num_ep: 1
-  num_steps: 100 
+  num_steps: 200 
   render_mode: 'human'
+  plot:
+  - ax: 
+    - sat(car_left)
+    - sat(danger)
+    - sat(ego_right_lane)
+    live: True
+    live_window: 100

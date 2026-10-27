@@ -11,13 +11,20 @@ cfg_specs: cfg_specs_right_lane_with_obs.yml
 
 cfg_train: 
   total_timesteps: 200_000
-  eval_freq: 15_000
-  n_envs: 4      
+  eval_freq: 10_000
+  n_envs: 8  
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 100
+    render_mode: None 
+  
   algo:    
-    ppo: highway_env_ppo.yml      
+    ppo: highway_env_ppo.yml 
   
 cfg_test: 
   init_seeds: 0
   num_ep: 10
   num_steps: 100 
   render_mode: 'human'
+  

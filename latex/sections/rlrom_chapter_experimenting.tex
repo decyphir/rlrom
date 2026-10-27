@@ -1,0 +1,76 @@
+\section{Experimenting with RLRom}
+\label{sec:workflow}
+
+A typical study in this thesis follows a short, scriptable loop that keeps
+training, model selection and evaluation mutually consistent. Because the
+specification, model, and test parameters all live in the same file, the whole loop
+is reproducible from a single artifact and trivially adaptable to a new objective by
+editing YAML rather than code.
+
+\subsection{Training across seeds}
+To make results robust and to estimate variance, the library supports repeating the
+same training several times, each run starting from scratch in its own
+\texttt{<name>\_<date>\_\_trainingN} folder. This is enabled by a single setting in
+the configuration:
+\begin{cfglisting}[caption={Repeating training across seeds.},label={lst:repeat}]
+cfg_train:
+  repeat_training: 5
+  # ...other training options
+\end{cfglisting}
+
+\subsection{Selecting a model}
+After training (possibly several times), a \emph{model selection} step picks the
+best checkpoint and \emph{activates} it through symlinks, so that subsequent
+testing loads it deterministically:
+\begin{quote}\ttfamily
+rlr select-model examples/cartpole/cfg0tr\_stl\_go\_left.yml
+\end{quote}
+Selection can rank checkpoints by the mean episode reward (the default), or by a
+\emph{formula} metric --- e.g.\ the satisfaction ratio of \texttt{phi\_left\_goal}
+via \texttt{-m phi\_left\_goal/ratio\_init\_sat}. Options let one choose the pool of
+trainings (\texttt{--trainings last|all}), take the first checkpoint after a given
+step (\texttt{--step}), or inspect a ranked table without selecting
+(\texttt{--show-top}).
+
+\subsection{Testing and plotting}
+The active model is then evaluated with \texttt{rlr test} while the STL formulas
+are monitored (Section~\ref{sec:testing}). Finally, training progress can be plotted
+from the checkpoint result files (\texttt{res\_step\_*.yml}) produced by
+\texttt{rlr train}:
+\begin{quote}\raggedright\ttfamily
+rlr plot examples/cartpole/cfg0tr\_stl\_go\_left.yml --envelope -o training.png
+\end{quote}
+With \texttt{--envelope} the tool overlays the mean and the min--max band across the
+repeated trainings, and with \texttt{-m METRIC} (repeatable) it can plot specific
+formula metrics --- such as a specification's satisfaction ratio --- alongside the
+reward, one subplot per metric. This is the pipeline used to produce the learning
+curves reported in the experimental chapters.
+
+\subsection{Command-line interface}
+\label{sec:workflow:cli}
+Table~\ref{tab:cli} summarizes the commands. Most operations also have a thin
+standalone alias (\texttt{rlrom\_test}, \texttt{rlrom\_train},
+\texttt{rlrom\_plot}, \texttt{rlrom\_select\_model}) besides the aggregated
+\texttt{rlr} entry point.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Command-line commands of \textsc{RLROM}.}
+  \label{tab:cli}
+  \small
+  \begin{tabular}{@{}llp{9.6cm}@{}}
+    \toprule
+    \textbf{Command} & & \textbf{Function} \\
+    \midrule
+    \texttt{rlr show cfg.yml} & & print a configuration, optionally expanded
+      (\texttt{--expand}) or restricted to a sub-config (\texttt{--subcfg}) \\
+    \texttt{rlr test cfg.yml} & & play episodes with a trained model (or
+      \texttt{random}/keyboard) and monitor the STL formulas \\
+    \texttt{rlr train cfg.yml} & & train an agent, optionally with STL specs \\
+    \texttt{rlr plot cfg.yml} & & plot training curves / envelopes from checkpoint
+      result files \\
+    \texttt{rlr select-model cfg.yml} & & pick the best checkpoint and activate it
+      through symlinks for subsequent testing \\
+    \bottomrule
+  \end{tabular}
+\end{table}
