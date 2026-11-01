@@ -2,19 +2,19 @@ env_name: highway-v0
 import_module: highway
 make_env_test: make_env_test
 cfg_env: cfg_env_manual.yml
-cfg_specs: cfg_specs_rmf.yml
+cfg_specs: cfg_specs_rm.yml
 
 cfg_test: 
   init_seeds: 1
   num_ep: 1
-  num_steps: 200 
+  num_steps: 250 
   render_mode: 'human'
   plot:
     - title: Observations 
       ax: 
-        - ego_vx
-        - sat(danger)
-        - obs_formulas/danger
+        - ego_y
+        - rm_states/check_right
+        - rm_states/check_left
       live: True
       live_window: 100
   

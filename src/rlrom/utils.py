@@ -1,25 +1,4 @@
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
-from morl_baselines.single_policy.ser.mo_ppo import MOPPO
-from morl_baselines.single_policy.ser.nl_mo_ppo import NLMOPPO
-from morl_baselines.single_policy.ser.mo_q_learning import MOQLearning
-from morl_baselines.single_policy.ser.mosac_continuous_action import MOSAC
-from morl_baselines.single_policy.ser.mosac_discrete_action import MOSACDiscrete
-from morl_baselines.single_policy.esr.eupg import EUPG
-from morl_baselines.multi_policy.pcn.pcn import PCN
-from morl_baselines.multi_policy.pgmorl.pgmorl import PGMORL
-from morl_baselines.multi_policy.pareto_q_learning.pql import PQL
-from morl_baselines.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import MPMOQLearning
-from morl_baselines.multi_policy.morld.morld import MORLD
-from morl_baselines.multi_policy.ipro.ipro_2d import IPRO2D
-from morl_baselines.multi_policy.ipro.ipro import IPRO
-from morl_baselines.multi_policy.capql.capql import CAPQL
-from morl_baselines.multi_policy.envelope.envelope import Envelope
-from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
-from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
-from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
-from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
-from morl_baselines.multi_policy.gpi_ls_jax.gpi_ls_continuous_action_jax import GPILSContinuousAction as GPILSContinuousActionJax
-import sbx
 from rlrom.extra_algos.tabular_q_learning import TabularQLearning
 from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
@@ -44,42 +23,83 @@ ALGO_NAMES_CLASSES = {
     "td3": TD3,
     "dqn": DQN,
     "ddpg": DDPG,
-    # SBX variants (Stable Baselines Jax)
-    "sbx_ppo": sbx.PPO,
-    "sbx_sac": sbx.SAC,
-    "sbx_td3": sbx.TD3,
-    "sbx_dqn": sbx.DQN,
-    "sbx_ddpg": sbx.DDPG,
-    "sbx_crossq": sbx.CrossQ,
     # sb3-contrib (more RL algos)
     "trpo": TRPO,
     "crossq": CrossQ,
     "qrdqn": QRDQN,
     # Other algos
     "qlearning": TabularQLearning,
-    # MORL single-policy
-    "moppo": MOPPO,
-    "nlmoppo": NLMOPPO,
-    "moql": MOQLearning,
-    "mosac": MOSAC,
-    "mosac_discrete": MOSACDiscrete,
-    "eupg": EUPG,
-    # MORL multi-policy
-    "pcn": PCN,
-    "pgmorl": PGMORL,
-    "pql": PQL,
-    "mpmoql": MPMOQLearning,
-    "morld": MORLD,
-    "ipro2d": IPRO2D,
-    "ipro": IPRO,
-    "capql": CAPQL,
-    "envelope": Envelope,
-    "gpipd": GPIPD,
-    "gpils": GPILS,
-    "gpipd_continuous_action": GPIPDContinuousAction,
-    "gpils_continuous_action": GPILSContinuousAction,
-    "gpils_continuous_action_jax": GPILSContinuousActionJax
 }
+
+# Optional algorithms, registered only when the matching extra is installed
+# (see [project.optional-dependencies] in pyproject.toml).
+
+# JAX-based "stable baselines jax" (extra: jax)
+try:
+    import sbx
+    ALGO_NAMES_CLASSES.update({
+        "sbx_ppo": sbx.PPO,
+        "sbx_sac": sbx.SAC,
+        "sbx_td3": sbx.TD3,
+        "sbx_dqn": sbx.DQN,
+        "sbx_ddpg": sbx.DDPG,
+        "sbx_crossq": sbx.CrossQ,
+    })
+except ImportError:
+    pass
+
+# Multi-objective RL baselines (extra: morl)
+try:
+    from morl_baselines.single_policy.ser.mo_ppo import MOPPO
+    from morl_baselines.single_policy.ser.nl_mo_ppo import NLMOPPO
+    from morl_baselines.single_policy.ser.mo_q_learning import MOQLearning
+    from morl_baselines.single_policy.ser.mosac_continuous_action import MOSAC
+    from morl_baselines.single_policy.ser.mosac_discrete_action import MOSACDiscrete
+    from morl_baselines.single_policy.esr.eupg import EUPG
+    from morl_baselines.multi_policy.pcn.pcn import PCN
+    from morl_baselines.multi_policy.pgmorl.pgmorl import PGMORL
+    from morl_baselines.multi_policy.pareto_q_learning.pql import PQL
+    from morl_baselines.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import MPMOQLearning
+    from morl_baselines.multi_policy.morld.morld import MORLD
+    from morl_baselines.multi_policy.ipro.ipro_2d import IPRO2D
+    from morl_baselines.multi_policy.ipro.ipro import IPRO
+    from morl_baselines.multi_policy.capql.capql import CAPQL
+    from morl_baselines.multi_policy.envelope.envelope import Envelope
+    from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
+    from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPILS
+    from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPIPDContinuousAction
+    from morl_baselines.multi_policy.gpi_pd.gpi_pd_continuous_action import GPILSContinuousAction
+    ALGO_NAMES_CLASSES.update({
+        # MORL single-policy
+        "moppo": MOPPO,
+        "nlmoppo": NLMOPPO,
+        "moql": MOQLearning,
+        "mosac": MOSAC,
+        "mosac_discrete": MOSACDiscrete,
+        "eupg": EUPG,
+        # MORL multi-policy
+        "pcn": PCN,
+        "pgmorl": PGMORL,
+        "pql": PQL,
+        "mpmoql": MPMOQLearning,
+        "morld": MORLD,
+        "ipro2d": IPRO2D,
+        "ipro": IPRO,
+        "capql": CAPQL,
+        "envelope": Envelope,
+        "gpipd": GPIPD,
+        "gpils": GPILS,
+        "gpipd_continuous_action": GPIPDContinuousAction,
+        "gpils_continuous_action": GPILSContinuousAction,
+    })
+    # JAX-based MORL variant (needs the jax extra)
+    try:
+        from morl_baselines.multi_policy.gpi_ls_jax.gpi_ls_continuous_action_jax import GPILSContinuousAction as GPILSContinuousActionJax
+        ALGO_NAMES_CLASSES["gpils_continuous_action_jax"] = GPILSContinuousActionJax
+    except ImportError:
+        pass
+except ImportError:
+    pass
 
 yaml = YAML(typ='safe')
 # Define a representer for NumPy arrays

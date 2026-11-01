@@ -25,27 +25,27 @@ obs_names:
   
 specs: hw-env_specs.stl
 
-BigM: 10
+#BigM: 10
 real_time_step: 1.0
 
 obs_formulas: # will add parameters for normalization in particular
-  ego_right_lane:
-    past_horizon: 0
   danger:
+    semantics: bool
     past_horizon: 0
 
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
 reward_formulas:
   ego_right_lane:
+    semantics: bool
     past_horizon: 0
-    weight: 1      
+    weight: .4    
   ego_fast:
+    semantics: bool
     past_horizon: 0
-    weight: .1
-  danger:
+    weight: .4
+  ego_moves:
+    semantics: bool
     past_horizon: 0
-    weight: -20
-    lower_bound: 0.0
-
+    weight: .2
 eval_formulas: cfg_eval.yml

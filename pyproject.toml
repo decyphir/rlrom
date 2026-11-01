@@ -18,8 +18,6 @@ dependencies = [
     "rich (>=14.1.0,<15.0.0)",
     "shimmy (>=2.0.0,<3.0.0)",
     "minigrid (>=3.0.0,<4.0.0)",
-    "tensorflow>=2.20.0",
-    "tensorboard>=2.20.0",
     "ruamel-yaml>=0.18.15",
     "polars>=1.34.0",
     "pandas>=2.0.0",
@@ -30,16 +28,27 @@ dependencies = [
     "ipympl>=0.10.0",
     "wandb>=0.25.0",
     "mo-gymnasium>=1.3.2",
-    "pycddlib==2.1.6",
-    "sbx-rl>=0.26.0",
-    "tf-keras>=2.21.0",
-    "jax[cuda12]>=0.6.2",
-    "morl-baselines",
 ]
 
 [project.optional-dependencies]
 old_gym = ["gym (>=0.26.2,<0.27.0)"]
 highway-env = ["highway-env (>=1.10.1,<2.0.0)"]
+# JAX-based algos (sbx "stable baselines jax") + the TensorFlow stack. sbx pulls
+# tensorflow via tfp-nightly; tensorflow/tf-keras also allow loading TF models.
+jax = [
+    "jax>=0.6.2 ; sys_platform == 'darwin'",
+    "jax[cuda12]>=0.6.2 ; sys_platform != 'darwin'",
+    "sbx-rl>=0.26.0",
+    "tensorflow>=2.20.0",
+    "tf-keras>=2.21.0",
+]
+# Multi-objective RL baselines. Pulls cvxpy/pymoo and the from-source pycddlib C build.
+morl = [
+    "morl-baselines",
+    "pycddlib==2.1.6",
+    "jax>=0.6.2 ; sys_platform == 'darwin'",
+    "jax[cuda12]>=0.6.2 ; sys_platform != 'darwin'",
+]
 
 [project.scripts]
 rlr = "rlrom.rlrom_run:main"

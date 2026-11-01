@@ -25,10 +25,9 @@ obs_names:
   car3_vx: "80*obs[3][3]"
   car3_vy: "80*obs[3][4]"
 
-BigM: 10
 real_time_step: 1.0
 
-obs_formulas: # will add parameters for normalization in particular
+obs_formulas: 
   car_left:
     past_horizon: 0
     semantics: bool

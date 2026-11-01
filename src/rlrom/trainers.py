@@ -263,6 +263,13 @@ class RLTrainer:
         algo_name = name
         break
     if algo_name is None:
+      if cfg_algo_name:
+        known = sorted(rlu.ALGO_NAMES_CLASSES)
+        unknown = [k for k in cfg_algo_name if k not in rlu.ALGO_NAMES_CLASSES]
+        raise ValueError(
+          f"Unknown or unavailable RL algo {unknown}. Available: {known}. "
+          "MORL/JAX algos need the 'morl'/'jax' extras (uv sync --extra morl --extra jax)."
+        )
       return None
     cfg_rl_algo = {}
 

@@ -62,12 +62,14 @@ class SpecWrapper(gym.Wrapper):
         self._reward_machines_cfg = cfg_specs.get('reward_machines',[])
         self.debug_signals=  cfg_specs.get('debug_signals',False)
         self.debug_formulas= cfg_specs.get('debug_formulas',False)
+        self.debug_rm= cfg_specs.get('debug_rm',False)
         self.BigM = cfg_specs.get('BigM')
         self.semantics= 'Boolean'  # TODO option to change. For now Boolean is simpler to interpret rewards
         self.stl_driver = stl_driver                        
 
         self.time_step = 0     # integer current time step 
         self.current_time = 0  # real time (=time_step*real_time_step)  for formula evaluation
+        self._last_action = None  # last shielded action executed (shield fallback)
         self.episode={}
         to_import = cfg.get('import_module')                
         if to_import is not None:
@@ -114,15 +116,19 @@ class SpecWrapper(gym.Wrapper):
             rm_cfg = dict(rm_cfg)
             machine_cfg = rm_cfg.pop('reward_machine', None)
             if machine_cfg is None:
-                raise ValueError("reward_machines entry missing required 'reward_machine' sub-config")
+                machine_cfg = rm_cfg.pop('fsm', None)
+           
+            if machine_cfg is None:
+                raise ValueError("reward_machines entry missing required 'reward_machine' or 'fsm' sub-config")
             self.reward_machines.append({
                 'name': rm_cfg.pop('name', f'rm_{len(self.reward_machines)}'),
                 'weight': rm_cfg.pop('weight', 1.0),
                 'in_observation': rm_cfg.pop('in_observation', False),
+                'shield_priority': rm_cfg.pop('shield_priority', 0),
+                'shield_active': rm_cfg.pop('shield_active',True),
                 'machine': RewardMachine(machine_cfg),
                 'cfg': rm_cfg,
             })
-
         if self.BigM is None:
             self.BigM = stlrom.Signal.get_BigM()
 
@@ -164,6 +170,7 @@ class SpecWrapper(gym.Wrapper):
         self.wrapped_obs = obs0        
         robs0 = self.reset_monitor()
         self.reset_rm()
+        self._last_action = None
         rm_states0 = self._rm_states_obs()
         obs = self._build_obs(obs0, robs0, rm_states0)
         self.last_obs = obs
@@ -184,6 +191,106 @@ class SpecWrapper(gym.Wrapper):
         """Reset all reward machines to their initial state."""
         for rm in self.reward_machines:
             rm['machine'].reset()
+
+    def _apply_shield(self, action):
+        """Apply reward-machine action shields to the agent's action.
+
+        Each machine's current state may declare shield fields (see
+        ``RewardMachine``): ``forced`` forces that raw action while in the
+        state; ``blocked`` forbids the listed raw actions.
+
+        Blocking is enforced cumulatively: every machine's blocked list
+        constrains the final action, and the replacement (previous action or
+        fallback) must not be blocked by any machine. ``shield_priority``
+        (default 0) is only used to resolve conflicts, and a tie on the max
+        priority raises a ValueError:
+          * two machines force different actions -> highest priority wins;
+          * a forced action is blocked by another machine -> the higher
+            priority side wins (the blocker may tie the forcer);
+          * several machines block the candidate and a fallback is needed
+            -> the highest-priority blocker's ``fallback`` is used.
+        When the candidate is blocked it is replaced by the previously
+        executed action (when that one is not blocked by any machine), else
+        by the fallback. A fallback is trusted even if another machine would
+        also block it (it is the configured last resort).
+
+        Returns ``(action, info)``; ``info`` is None when the action passes
+        through unchanged, else a dict describing the override (also surfaced
+        as ``info['shield']`` in the env step info).
+        """
+        forcers = []
+        blockers = []   # (priority, name, machine, blocked list)
+        for rm in self.reward_machines:
+            m = rm['machine']
+            if not m.shield_active:
+                continue
+            forced = m.forced_action()
+            if forced is not None:
+                forcers.append((rm['shield_priority'], rm['name'], forced))
+            else:
+                blocked = m.blocked_actions()
+                if blocked:
+                    blockers.append(
+                        (rm['shield_priority'], rm['name'], m, blocked))
+
+        candidate = action
+        forcer = None
+        if forcers:
+            max_priority = max(f[0] for f in forcers)
+            winners = [f for f in forcers if f[0] == max_priority]
+            if len(winners) > 1:
+                raise ValueError(
+                    "SpecWrapper: shield tie -- machines "
+                    f"{[w[1] for w in winners]} share max shield_priority "
+                    f"{max_priority} for a forced action; set distinct "
+                    "'shield_priority' values")
+            forcer = winners[0]
+            candidate = forcer[2]
+
+        # machines that object to a given action: their blocked list contains
+        # it and they outrank (or tie) the forcer, when there is one
+        def objectors(a):
+            return [b for b in blockers
+                    if a in b[3] and (forcer is None or b[0] >= forcer[0])]
+
+        reason = None
+        name = forcer[1] if forcer is not None else None
+        obj = objectors(candidate)
+        if obj:
+            prev = self._last_action
+            if prev is not None and not objectors(prev):
+                candidate = prev
+                reason = 'blocked->previous'
+                name = max(obj, key=lambda b: b[0])[1]
+            else:
+                max_priority = max(b[0] for b in obj)
+                winners = [b for b in obj if b[0] == max_priority]
+                if len(winners) > 1:
+                    raise ValueError(
+                        "SpecWrapper: shield tie -- machines "
+                        f"{[w[1] for w in winners]} share max "
+                        f"shield_priority {max_priority} and all block "
+                        f"action {candidate}; set distinct "
+                        "'shield_priority' values")
+                _p, name, m, _bl = winners[0]
+                fb = m.fallback_action()
+                if fb is None:
+                    raise ValueError(
+                        f"SpecWrapper: machine '{name}' (state "
+                        f"'{m.state_id}') blocks action {candidate}, but the "
+                        f"previous action ({prev!r}) is also blocked and "
+                        "the state defines no 'fallback' action")
+                candidate = fb
+                reason = 'blocked->fallback'
+
+        if reason == 'forced' or (forcer is not None and reason is None):
+            reason = 'forced'
+        if candidate == action:
+            return action, None
+        return candidate, {
+            'machine': name, 'reason': reason,
+            'original': action, 'shielded': candidate,
+        }
 
     def _rm_states_obs(self):
         """Current RM state indices (one per reward machine) as a numpy array."""
@@ -215,7 +322,8 @@ class SpecWrapper(gym.Wrapper):
                 print(f"  {f_name}: {f_opt}")
         for i, rm in enumerate(self.reward_machines):
             m = rm['machine']
-            print(f"\nReward machine [{i}] '{rm['name']}' (weight={rm['weight']})")
+            print(f"\nReward machine [{i}] '{rm['name']}' (weight={rm['weight']}"
+                  f", shield_priority={rm.get('shield_priority', 0)})")
             print("  States:")
             for sid in m.states:
                 flags = []
@@ -224,7 +332,15 @@ class SpecWrapper(gym.Wrapper):
                 if m._is_initial.get(sid):
                     flags.append('initial')
                 tag = (' [' + ', '.join(flags) + ']') if flags else ''
-                print(f"    {sid}{tag}: reward={m.state_rewards[sid]} idx={m.states_idx_map[sid]}")
+                shields = []
+                if m.blocked_actions(sid):
+                    shields.append(f"blocked={m.blocked_actions(sid)}")
+                if m.forced_action(sid) is not None:
+                    shields.append(f"forced={m.forced_action(sid)}")
+                if m.fallback_action(sid) is not None:
+                    shields.append(f"fallback={m.fallback_action(sid)}")
+                shield_tag = ('  [' + ', '.join(shields) + ']') if shields else ''
+                print(f"    {sid}{tag}: reward={m.state_rewards[sid]} idx={m.states_idx_map[sid]}{shield_tag}")
             print("  Transitions:")
             for t in m.transitions:
                 print(f"    {t['id']}: {t['from']} -> {t['to']} if '{t['condition']}'"
@@ -265,13 +381,22 @@ class SpecWrapper(gym.Wrapper):
                             f"  param {p} = <default_value>")
 
     def step(self, action):
+        # shield: machines may replace the agent's action before it reaches the env
+        action, shield_info = self._apply_shield(action)
+        if self.debug_rm and shield_info is not None:
+            print(f"t:{self.time_step} shield: {shield_info}")
         
         # steps the wrapped env
         obs, reward, terminated, truncated, info = self.env.step(action)
+        self._last_action = action
+        if shield_info is not None:
+            if not isinstance(info, dict):
+                info = dict()
+            info = dict(info)
+            info['shield'] = shield_info
         
         # collect the sample for monitoring 
         s = self.get_sample(obs, action, reward)
-        #self.episode['stl_data'].append(s)               
         
         # add sample and compute robustness
         self.stl_driver.add_sample(s,False)
@@ -309,10 +434,23 @@ class SpecWrapper(gym.Wrapper):
         # Step every reward machine with the current true-label set.
         rm_states = []
         rm_rewards = []
+        label_set = set(labels)
         for rm in self.reward_machines:
-            r = rm['machine'].step(labels)
+            m = rm['machine']
+            if self.debug_rm:
+                before = m.state_id
+                activated = [
+                    t for t in m.outgoing.get(before, [])
+                    if t['condition'] in label_set
+                ]
+                act = ", ".join(t['id'] for t in activated) or "(none -> stay)"
+                print(f"t:{self.time_step} rm '{rm['name']}': state={before} "
+                      f"labels={labels} activated=[{act}]")
+            r = m.step(labels)
             rm_states.append(rm['machine'].state_idx)
             rm_rewards.append(r)
+            if self.debug_rm:
+                print(f"        -> state={m.state_id} reward={r}")
             if rm['machine'].is_final:
                 terminated = True
         self.episode['labels'].append(labels)

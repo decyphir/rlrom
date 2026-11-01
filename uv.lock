@@ -5,15 +5,18 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'linux'",
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'darwin'",
+    "python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'linux'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
     "python_full_version < '3.13' and sys_platform == 'linux'",
     "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version < '3.13' and sys_platform == 'emscripten'",
-    "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'darwin'",
+    "python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'",
 ]
 
 [[package]]
@@ -1631,7 +1634,7 @@ dependencies = [
     { name = "nbformat" },
     { name = "packaging" },
     { name = "prometheus-client" },
-    { name = "pywinpty", marker = "os_name == 'nt' and sys_platform != 'linux'" },
+    { name = "pywinpty", marker = "os_name == 'nt' and sys_platform != 'darwin' and sys_platform != 'linux'" },
     { name = "pyzmq" },
     { name = "send2trash" },
     { name = "terminado" },
@@ -1649,7 +1652,7 @@ name = "jupyter-server-terminals"
 version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pywinpty", marker = "os_name == 'nt' and sys_platform != 'linux'" },
+    { name = "pywinpty", marker = "os_name == 'nt' and sys_platform != 'darwin' and sys_platform != 'linux'" },
     { name = "terminado" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f4/a7/bcd0a9b0cbba88986fe944aaaf91bfda603e5a50bda8ed15123f381a3b2f/jupyter_server_terminals-0.5.4.tar.gz", hash = "sha256:bbda128ed41d0be9020349f9f1f2a4ab9952a73ed5f5ac9f1419794761fb87f5", size = 31770, upload-time = "2026-01-14T16:53:20.213Z" }
@@ -3593,26 +3596,20 @@ dependencies = [
     { name = "huggingface-sb3" },
     { name = "ipympl" },
     { name = "ir-sim" },
-    { name = "jax", extra = ["cuda12"] },
     { name = "kaleido" },
     { name = "matplotlib" },
     { name = "minigrid" },
     { name = "mo-gymnasium" },
-    { name = "morl-baselines" },
     { name = "pandas" },
     { name = "plotly" },
     { name = "polars" },
-    { name = "pycddlib" },
     { name = "rich" },
     { name = "ruamel-yaml" },
     { name = "sb3-contrib" },
-    { name = "sbx-rl" },
     { name = "shimmy" },
     { name = "stable-baselines3" },
     { name = "stlrom" },
     { name = "tensorboard" },
-    { name = "tensorflow" },
-    { name = "tf-keras" },
     { name = "tqdm" },
     { name = "wandb" },
 ]
@@ -3620,6 +3617,19 @@ dependencies = [
 [package.optional-dependencies]
 highway-env = [
     { name = "highway-env" },
+]
+jax = [
+    { name = "jax" },
+    { name = "jax", extra = ["cuda12"], marker = "sys_platform != 'darwin'" },
+    { name = "sbx-rl" },
+    { name = "tensorflow" },
+    { name = "tf-keras" },
+]
+morl = [
+    { name = "jax" },
+    { name = "jax", extra = ["cuda12"], marker = "sys_platform != 'darwin'" },
+    { name = "morl-baselines" },
+    { name = "pycddlib" },
 ]
 old-gym = [
     { name = "gym" },
@@ -3639,31 +3649,33 @@ requires-dist = [
     { name = "huggingface-sb3", specifier = ">=3.0,<4.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
     { name = "ir-sim", specifier = ">=2.8.2" },
-    { name = "jax", extras = ["cuda12"], specifier = ">=0.6.2" },
+    { name = "jax", marker = "sys_platform == 'darwin' and extra == 'jax'", specifier = ">=0.6.2" },
+    { name = "jax", marker = "sys_platform == 'darwin' and extra == 'morl'", specifier = ">=0.6.2" },
+    { name = "jax", extras = ["cuda12"], marker = "sys_platform != 'darwin' and extra == 'jax'", specifier = ">=0.6.2" },
+    { name = "jax", extras = ["cuda12"], marker = "sys_platform != 'darwin' and extra == 'morl'", specifier = ">=0.6.2" },
     { name = "kaleido", specifier = ">=1.1.0" },
     { name = "matplotlib", specifier = ">=3.8.0" },
     { name = "minigrid", specifier = ">=3.0.0,<4.0.0" },
     { name = "mo-gymnasium", specifier = ">=1.3.2" },
-    { name = "morl-baselines", git = "https://github.com/LucasAlegre/morl-baselines.git" },
+    { name = "morl-baselines", marker = "extra == 'morl'", git = "https://github.com/LucasAlegre/morl-baselines.git" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "plotly", specifier = ">=6.3.1" },
     { name = "polars", specifier = ">=1.34.0" },
-    { name = "pycddlib", specifier = "==2.1.6" },
+    { name = "pycddlib", marker = "extra == 'morl'", specifier = "==2.1.6" },
     { name = "rich", specifier = ">=14.1.0,<15.0.0" },
     { name = "ruamel-yaml", specifier = ">=0.18.15" },
     { name = "sb3-contrib", specifier = ">=2.7.0,<3.0.0" },
-    { name = "sbx-rl", specifier = ">=0.26.0" },
+    { name = "sbx-rl", marker = "extra == 'jax'", specifier = ">=0.26.0" },
     { name = "shimmy", specifier = ">=2.0.0,<3.0.0" },
     { name = "stable-baselines3", specifier = ">=2.7.0,<3.0.0" },
     { name = "stlrom", specifier = ">=0.4.0" },
-    { name = "tensorboard", specifier = ">=2.20.0" },
     { name = "tensorboard", specifier = ">=2.20.0,<3.0.0" },
-    { name = "tensorflow", specifier = ">=2.20.0" },
-    { name = "tf-keras", specifier = ">=2.21.0" },
+    { name = "tensorflow", marker = "extra == 'jax'", specifier = ">=2.20.0" },
+    { name = "tf-keras", marker = "extra == 'jax'", specifier = ">=2.21.0" },
     { name = "tqdm", specifier = ">=4.67.1,<5.0.0" },
     { name = "wandb", specifier = ">=0.25.0" },
 ]
-provides-extras = ["highway-env", "old-gym"]
+provides-extras = ["highway-env", "jax", "morl", "old-gym"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "jupyter", specifier = ">=1.1.1,<2" }]
@@ -4253,7 +4265,7 @@ version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ptyprocess", marker = "os_name != 'nt'" },
-    { name = "pywinpty", marker = "os_name == 'nt' and sys_platform != 'linux'" },
+    { name = "pywinpty", marker = "os_name == 'nt' and sys_platform != 'darwin' and sys_platform != 'linux'" },
     { name = "tornado" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8a/11/965c6fd8e5cc254f1fe142d547387da17a8ebfd75a3455f637c663fb38a0/terminado-0.18.1.tar.gz", hash = "sha256:de09f2c4b85de4765f7714688fff57d3e75bad1f909b589fde880460c753fd2e", size = 32701, upload-time = "2024-03-12T14:34:39.026Z" }
