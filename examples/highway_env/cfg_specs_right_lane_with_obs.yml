@@ -1,4 +1,6 @@
 env_name: "highway-v0"
+specs: hw-env_specs.stl
+
 action_names:
   action: "action"
 obs_names:
@@ -32,20 +34,23 @@ obs_formulas: # will add parameters for normalization in particular
   danger:
     semantics: bool
     past_horizon: 0
-
+    semantics: bool      
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
 reward_formulas:
   ego_right_lane:
     semantics: bool
     past_horizon: 0
-    weight: .4    
+    weight: .25
+    semantics: bool      
   ego_fast:
     semantics: bool
     past_horizon: 0
-    weight: .4
+    weight: .5
+    semantics: bool      
   ego_moves:
-    semantics: bool
     past_horizon: 0
-    weight: .2
+    weight: .25
+    semantics: bool      
+  
 eval_formulas: cfg_eval.yml

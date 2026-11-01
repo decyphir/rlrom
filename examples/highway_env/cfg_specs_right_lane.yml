@@ -1,5 +1,5 @@
+env_name: "highway-v0"
 specs: hw-env_specs.stl
-eval_formulas: cfg_eval.yml
 
 action_names:
   action: "action"
@@ -25,18 +25,21 @@ obs_names:
   car3_vx: "80*obs[3][3]"
   car3_vy: "80*obs[3][4]"
 
-BigM: 10
 real_time_step: 1.0
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
 reward_formulas:
   ego_right_lane:
     past_horizon: 0
-    weight: 1      
+    weight: .25
+    semantics: bool      
   ego_fast:
     past_horizon: 0
-    weight: .1
-  danger:
+    weight: .5
+    semantics: bool      
+  ego_moves:
     past_horizon: 0
-    weight: -20
-    lower_bound: 0.0
+    weight: .25
+    semantics: bool      
+
+eval_formulas: cfg_eval.yml

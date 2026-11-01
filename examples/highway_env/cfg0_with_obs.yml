@@ -21,28 +21,17 @@ cfg_train:
     render_mode: None
  
   algo:
-    ppo:
-      device: cpu
-      policy_kwargs:
-        net_arch: 
-          pi: [256, 256]
-          vf: [256, 256]
-      n_steps: 256      
-      ent_coef: 0.01
-      batch_size: 128  
-      gamma: 0.85    
-      learning_rate: 5e-4    
-      tensorboard_log: ./tb_logs    
+    ppo: highway_env_ppo.yml  
 
 cfg_test: 
   init_seeds: 0
-  num_ep: 100
+  num_ep: 10
   num_steps: 200 
-  render_mode: false
-  #plot:
-  # - ax: 
-  #    - obs_formulas/danger
-  #    - reward, reward_formulas/ego_moves:weighted,reward_formulas/ego_fast:weighted 
-  #   live: False
-#     live_window: 100
+  render_mode: 'human'
+  plot:
+   - ax: 
+      - obs_formulas/danger
+      - reward, reward_formulas/ego_moves:weighted,reward_formulas/ego_fast:weighted 
+     live: False
+     live_window: 100
   

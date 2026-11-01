@@ -1,6 +1,4 @@
 env_name: "highway-v0"
-specs: hw-env_specs.stl
-
 action_names:
   action: "action"
 obs_names:
@@ -25,8 +23,10 @@ obs_names:
   car3_vx: "80*obs[3][3]"
   car3_vy: "80*obs[3][4]"
 
-real_time_step: 1.0
+specs: hw-env_specs.stl
+
 BigM: 10
+real_time_step: 1.0
 
 debug_formulas: False
 obs_formulas: 

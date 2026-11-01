@@ -1,0 +1,259 @@
+%************************************************
+\chapter{Tool Implementation}\label{ch:rlrom}
+%************************************************
+We implemented our methods into RLRom \footnote{\url{https://github.com/decyphir/rlrom}}, part of the impremenation was reported in the paper \cite{gomezruiz2025overlay}, which integrates a rich STL parser with efficient online monitoring methods 
+(taken from \cite{donze2013,deshmukh_robust_2015})  with popular reinforcement learning frameworks. Our tool is similar to stl-gym\footnote{\url{https://github.com/nphamilton/stl-gym}} 
+based on \cite{nickovic_rtamt_2020}, which allows to replace the reward function with the robustness of an STL formula. RLRom goes beyond by allowing richer formulas to be written and monitored, 
+as well as to train models for specifications described by reward machines with STL predicates.  
+
+RLRom is built over three main existing components, namely:
+\begin{itemize}
+\item \textbf{Gymnasium} \cite{Towers2024Gymnasium}: A Python library offering a standardized API for developing and comparing reinforcement learning algorithms by providing a variety 
+of pre-built and customizable environments. It serves as a widely used platform for reinforcement learning research and development.
+\item \textbf{Stable-Baselines3} \cite{stable-baselines3}: A Python library that provides well-documented implementations of model-free reinforcement learning algorithms 
+(such as PPO, DQN, SAC, etc) in PyTorch. It offers a consistent interface for training and evaluating reinforcement learning agents.
+\item \textbf{STLRom\footnote{\url{https://github.com/decyphir/stlrom}}}: A C++ library with Python bindings for robust online monitoring of Signal Temporal Logic (STL). It enables users to 
+define temporal properties of signals and compute their robustness value online.
+\end{itemize}
+
+The interface with Gymnasium is based on the wrapper mechanism, which takes an existing reinforcement learning environment with a reset(), step() and reward() methods and observation and action 
+spaces, and returns a new environment that changes one or all of these components. To interface with STLRom, we implemented an stl\_wrapper that does the following:
+\begin{enumerate}
+    \item It adds an stl\_driver object from STLRom which can read data and monitors STL formulas.
+    \item Within the step() function, a new observation of the wrapped environment is added to the stl\_driver and the satisfaction of the formulas is updated; the resulting robustness values 
+    are then used to augment the observation and/or influence the reward.
+\end{enumerate}
+
+\section{Workflows and features}
+\label{sec:workflows}
+
+When working with a new reinforcement learning problem, assuming we are given a reinforcement learning environment implementing a Gymnasium-compatible API, RLRom is intended to support the following steps, with workflows of increasing 
+complexities.
+\begin{enumerate}
+\item \textbf{(WF1) Testing}: RLRom provides a simple way to run multiple episodes varying initial seed. Models can be imported from files or from popular repos, such as Hugging Face 
+\footnote{\url{https://huggingface.com}} Eventually, we plan on implementing more advanced simulation-based testing methods, in the spirit of \cite{donze_breach_2010}. 
+\item \textbf{(WF2) Training}: new models can be trained with RLRom interfacing to existing stable-baselines3 algorithms - existing hyper-parameters can be quickly fetched and 
+tried to obtain some baseline model for the base problem;
+\item \textbf{(WF3) Monitoring}: Once a baseline model has been obtained, STL specifications can be written and monitored. This requires deciding which feature of the observation space 
+should be monitored as a signal, and what properties should be checked. A typical first step is to formalize the initial goal of the environment, and check that the baseline model satisfy 
+this formalization. E.g., for the classic Cart-Pole environment, the goal is to keep the pole up, which can be translated into the simple predicate \texttt{pole\_up := abs(theta[t]) < epsi} 
+for some small value of \texttt{epsi}. The goal specification can then be:
+  \begin{center}
+\begin{verbatim}
+phi_goal_cartpole := ev_[0,400] alw_[0,100] mu
+\end{verbatim}
+  \end{center}
+  that is, before 400 steps, the pole should stay up for at least 100 steps.
+\item \textbf{(WF4) Training with RM-STL specifications}: Reward machines with STL can be incorporated into the model training to solve a problem with more complex objectives. 
+\end{enumerate}
+
+(WF1) and (WF2) are standard workflows in the reinforcement learning community, implemented for example in the RL-Zoo framework \footnote{\url{https://rlzoo.readthedocs.io}}. (WF3) and (WF4) 
+are more unique to RLRom, which enabled us to obtain interesting results to complex reinforcement learning problems, described in the previous chapters. 
+
+\section{Overall Architecture}
+
+The workflows of Section~\ref{sec:workflows}, from testing (WF1) to
+STL-conditioned reward machines (WF4), are all enabled by a common
+architecture with the following design principles:
+
+\begin{itemize}
+\item \textbf{Configuration-driven.} Everything that varies between
+  experiments (environment, algorithm, the STL specification etc)
+  lives in a single YAML file. The Python code is generic and does not
+  need to be touched to change an experiment.
+\item \textbf{Wrapper-based integration.} The monitoring and reward
+  machine logic is implemented as a stack of Gymnasium \emph{wrappers}
+  inserted between the bare environment and the agent. This keeps the
+  RL algorithm untouched and makes the machinery reusable across
+  environments and algorithms.
+\item \textbf{Separation of concerns and modularity} Sections in the
+  configuration each correspond to a different mechanism or task
+  (interface, test, train, STL, reward machines) and can be
+  interchanged and re-used between experiments.
+\end{itemize}
+
+A run is described by a single YAML file with a small set of \emph{top-level} keys,
+summarized in Table~\ref{tab:config}. Sub-values can be factored out: values ending
+in \texttt{.yml} are recursively replaced by the content of the referenced
+file, and a \texttt{.stl} field loads the
+text of an STL specification file.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Main top-level keys of a \textsc{RLROM} configuration file.}
+  \label{tab:config}
+  \small
+  \begin{tabular}{@{}llp{9.2cm}@{}}
+    \toprule
+    \textbf{Key} &  \textbf{Role} \\
+    \midrule
+    \texttt{env\_name}  & environment (e.g., Gymnasium id) \\
+    \texttt{model\_path}, \texttt{model\_name} & where to read/write model checkpoints \\
+    \texttt{model\_use\_specs}  & whether the model was trained with the wrapped
+                                  observation/reward\\
+                                  &(allows to monitor pre-trained models) \\
+    \texttt{cfg\_specs}  & the STL and reward machines specification and how it is used \\
+    &(signals,
+      reward/eval/label formulas, reward machines declaration) \\
+    \texttt{cfg\_test}  & evaluation: seeds, number of episodes/steps, rendering \\
+    \texttt{cfg\_train}  & training: algorithm, timesteps, eval cadence, repetition \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Listing~\ref{lst:min} (\texttt{cfg0\_min.yml}) is a minimal 
+configuration: an environment and a test block. 
+
+\begin{cfglisting}[caption={Minimal configuration
+(\texttt{examples/cartpole/cfg0\_min.yml}).},label={lst:min}]
+env_name: CartPole-v1
+cfg_test:
+  init_seeds: 1
+  num_ep: 5
+  num_steps: 100
+  render_mode: 'human'
+\end{cfglisting}
+
+This will test the environment without any agent (actions are then chosen randomly).
+
+\section{Testing and training standard agents (WF1 and WF2)}
+\label{sec:testing}
+
+The first two workflows are the ``standard'' ones that RLRom shares with the
+broader reinforcement-learning ecosystem (they are, for instance, at the core of
+the RL-Zoo framework): \textbf{(WF1)} testing an existing agent and
+\textbf{(WF2)} training a new one. Both are illustrated here on the CartPole
+environment used as the running example of this chapter. Thanks to the
+configuration-driven design of Section~\ref{sec:design:config}, switching between
+them --- and between environments, algorithms and models --- requires no change to
+the Python code, only an edit to the YAML.
+
+\subsection{Testing an agent imported from HuggingFace (WF1)}
+
+The simplest way to obtain a ready-made agent is to import a pretrained model from
+a public repository such as HuggingFace\footnote{\url{https://huggingface.co}}.
+Listing~\ref{lst:hugimport} shows \texttt{cfg0\_hug.yml}, which loads the PPO
+checkpoint \texttt{sb3/ppo-CartPole-v1} for CartPole: setting
+\texttt{model\_path} to \texttt{huggingface} tells RLRom to fetch the model from
+HuggingFace under the name \texttt{sb3/ppo-CartPole-v1}. The \texttt{cfg\_test}
+block describes five episodes of at most $100$ steps rendered to screen.
+
+\begin{cfglisting}[caption={Testing a HuggingFace agent
+(\texttt{examples/cartpole/cfg0\_hug.yml}).},label={lst:hugimport}]
+env_name: CartPole-v1
+model_path: huggingface
+model_name: sb3/ppo-CartPole-v1
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 5
+  num_steps: 100
+  render_mode: 'human'
+\end{cfglisting}
+
+\noindent
+The run is launched with
+\begin{center}\ttfamily rlr test examples/cartpole/cfg0\_hug.yml\end{center}
+which loads the checkpoint and plays the requested episodes, logging the per-
+episode reward and a summary of the runs. Choosing \texttt{model\_path: random}
+(resp.\ \texttt{keyboard}) instead substitutes a random (resp.\ human) policy,
+which is a convenient sanity check of the environment's dynamics before any real
+evaluation.
+
+\subsection{Training a baseline agent (WF2)}
+
+To train a new model, RLRom interfaces with the algorithms implemented in
+Stable-Baselines3 and keeps all training options in a configuration file.
+Listing~\ref{lst:trppo} shows \texttt{cfg0tr\_ppo.yml}, which trains a PPO agent
+for the bare CartPole task (no STL specification yet): \texttt{cfg\_test}
+describes the evaluation, and \texttt{cfg\_train} selects the algorithm by name
+(\texttt{ppo}), pulls its hyper-parameters from the referenced
+\texttt{cartpole\_ppo.yml} (Listing~\ref{lst:ppohp}), and sets the number of
+parallel environments, the total number of timesteps, the evaluation frequency and
+how many times the whole training is repeated from scratch
+(\texttt{repeat\_training}, used later to estimate variance across seeds).
+
+\begin{center}
+\begin{minipage}[t]{0.47\textwidth}
+\centering
+\begin{cfglisting}[caption={Baseline training
+(\texttt{examples/cartpole/cfg0tr\_ppo.yml}).},label={lst:trppo}]
+env_name: CartPole-v1
+model_path: ./models
+model_name: vanilla_ppo
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 10
+  num_steps: 200
+  render_mode: 'human'
+
+cfg_train:
+  n_envs: 8
+  total_timesteps: 100_000
+  eval_freq: 10_000
+  repeat_training: 5
+  algo:
+    ppo: cartpole_ppo.yml
+\end{cfglisting}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\centering
+\begin{cfglisting}[caption={PPO hyper-parameters
+(\texttt{examples/cartpole/cartpole\_ppo.yml}).},label={lst:ppohp}]
+device: cpu
+verbose: 0
+
+policy_kwargs:
+  net_arch: [32, 32]
+
+n_steps: 1024
+learning_rate: 3e-4
+\end{cfglisting}
+\end{minipage}
+\end{center}
+
+\noindent
+Training is launched with
+\begin{center}\ttfamily rlr train examples/cartpole/cfg0tr\_ppo.yml\end{center}
+which instantiates $8$ parallel environments, runs PPO for $100\,000$ timesteps
+and repeats the experiment $5$ times from scratch. Figure~\ref{fig:vanilla} shows
+the resulting learning curves: Figure~\ref{fig:vanilla:raw} plots the mean episode
+reward of each of the $5$ runs, and Figure~\ref{fig:vanilla:env} overlays, in
+addition, the min--max band across runs (the ``envelope'' produced by
+\texttt{rlr plot --envelope}). The band gives an immediate sense of the variance
+between seeds, which is why the rest of this chapter reports training with the
+envelope view.
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[All \texttt{vanilla\_ppo} trainings.]{
+    \includegraphics[width=0.92\textwidth]
+      {../examples/cartpole/vanilla_ppo_trainings.png}
+    \label{fig:vanilla:raw}
+  }\\[1em]
+  \subfloat[Envelope (mean and min--max band) across trainings.]{
+    \includegraphics[width=0.92\textwidth]
+      {../examples/cartpole/vanilla_ppo_trainings_enveloppe.png}
+    \label{fig:vanilla:env}
+  }
+  \caption{Learning curves of the \texttt{vanilla\_ppo} baseline (WF2), from the
+  checkpoint result files produced by \texttt{rlr train}.}
+  \label{fig:vanilla}
+\end{figure}
+
+\paragraph{Other algorithms.}
+Although this chapter uses PPO throughout, the integration is generic: any
+algorithm implemented in Stable-Baselines3 (DQN, SAC, A2C, ...) can be selected by
+simply changing \texttt{cfg\_train.algo} to the corresponding key (e.g.,
+\texttt{dqn: cartpole\_dqn.yml}) and pointing at a matching hyper-parameter file.
+The wrapper-based design keeps the agent \emph{agnostic} to the STL machinery: the
+same algorithms -- and largely the same hyper-parameters as in
+Listing~\ref{lst:ppohp} -- can be kept for the specification-aware workflows that
+follow, which isolates the effect of adding the STL signal from the effect of
+switching the optimization algorithm.
+
+%%% Local Variables:
+%%% mode: LaTeX
+%%% TeX-master: "../rlrom_chapter"
+%%% End:

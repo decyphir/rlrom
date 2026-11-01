@@ -1,0 +1,156 @@
+\section{Monitoring agents against specifications (WF3)}
+\label{sec:specs}
+
+Workflow \textbf{(WF3) Monitoring} is where the STL machinery of RLRom first
+enters the picture. Using the cart-pole running example, the section walks
+through the two ingredients it requires, both prepared declaratively in the
+configuration: \emph{interfacing the signals} (mapping the raw observation and
+action vector onto named quantities the formulas can refer to), and \emph{writing
+very simple specifications} that formalize the \emph{original} goal of the
+environment. We then monitor these specifications against an agent that was
+\emph{not} trained with them --- the HuggingFace pretrained PPO of
+Section~\ref{sec:testing} --- using \texttt{cfg0\_hug\_specs.yml}, which
+\emph{passively} monitors the agent and reports robustness-based metrics without
+shaping any reward.
+
+Throughout the rest of this chapter we walk through the four workflows of
+Section~\ref{sec:workflows} on the running example used in the remaining
+sections: the classic \textit{CartPole-v1} Gymnasium environment \cite{gymnasium}.
+Its state is a $4$-dimensional vector
+$(x,\,\dot x,\,\theta,\,\dot\theta)$ --- cart position, cart velocity, pole angle
+and pole angular velocity --- and the action is a push left or right. The episode
+terminates once the pole falls (angle beyond a threshold) or the cart leaves the
+track. Because each workflow builds on the previous one --- from simple testing,
+through training, to STL-conditioned reward machines --- the same
+environment and configuration files illustrate how the library supports tasks of
+increasing complexity.
+
+To talk about the task in STL, we first \emph{declare signals} that map the raw
+observation and action onto named quantities. In \textsc{RLROM} this is done in the
+\texttt{cfg\_specs} block through \texttt{action\_names} and \texttt{obs\_names}:
+each entry pairs a signal name with a Python expression evaluated at every step
+(Listing~\ref{lst:signals}).
+
+\begin{cfglisting}[caption={Signal declarations from the CartPole observation.},label={lst:signals}]
+cfg_specs:
+  action_names:
+    push: "action"
+  obs_names:
+    x:         "obs[0]"
+    x_dot:     "obs[1]"
+    theta:     "obs[2]"
+    theta_dot: "obs[3]"
+\end{cfglisting}
+
+\noindent
+The key \texttt{specs} points to a standalone \texttt{.stl} file (here
+\texttt{cartpole.stl}, Listing~\ref{lst:stl}) that contains the actual formulas.
+Keeping the formulas in a dedicated file, separate from the usage configuration,
+lets the same specification be shared by several runs (testing, training, different
+roles) --- a central property of the design. The file begins by declaring the
+signal set --- which must be consistent with the \texttt{obs\_names}/
+\texttt{action\_names} in the configuration --- and then defines a small library of
+formulas.
+
+\begin{stllisting}[caption={STL specification for CartPole
+(\texttt{examples/cartpole/cartpole.stl}).},label={lst:stl}]
+signal push, x, x_dot, theta, theta_dot, reward
+
+param epsi = 0.03
+pole_up          := abs(theta[t]) < epsi
+keep_up          := alw_[0, 100] pole_up
+phi_goal_keep_up := ev_[0, 400] keep_up
+
+(...)
+
+\end{stllisting}
+
+\noindent
+A few formulas give the flavor of the language.
+\begin{itemize}
+  \item \texttt{pole\_up} is a simple instantaneous predicate (the pole is within
+  $\varepsilon$ of vertical), from which \texttt{keep\_up} = ``remain balanced for
+  the next $100$~steps'' and \texttt{phi\_goal\_keep\_up} = ``eventually, within
+  $400$~steps, stay balanced for $100$~steps'' are derived by nesting temporal
+  operators.
+  \item \texttt{cart\_in\_A} defines a narrow target region of the track
+  ($x\in[-0.7,-0.5]$), and \texttt{stay\_A} = ``remain in $A$ for the next
+  $50$~steps''; \texttt{not\_A} is its negation. These support the sequential
+  reward machine of Section~\ref{sec:rewardmachines}.
+  \item \texttt{phi\_left\_goal} / \texttt{phi\_right\_goal} express directional
+  objectives --- ``eventually, for $100$~steps, keep the cart in the left (resp.\
+  right) half of the track''.
+  \item \texttt{stuck\_left} states an inertness property (never leave the right
+  region), useful as a \emph{negative} or monitoring-only formula.
+\end{itemize}
+
+Several signals (\texttt{push}, \texttt{reward}, \texttt{theta\_dot}) are declared
+but not used by these formulas; they are available to any formula and to other
+configs loading the same file. Declaring the full signal set once, in the shared
+specification, keeps the various role-based usages consistent.
+
+Listing~\ref{lst:hug} shows \texttt{cfg0\_hug\_specs.yml}, which loads a
+\emph{pretrained} PPO checkpoint for CartPole from HuggingFace, declares the
+signals, points to \texttt{cartpole.stl}, and selects the goal formula
+\texttt{phi\_goal\_keep\_up} as an \emph{eval formula} --- a formula monitored
+for metrics only, and not used to shape any reward.
+
+\begin{cfglisting}[caption={Testing a HuggingFace pretrained PPO on CartPole
+against an STL formula (\texttt{cfg0\_hug\_specs.yml}).},label={lst:hug}]
+env_name: CartPole-v1
+model_path: huggingface
+model_name: sb3/ppo-CartPole-v1
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  action_names:
+    push: "action"
+  obs_names:
+    x:     "obs[0]"
+    x_dot: "obs[1]"
+    theta: "obs[2]"
+    theta_dot: "obs[3]"
+  specs: cartpole.stl
+  eval_formulas:
+    phi_goal_keep_up:
+
+cfg_test:
+  init_seeds: 1
+  num_ep: 10
+  num_steps: 100
+  render_mode: 'human'
+\end{cfglisting}
+
+\noindent
+The run is launched with
+\begin{center}\ttfamily rlr test examples/cartpole/cfg0\_hug\_specs.yml
+\end{center}
+which plays the requested episodes while the \texttt{SpecWrapper} monitors the
+selected formulas online. During a step the wrapper:
+\begin{enumerate}
+  \item samples the declared signals from the observation/action;
+  \item updates the STL monitor with the new sample;
+  \item reads the robustness of each formula and, where relevant, of its lower/upper
+  bound;
+  \item stores the per-step robustness trace for later analysis.
+\end{enumerate}
+
+Across the episodes the tester aggregates, per formula, metrics such as the
+per-step robustness trace, the fraction of steps where the formula holds, and ---
+for interval/temporal formulas --- whether the goal was eventually reached (initial
+satisfaction and initial robustness). These robustness-based metrics provide a much
+more interpretable report card than a raw scalar reward: one can read directly
+whether ``the pole stayed up within the specified horizon and margin,'' and by what
+amount, rather than inferring it from a score.
+
+\paragraph{Remark.} Because the environment is wrapped by \texttt{SpecWrapper}, the
+monitoring is \emph{online}: robustness is computed incrementally during the
+episode, so the same wrapper can later be plugged into training
+(Section~\ref{sec:training}) and reward machines (Section~\ref{sec:rewardmachines})
+without any change to the monitoring logic.
+
+%%% Local Variables:
+%%% mode: LaTeX
+%%% TeX-master: "../rlrom_chapter"
+%%% End:
