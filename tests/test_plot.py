@@ -112,7 +112,7 @@ def test_rlrom_plot_module_e2e(training_tree, tmp_path):
 @pytest.mark.parametrize("line, expected", [
     ("x,theta", ["x", "theta"]),
     ("x_dot", ["x_dot"]),
-    ("label_formulas/go_left", ["label_formulas/go_left"]),
+    ("monitor_formulas/go_left", ["monitor_formulas/go_left"]),
     ("obs_formulas/f1, reward_formulas/f2", ["obs_formulas/f1", "reward_formulas/f2"]),
     ("rm_states/left_right", ["rm_states/left_right"]),
     ("rm_reward/left_right:weighted", ["rm_reward/left_right:weighted"]),

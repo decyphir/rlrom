@@ -10,8 +10,9 @@ obs_names:
   theta1_dot: 'obs[4]'
   theta2_dot: 'obs[5]'
 
-obs_formulas:
+monitor_formulas:
   mu:
+    obs_weight: 1.0
 
 
 real_time_step: 0.05

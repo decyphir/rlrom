@@ -17,17 +17,18 @@ cfg_specs:
 
   # Reward structure
   env_reward_weight: 0.5  
-  reward_formulas:
+  monitor_formulas:
     go_left:
       online: True
       past_horizon: 0
-      weight: 0.5
-      lower_bound: 0      
+      reward_weight: 0.5
+      semantics: bool
+      lower_bound: 0
  
   # Eval formulas    
   eval_formulas:
     cart_on_left:
-      onlin : true
+      online : true
       past_horizon: 0      
     phi_left_goal:
       t0: 0

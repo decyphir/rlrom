@@ -1,9 +1,11 @@
+import warnings
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import stlrom
 from rlrom.utils import append_to_field_array as add_metric
-from rlrom.wrappers.reward_machine import RewardMachine
+from rlrom.wrappers.reward_machine import RewardMachine, _validate_action_value
 from gymnasium.wrappers import FlattenObservation
 
 import importlib
@@ -52,17 +54,101 @@ class SpecWrapper(gym.Wrapper):
         stl_driver.parse_string(stl_specs_str)
         self.stl_specs_str = stl_specs_str
         self.real_time_step = cfg_specs.get('real_time_step',1)
-        self.obs_formulas = cfg_specs.get('obs_formulas',{})        
+        # 'monitor_formulas' is the unique formula section: every formula is
+        # monitored once per step and always produces a *label* for the reward
+        # machines (true when its lower robustness bound is > 0). A non-zero
+        # 'obs_weight' additionally exposes it in the observation (scaled),
+        # a non-zero 'reward_weight' additionally shapes the reward (scaled).
+        # 'label_formulas' (legacy name) and the 'obs_formulas' /
+        # 'reward_formulas' sections (legacy) are still accepted but deprecated.
+        self.obs_formulas = cfg_specs.get('obs_formulas',{})
         self.reward_formulas = cfg_specs.get('reward_formulas',{})
+        if 'obs_formulas' in cfg_specs or 'reward_formulas' in cfg_specs:
+            warnings.warn(
+                "cfg_specs 'obs_formulas'/'reward_formulas' are deprecated; "
+                "declare the formulas once in 'monitor_formulas' and use "
+                "'obs_weight'/'reward_weight' instead", DeprecationWarning, stacklevel=2)
+        if 'label_formulas' in cfg_specs:
+            if 'monitor_formulas' in cfg_specs:
+                raise ValueError(
+                    "cfg_specs: use 'monitor_formulas' only, not both "
+                    "'monitor_formulas' and the legacy 'label_formulas'")
+            warnings.warn(
+                "cfg_specs 'label_formulas' is a legacy alias for "
+                "'monitor_formulas'", DeprecationWarning, stacklevel=2)
+            cfg_specs['monitor_formulas'] = cfg_specs['label_formulas']
+        self.monitor_formulas = cfg_specs.get('monitor_formulas',{})
+        # Effective obs/reward entries: (f_name, f_opt, res_f prefix).
+        # Legacy sections keep their order and behavior first, then monitor
+        # formulas with a non-zero weight are appended. Monitor formulas are
+        # evaluated once per step (in the monitor pass of step()) and their
+        # value is reused here, so a formula playing several roles is not
+        # evaluated twice.
+        self._obs_entries = [(n, o, 'obs_formulas') for n, o in self.obs_formulas.items()]
+        self._reward_entries = [(n, o, 'reward_formulas') for n, o in self.reward_formulas.items()]
+        for f_name, f_opt in self.monitor_formulas.items():
+            f_opt = f_opt or {}
+            obs_w = f_opt.get('obs_weight', 0)
+            rew_w = f_opt.get('reward_weight', 0)
+            if obs_w and f_name in self.obs_formulas:
+                raise ValueError(
+                    f"Formula '{f_name}' is declared in both 'obs_formulas' "
+                    "(deprecated) and 'monitor_formulas' with a non-zero "
+                    "'obs_weight'; keep it in one place only")
+            if rew_w and f_name in self.reward_formulas:
+                raise ValueError(
+                    f"Formula '{f_name}' is declared in both 'reward_formulas' "
+                    "(deprecated) and 'monitor_formulas' with a non-zero "
+                    "'reward_weight'; keep it in one place only")
+            if obs_w:
+                self._obs_entries.append((f_name, f_opt, 'monitor_formulas'))
+            if rew_w:
+                self._reward_entries.append((f_name, f_opt, 'monitor_formulas'))
+        # Optional per-formula action constraints: a monitor formula may carry
+        # an 'actions' section (same fields as a reward-machine state: enable,
+        # blocked, forced, fallback, priority). When the formula is true, its actions
+        # are enforced on the agent's action from the NEXT step on (the truth
+        # is only known after the env step, mirroring how RM states persist),
+        # through the same conflict resolution as machine actions.
+        self.monitor_actions = {}
+        for f_name, f_opt in self.monitor_formulas.items():
+            f_opt = f_opt or {}
+            actions = f_opt.get('actions')
+            if actions is None:
+                continue
+            if not isinstance(actions, dict):
+                raise ValueError(
+                    f"SpecWrapper: monitor formula '{f_name}' field 'actions' "
+                    f"must be a dict (enable/blocked/forced/fallback), "
+                    f"got {actions!r}")
+            blocked = actions.get('blocked', [])
+            if not isinstance(blocked, (list, tuple)):
+                raise ValueError(
+                    f"SpecWrapper: monitor formula '{f_name}' field "
+                    f"'actions.blocked' must be a list of raw action values, "
+                    f"got {blocked!r}")
+            self.monitor_actions[f_name] = {
+                'enable': bool(actions.get('enable', True)),
+                'blocked': [_validate_action_value(v, 'actions.blocked', f_name)
+                            for v in blocked],
+                'forced': _validate_action_value(
+                    actions.get('forced'), 'actions.forced', f_name),
+                'fallback': _validate_action_value(
+                    actions.get('fallback'), 'actions.fallback', f_name),
+                'action_priority': actions.get('priority', 0),
+            }
+        # monitor formulas that were true at the previous step and declare
+        # (enabled) actions; consumed by _apply_shield at the start of step()
+        self._active_formula_actions = []
         self.env_reward_weight = cfg_specs.get('env_reward_weight', 1.0)
         self.multi_objective = cfg_specs.get('multi_objective',False)
+        self.keep_old_reward = cfg_specs.get('keep_old_reward', False)
         self.eval_formulas = cfg_specs.get('eval_formulas',{})
-        self.end_formulas = cfg_specs.get('end_formulas',{})
-        self.label_formulas = cfg_specs.get('label_formulas',{})
         self._reward_machines_cfg = cfg_specs.get('reward_machines',[])
         self.debug_signals=  cfg_specs.get('debug_signals',False)
         self.debug_formulas= cfg_specs.get('debug_formulas',False)
         self.debug_rm= cfg_specs.get('debug_rm',False)
+        self.debug_actions= cfg_specs.get('debug_actions',False)
         self.BigM = cfg_specs.get('BigM')
         self.semantics= 'Boolean'  # TODO option to change. For now Boolean is simpler to interpret rewards
         self.stl_driver = stl_driver                        
@@ -108,7 +194,7 @@ class SpecWrapper(gym.Wrapper):
             self.signals_specs_idx[s] = idx
             idx+=1
 
-        num_obs_formulas = len(self.obs_formulas)
+        num_obs_formulas = len(self._obs_entries)
 
         # Build the reward machines (FSMs) declared under cfg_specs.reward_machines.
         self.reward_machines = []
@@ -124,8 +210,7 @@ class SpecWrapper(gym.Wrapper):
                 'name': rm_cfg.pop('name', f'rm_{len(self.reward_machines)}'),
                 'weight': rm_cfg.pop('weight', 1.0),
                 'in_observation': rm_cfg.pop('in_observation', False),
-                'shield_priority': rm_cfg.pop('shield_priority', 0),
-                'shield_active': rm_cfg.pop('shield_active',True),
+                'action_priority': rm_cfg.pop('action_priority', 0),
                 'machine': RewardMachine(machine_cfg),
                 'cfg': rm_cfg,
             })
@@ -154,7 +239,7 @@ class SpecWrapper(gym.Wrapper):
 
         if self.multi_objective:
             # See https://mo-gymnasium.farama.org/tutorials/custom_env/
-            self.reward_dim = len(self.reward_formulas)
+            self.reward_dim = len(self._reward_entries)
             if self.keep_old_reward:
                 self.reward_dim += 1
             self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,))
@@ -171,19 +256,23 @@ class SpecWrapper(gym.Wrapper):
         robs0 = self.reset_monitor()
         self.reset_rm()
         self._last_action = None
+        self._active_formula_actions = []
         rm_states0 = self._rm_states_obs()
         obs = self._build_obs(obs0, robs0, rm_states0)
         self.last_obs = obs
         self.episode['last_obs'] = obs
 
         # initialize res_f. It will store monitoring of formulas computed during the episode.
-        # Keys are namespaced by group ('obs_formulas/<f>', 'reward_formulas/<f>', ...):
-        # a formula may appear in several groups (e.g. obs_formulas and
-        # reward_formulas), and a shared key would be appended twice per step.
+        # Keys are namespaced by group ('monitor_formulas/<f>', 'obs_formulas/<f>',
+        # 'reward_formulas/<f>', ...): a formula may appear in several groups
+        # (legacy sections), and a shared key would be appended twice per step.
         res_f={}
-        for group in ('obs_formulas', 'reward_formulas', 'label_formulas', 'end_formulas'):
-            for f_name, _ in getattr(self, group).items():
-                res_f[f'{group}/{f_name}']=[]
+        for f_name, _ in self.obs_formulas.items():
+            res_f[f'obs_formulas/{f_name}']=[]
+        for f_name, _ in self.reward_formulas.items():
+            res_f[f'reward_formulas/{f_name}']=[]
+        for f_name, _ in self.monitor_formulas.items():
+            res_f[f'monitor_formulas/{f_name}']=[]
         self.episode['res_f'] = res_f
         return obs, info
 
@@ -193,45 +282,64 @@ class SpecWrapper(gym.Wrapper):
             rm['machine'].reset()
 
     def _apply_shield(self, action):
-        """Apply reward-machine action shields to the agent's action.
+        """Apply action constraints to the agent's action, from two sources:
 
-        Each machine's current state may declare shield fields (see
-        ``RewardMachine``): ``forced`` forces that raw action while in the
-        state; ``blocked`` forbids the listed raw actions.
+        * reward machines: each machine's current state may declare an
+          ``actions`` section (see ``RewardMachine``); a state whose
+          ``actions.enable`` is False imposes nothing;
+        * monitor formulas with an ``actions`` section that were *true* at
+          the previous step (``self._active_formula_actions``).
 
-        Blocking is enforced cumulatively: every machine's blocked list
+        In both sources: ``actions.forced`` forces that raw action; 
+        ``actions.blocked`` forbids the listed raw actions.
+
+        Blocking is enforced cumulatively: every source's blocked list
         constrains the final action, and the replacement (previous action or
-        fallback) must not be blocked by any machine. ``shield_priority``
-        (default 0) is only used to resolve conflicts, and a tie on the max
-        priority raises a ValueError:
-          * two machines force different actions -> highest priority wins;
-          * a forced action is blocked by another machine -> the higher
+        fallback) must not be blocked by any source. The priority --
+        ``action_priority`` for reward machines (machine-level),
+        ``actions.priority`` for monitor formulas (default 0) -- is only
+        used to resolve conflicts, and a tie on the max priority raises a
+        ValueError:
+          * two sources force different actions -> highest priority wins;
+          * a forced action is blocked by another source -> the higher
             priority side wins (the blocker may tie the forcer);
-          * several machines block the candidate and a fallback is needed
+          * several sources block the candidate and a fallback is needed
             -> the highest-priority blocker's ``fallback`` is used.
         When the candidate is blocked it is replaced by the previously
-        executed action (when that one is not blocked by any machine), else
-        by the fallback. A fallback is trusted even if another machine would
+        executed action (when that one is not blocked by any source), else
+        by the fallback. A fallback is trusted even if another source would
         also block it (it is the configured last resort).
 
         Returns ``(action, info)``; ``info`` is None when the action passes
         through unchanged, else a dict describing the override (also surfaced
-        as ``info['shield']`` in the env step info).
+        as ``info['shield']`` in the env step info; ``info['shield']['machine']
+        is the name of the machine or monitor formula that triggered it).
         """
         forcers = []
-        blockers = []   # (priority, name, machine, blocked list)
+        blockers = []   # (priority, name, fallback, blocked list)
         for rm in self.reward_machines:
             m = rm['machine']
-            if not m.shield_active:
+            if not m.actions_enabled():
                 continue
-            forced = m.forced_action()
+            forced = m.forced()
             if forced is not None:
-                forcers.append((rm['shield_priority'], rm['name'], forced))
+                forcers.append((rm['action_priority'], rm['name'], forced))
             else:
-                blocked = m.blocked_actions()
+                blocked = m.blocked()
                 if blocked:
                     blockers.append(
-                        (rm['shield_priority'], rm['name'], m, blocked))
+                        (rm['action_priority'], rm['name'], m.fallback(), blocked))
+        # monitor formulas that were true at the previous step and whose
+        # actions are enabled act like a machine state constraint
+        for f_name in self._active_formula_actions:
+            a = self.monitor_actions[f_name]
+            if not a['enable']:
+                continue
+            if a['forced'] is not None:
+                forcers.append((a['action_priority'], f_name, a['forced']))
+            elif a['blocked']:
+                blockers.append(
+                    (a['action_priority'], f_name, a['fallback'], a['blocked']))
 
         candidate = action
         forcer = None
@@ -240,10 +348,11 @@ class SpecWrapper(gym.Wrapper):
             winners = [f for f in forcers if f[0] == max_priority]
             if len(winners) > 1:
                 raise ValueError(
-                    "SpecWrapper: shield tie -- machines "
-                    f"{[w[1] for w in winners]} share max shield_priority "
+                    "SpecWrapper: shield tie -- sources "
+                    f"{[w[1] for w in winners]} share max action priority "
                     f"{max_priority} for a forced action; set distinct "
-                    "'shield_priority' values")
+                    "priorities ('action_priority' for machines, "
+                    "'actions.priority' for monitor formulas)")
             forcer = winners[0]
             candidate = forcer[2]
 
@@ -267,19 +376,18 @@ class SpecWrapper(gym.Wrapper):
                 winners = [b for b in obj if b[0] == max_priority]
                 if len(winners) > 1:
                     raise ValueError(
-                        "SpecWrapper: shield tie -- machines "
+                        "SpecWrapper: shield tie -- sources "
                         f"{[w[1] for w in winners]} share max "
-                        f"shield_priority {max_priority} and all block "
-                        f"action {candidate}; set distinct "
-                        "'shield_priority' values")
-                _p, name, m, _bl = winners[0]
-                fb = m.fallback_action()
+                        f"action priority {max_priority} and all block "
+                        f"action {candidate}; set distinct priorities "
+                        "('action_priority' for machines, 'actions.priority' "
+                        "for monitor formulas)")
+                _p, name, fb, _bl = winners[0]
                 if fb is None:
                     raise ValueError(
-                        f"SpecWrapper: machine '{name}' (state "
-                        f"'{m.state_id}') blocks action {candidate}, but the "
-                        f"previous action ({prev!r}) is also blocked and "
-                        "the state defines no 'fallback' action")
+                        f"SpecWrapper: '{name}' blocks action {candidate}, but "
+                        f"the previous action ({prev!r}) is also blocked and "
+                        "no 'fallback' action is defined")
                 candidate = fb
                 reason = 'blocked->fallback'
 
@@ -316,14 +424,14 @@ class SpecWrapper(gym.Wrapper):
         if not self.reward_machines:
             print("No reward machines configured.")
             return
-        if self.label_formulas:
-            print("Label formulas:")
-            for f_name, f_opt in self.label_formulas.items():
+        if self.monitor_formulas:
+            print("Monitor formulas:")
+            for f_name, f_opt in self.monitor_formulas.items():
                 print(f"  {f_name}: {f_opt}")
         for i, rm in enumerate(self.reward_machines):
             m = rm['machine']
             print(f"\nReward machine [{i}] '{rm['name']}' (weight={rm['weight']}"
-                  f", shield_priority={rm.get('shield_priority', 0)})")
+                  f", action_priority={rm.get('action_priority', 0)})")
             print("  States:")
             for sid in m.states:
                 flags = []
@@ -333,12 +441,14 @@ class SpecWrapper(gym.Wrapper):
                     flags.append('initial')
                 tag = (' [' + ', '.join(flags) + ']') if flags else ''
                 shields = []
-                if m.blocked_actions(sid):
-                    shields.append(f"blocked={m.blocked_actions(sid)}")
-                if m.forced_action(sid) is not None:
-                    shields.append(f"forced={m.forced_action(sid)}")
-                if m.fallback_action(sid) is not None:
-                    shields.append(f"fallback={m.fallback_action(sid)}")
+                if not m.actions_enabled(sid):
+                    shields.append('actions: disabled')
+                elif m.blocked(sid):
+                    shields.append(f"blocked={m.blocked(sid)}")
+                if m.forced(sid) is not None:
+                    shields.append(f"forced={m.forced(sid)}")
+                if m.fallback(sid) is not None:
+                    shields.append(f"fallback={m.fallback(sid)}")
                 shield_tag = ('  [' + ', '.join(shields) + ']') if shields else ''
                 print(f"    {sid}{tag}: reward={m.state_rewards[sid]} idx={m.states_idx_map[sid]}{shield_tag}")
             print("  Transitions:")
@@ -353,7 +463,7 @@ class SpecWrapper(gym.Wrapper):
         self.stl_driver.parse_string(self.stl_specs_str)
         self._validate_formula_params()
         self.episode['stl_data'] = self.stl_driver.data
-        return [0]*len(self.obs_formulas) 
+        return [0]*len(self._obs_entries) 
 
     def _validate_formula_params(self):
         """Check that parameters referenced by formula_params are declared in
@@ -362,8 +472,8 @@ class SpecWrapper(gym.Wrapper):
         raise for undeclared names.
         """
         checked = set()
-        for group in ('obs_formulas', 'reward_formulas', 'label_formulas',
-                      'end_formulas', 'eval_formulas'):
+        for group in ('obs_formulas', 'reward_formulas', 'monitor_formulas',
+                      'eval_formulas'):
             for f_name, f_opt in getattr(self, group).items():
                 if not isinstance(f_opt, dict):
                     continue
@@ -383,7 +493,7 @@ class SpecWrapper(gym.Wrapper):
     def step(self, action):
         # shield: machines may replace the agent's action before it reaches the env
         action, shield_info = self._apply_shield(action)
-        if self.debug_rm and shield_info is not None:
+        if self.debug_actions and shield_info is not None:
             print(f"t:{self.time_step} shield: {shield_info}")
         
         # steps the wrapped env
@@ -400,13 +510,50 @@ class SpecWrapper(gym.Wrapper):
         
         # add sample and compute robustness
         self.stl_driver.add_sample(s,False)
+
+        # Monitor formulas: evaluated once per step, whether or not they also
+        # act as obs/reward formulas (non-zero obs_weight/reward_weight).
+        # Each one always produces a *label* for the reward machines: a label
+        # is true when its monitored lower robustness bound is > 0. A monitor
+        # formula with 'terminal: True' also terminates the episode when it
+        # becomes true. The recorded value (res_f['monitor_formulas/<f>']) is
+        # the evaluated formula value (per its 'semantics' option).
+        mon_vals = {}
+        labels = []
+        for f_name, f_opt in self.monitor_formulas.items():
+            val, eval_res = self.eval_formula_cfg(f_name, f_opt)
+            mon_vals[f_name] = val
+            self.episode['res_f'][f'monitor_formulas/{f_name}'].append(val)
+            if eval_res['lower_rob'] > 0:
+                labels.append(f_name)
+                terminal = (f_opt or {}).get('terminal', False)
+                if terminal:
+                    print('Episode terminated because of formula', f_name)
+                    terminated = True
+            if self.debug_formulas is True:
+                print(f'monitor {f_name}: {float(val):.3}', end=' ')
+        if self.monitor_formulas and self.debug_formulas is True:
+            print('')
+        # formulas true *now* act on the agent's action from the next step
+        # on (their truth is only known after the env step, mirroring how
+        # reward-machine states persist)
+        self._active_formula_actions = [
+            f for f in self.monitor_actions if f in set(labels)
+        ]
+
         idx_formula = 0
-        num_obs_formulas= len(self.obs_formulas)
+        num_obs_formulas= len(self._obs_entries)
         robs = [0]*num_obs_formulas
-        for f_name, f_opt in self.obs_formulas.items():                                     
-            robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
+        for f_name, f_opt, prefix in self._obs_entries:                          
+            if prefix == 'monitor_formulas':
+                # already evaluated in the monitor pass; scale by obs_weight
+                robs_f = mon_vals[f_name] * f_opt['obs_weight']
+            else:
+                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)        
             robs[idx_formula] = robs_f # forget about low and high robs for now                        
-            self.episode['res_f'][f'obs_formulas/{f_name}'].append(robs_f)
+            if prefix != 'monitor_formulas':
+                # monitor entries are recorded once in the monitor pass above
+                self.episode['res_f'][f'{prefix}/{f_name}'].append(robs_f)
             idx_formula+=1     
             if self.debug_formulas is True:                
                 if idx_formula==1:
@@ -415,22 +562,6 @@ class SpecWrapper(gym.Wrapper):
                 if idx_formula==num_obs_formulas:
                     print('')
         
-        for f_name, f_opt in self.end_formulas.items():                     
-            _, eval_res = self.eval_formula_cfg(f_name,f_opt)                 
-            self.episode['res_f'][f'end_formulas/{f_name}'].append(eval_res['lower_rob'])
-            if eval_res['lower_rob'] > 0:
-                print('Episode terminated because of formula', f_name)
-                terminated = True
-
-        # Evaluate label formulas -> set of names that are *true* this step
-        # (a label is true when its monitored robustness lower bound is > 0).
-        labels = []
-        for f_name, f_opt in self.label_formulas.items():
-            _, eval_res = self.eval_formula_cfg(f_name, f_opt)
-            self.episode['res_f'][f'label_formulas/{f_name}'].append(eval_res['lower_rob'])
-            if eval_res['lower_rob'] > 0:
-                labels.append(f_name)
-
         # Step every reward machine with the current true-label set.
         rm_states = []
         rm_rewards = []
@@ -462,10 +593,17 @@ class SpecWrapper(gym.Wrapper):
             # The returned new_reward is a scalar
             new_reward = reward * self.env_reward_weight
             # add stl robustness to reward
-            for f_name, f_opt in self.reward_formulas.items():                         
-                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
-                self.episode['res_f'][f'reward_formulas/{f_name}'].append(robs_f)
-                w = f_opt.get('weight',1)        
+            for f_name, f_opt, prefix in self._reward_entries:                         
+                if prefix == 'monitor_formulas':
+                    # already evaluated in the monitor pass
+                    robs_f = mon_vals[f_name]
+                else:
+                    robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
+                if prefix != 'monitor_formulas':
+                    # monitor entries are recorded once in the monitor pass
+                    self.episode['res_f'][f'{prefix}/{f_name}'].append(robs_f)
+                f_opt = f_opt or {}
+                w = f_opt.get('reward_weight', f_opt.get('weight', 1))        
                 new_reward += w*robs_f   
             # add weighted reward-machine rewards to the overall reward
             for rm, r in zip(self.reward_machines, rm_rewards):
@@ -473,9 +611,13 @@ class SpecWrapper(gym.Wrapper):
         else:
             # The returned new_reward is a vector
             new_reward = [reward * self.env_reward_weight] if self.env_reward_weight else []
-            for f_name, f_opt in self.reward_formulas.items():                         
-                robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
-                self.episode['res_f'][f'reward_formulas/{f_name}'].append(robs_f)
+            for f_name, f_opt, prefix in self._reward_entries:                         
+                if prefix == 'monitor_formulas':
+                    robs_f = mon_vals[f_name] * f_opt['reward_weight']
+                else:
+                    robs_f,_ = self.eval_formula_cfg(f_name,f_opt)            
+                if prefix != 'monitor_formulas':
+                    self.episode['res_f'][f'{prefix}/{f_name}'].append(robs_f)
                 new_reward.append(robs_f)
             new_reward = np.asarray(new_reward)
         
@@ -557,13 +699,24 @@ class SpecWrapper(gym.Wrapper):
         """Configured weight (default 1.0) of formula `fname` in group `prefix`.
 
         Only the groups that carry rewards / contribute to the wrapped reward
-        expose a meaningful `weight` ('reward_formulas', 'label_formulas',
-        'obs_formulas'); other groups default to 1.0.
+        expose a meaningful `weight` ('reward_formulas', 'monitor_formulas',
+        'obs_formulas'); other groups default to 1.0. For monitor formulas the
+        effective weight is `reward_weight` if non-zero, else `obs_weight` if
+        non-zero, else the generic `weight` (default 1.0). The legacy
+        'label_formulas' prefix is treated like 'monitor_formulas'.
         """
+        if prefix in ('label_formulas', 'monitor_formulas'):
+            grp = self.monitor_formulas
+            opt = grp.get(fname)
+            if isinstance(opt, dict):
+                for key in ('reward_weight', 'obs_weight'):
+                    w = opt.get(key, 0)
+                    if w:
+                        return w
+                return opt.get('weight', 1.0)
+            return 1.0
         if prefix == 'reward_formulas':
             grp = self.reward_formulas
-        elif prefix == 'label_formulas':
-            grp = self.label_formulas
         elif prefix == 'obs_formulas':
             grp = self.obs_formulas
         else:
@@ -577,7 +730,7 @@ class SpecWrapper(gym.Wrapper):
         """Name of the formula group owning `fname`, or None if it is not a
         monitored/recorded formula."""
         for prefix, grp in (('reward_formulas', self.reward_formulas),
-                            ('label_formulas', self.label_formulas),
+                            ('monitor_formulas', self.monitor_formulas),
                             ('obs_formulas', self.obs_formulas)):
             if fname in grp:
                 return prefix
@@ -586,9 +739,9 @@ class SpecWrapper(gym.Wrapper):
     def _res_f_trace(self, fname):
         """Recorded per-step trace of a formula from res_f (namespaced keys),
         or None if it was not recorded. If a formula appears in several
-        groups, 'reward_formulas' takes precedence, then obs/label/end.
+        groups, 'reward_formulas' takes precedence, then monitor/obs/end.
         """
-        for prefix in ('reward_formulas', 'obs_formulas', 'label_formulas', 'end_formulas'):
+        for prefix in ('reward_formulas', 'monitor_formulas', 'obs_formulas'):
             key = f'{prefix}/{fname}'
             if key in self.episode['res_f']:
                 return self.episode['res_f'][key]
@@ -617,8 +770,9 @@ class SpecWrapper(gym.Wrapper):
           * bare mapped signal names (action_names / obs_names /
             aux_sig_names / env_reward)
           * 'reward' -> the agent-visible (shaped) reward
-          * '<prefix>/<f>'  prefix in obs_formulas, reward_formulas,
-            label_formulas, eval_formulas
+          * '<prefix>/<f>'  prefix in monitor_formulas, obs_formulas,
+            reward_formulas (legacy), label_formulas (legacy alias),
+            eval_formulas
           * 'rm_states/<m>' and 'rm_reward/<m>' (or bare machine name <m>)
           * 'rho(<f>[,h])', 'rob(<f>[,h])', 'sat(<f>)'
           * bare <f> (formula) -> offline robustness
@@ -671,17 +825,26 @@ class SpecWrapper(gym.Wrapper):
                     values = values * w
                 return values, 'val', True, None
 
-            if prefix in ('obs_formulas', 'reward_formulas', 'label_formulas'):
-                key = f'{prefix}/{sub}'
+            if prefix in ('obs_formulas', 'reward_formulas', 'label_formulas',
+                          'monitor_formulas'):
+                # legacy plot strings: 'label_formulas/<f>' points at the
+                # monitor group, 'obs/reward_formulas/<f>' fall back to a
+                # monitor entry that plays that role
+                if prefix == 'label_formulas':
+                    key = f'monitor_formulas/{sub}'
+                else:
+                    key = f'{prefix}/{sub}'
+                    if key not in self.episode['res_f']:
+                        key = f'monitor_formulas/{sub}'
                 if key not in self.episode['res_f']:
                     raise ValueError(f"Unknown formula '{sub}' in '{name}'.")
                 values = np.asarray(self.episode['res_f'][key], dtype=float)
                 if weighted:
                     w = self._formula_cfg_weight(prefix, sub)
                     values = values * w
-                # label formulas hold per-step lower-bound robustness (0/1-ish
-                # for Boolean semantics); treat as discrete-steps like states.
-                return values, 'rob', (prefix == 'label_formulas'), None
+                # monitor formulas hold per-step evaluated values (0/1-ish for
+                # Boolean semantics); treat as discrete-steps like states.
+                return values, 'rob', (prefix in ('label_formulas', 'monitor_formulas')), None
 
             if prefix == 'eval_formulas':
                 values = self.get_rob(sub, online=False)
@@ -827,6 +990,7 @@ class SpecWrapper(gym.Wrapper):
         self.reset_monitor()
         self.episode = episode
         self.stl_driver.data = self.episode['stl_data']
+        self._active_formula_actions = []
         observations = self.episode['observations']
         
         self.time_step = self.get_ep_len()-1
@@ -946,20 +1110,21 @@ class SpecWrapper(gym.Wrapper):
         
         stl_data = episode['stl_data']            
         len_episode = len(stl_data.get_signal(0).get_samples_list())
-        if self.reward_formulas != dict():
+        if self._reward_entries:
             
             res_f = episode['res_f']
             # Summarize
-            for f_name,f_cfg in self.reward_formulas.items():
+            for f_name, f_cfg, prefix in self._reward_entries:
                 if f_name not in res:
                     res[f_name] = dict()
-                w = f_cfg.get('weight', 1)
-                res[f_name] = add_metric(res[f_name], 'mean', w*np.double(res_f[f'reward_formulas/{f_name}']).mean())
+                f_cfg = f_cfg or {}
+                w = f_cfg.get('reward_weight', f_cfg.get('weight', 1))
+                res[f_name] = add_metric(res[f_name], 'mean', w*np.double(res_f[f'{prefix}/{f_name}']).mean())
                 
-                sum_f = w*np.double(res_f[f'reward_formulas/{f_name}']).sum()
+                sum_f = w*np.double(res_f[f'{prefix}/{f_name}']).sum()
                 res[f_name] = add_metric(res[f_name], 'sum', sum_f)
                 
-                num_sat = (np.double(res_f[f'reward_formulas/{f_name}'])>0).sum()
+                num_sat = (np.double(res_f[f'{prefix}/{f_name}'])>0).sum()
                 res[f_name] = add_metric(res[f_name], 'num_sat', num_sat)
 
             res_rew_f_list.append(res_f)            
@@ -1010,9 +1175,7 @@ class SpecWrapper(gym.Wrapper):
                 
             res_eval_f_list.append(res_f)
                         
-            for f_name,f_cfg in self.reward_formulas.items():
-              if f_cfg is None:
-                    f_cfg = {}                
+            for f_name, _f_cfg, _prefix in self._reward_entries:
               if isinstance(res[f_name], dict):                    
                 res_all_ep['reward_formulas'][f_name] = dict()
                 res_all_ep['reward_formulas'][f_name]['mean_rob'] = res[f_name]['mean'].mean()

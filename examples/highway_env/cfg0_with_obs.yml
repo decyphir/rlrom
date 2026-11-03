@@ -30,8 +30,8 @@ cfg_test:
   render_mode: 'human'
   plot:
    - ax: 
-      - obs_formulas/danger
-      - reward, reward_formulas/ego_moves:weighted,reward_formulas/ego_fast:weighted 
+      - monitor_formulas/danger
+      - reward, monitor_formulas/ego_moves:weighted,monitor_formulas/ego_fast:weighted
      live: False
      live_window: 100
   

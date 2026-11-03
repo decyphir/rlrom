@@ -28,11 +28,14 @@ cfg_test:
   render_mode: 'human'
   plot:
     - ax:
+      - monitor_formulas/car_left
+      - monitor_formulas/car_right
+      - monitor_formulas/danger
       - action
-      - rm_states/check_danger
-      - rm_states/check_right
-      - rm_states/check_left
-
+      - ego_vx
       live: False 
 #      live_window: 50
 
+    - ax:
+      - sat(mu_danger)
+      - sat(danger)

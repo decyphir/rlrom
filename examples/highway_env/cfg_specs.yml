@@ -26,13 +26,13 @@ obs_names:
   car3_vy: "80*obs[3][4]"
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
+monitor_formulas:
   ego_fast:
     past_horizon: 0
-    weight: .1
+    reward_weight: .1
   danger:
     past_horizon: 0
-    weight: -20
+    reward_weight: -20
     lower_bound: 0.0 # we don't want to reward safety too much
 
 real_time_step: 1.0

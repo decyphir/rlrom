@@ -22,9 +22,10 @@ cfg_specs:
     action: "action"
   specs: task3.stl
   
-  obs_formulas:
+  monitor_formulas:
     has_key:
       eval_all_steps: True
+      obs_weight: 1.0
   
   eval_formulas:
     has_key:

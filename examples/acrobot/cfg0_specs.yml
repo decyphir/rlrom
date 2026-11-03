@@ -17,17 +17,13 @@ cfg_specs:
     sin_theta2: "obs[3]"
     height: "-obs[0] - obs[0]*obs[2]+obs[1]*obs[3]"
 
-  obs_formulas:
-    obs_mu_height:
+  monitor_formulas:
+    mu_height:
       formula_name: mu_height
       online: True
       past_horizon: 0
-
-
-  reward_formulas:
-    mu_height:  
-      online: True
-      weight: 1
+      obs_weight: 1.0
+      reward_weight: 1.0
 
   real_time_step: 0.05
   

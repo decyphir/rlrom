@@ -6,12 +6,13 @@ import pytest
 from rlrom.wrappers.spec_wrapper import SpecWrapper
 
 
-def _make_env(machines, debug_rm):
+def _make_env(machines, debug_rm, debug_actions=False):
     env = gym.make("CartPole-v1")
     cfg = {"cfg_specs": {
         "specs": "signal env_reward",
         "flatten_obs": False,
         "debug_rm": debug_rm,
+        "debug_actions": debug_actions,
         "reward_machines": machines,
     }}
     return SpecWrapper(env, cfg)
@@ -20,9 +21,10 @@ def _make_env(machines, debug_rm):
 def _machine(name, state_fields=None, priority=0):
     return {
         "name": name,
-        "shield_priority": priority,
+        "action_priority": priority,
         "reward_machine": {
-            "states": [dict({"id": "s0", "initial": True}, **(state_fields or {}))],
+            "states": [dict({"id": "s0", "initial": True,
+                             "actions": (state_fields or {})})],
             "transitions": [],
         },
     }
@@ -37,11 +39,12 @@ def test_debug_rm_off_prints_nothing(capsys):
 
 
 def test_debug_rm_prints_state_labels_and_transitions(capsys):
-    env = _make_env([_machine("m", {"forced": 1})], debug_rm=True)
+    env = _make_env([_machine("m", {"forced": 1})], debug_rm=True,
+                    debug_actions=True)
     env.reset()
     env.step(0)
     out = capsys.readouterr().out
-    # shield line (action 0 forced to 1)
+    # shield line (action 0 forced to 1); printed under debug_actions
     assert "shield" in out
     # machine line: state, labels, activated (no transitions -> stay)
     assert "rm 'm': state=s0" in out
@@ -58,7 +61,7 @@ def test_debug_rm_shows_activated_transition():
         "flatten_obs": False,
         "debug_rm": True,
         "obs_names": {"x": "obs[0]"},
-        "label_formulas": {"hit": None},
+        "monitor_formulas": {"hit": None},
         "reward_machines": [{
             "name": "m",
             "reward_machine": {

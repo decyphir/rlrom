@@ -28,25 +28,20 @@ obs_names:
 BigM: 10
 real_time_step: 1.0
 
-obs_formulas: # will add parameters for normalization in particular
-  car_left:
-    past_horizon: 0
-  danger:
-    past_horizon: 0
-
-
-# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
+# will add parameters for normalization in particular
+monitor_formulas:
   ego_fast:
     past_horizon: 0
-    weight: .1
+    reward_weight: .1
   danger:
     past_horizon: 0
-    weight: -25
+    reward_weight: -25
     lower_bound: 0.0
+    obs_weight: 1.0
   car_left:
     past_horizon: 0
-    weight: -25
+    reward_weight: -25
     lower_bound: 0
+    obs_weight: 1.0
 
 eval_formulas: cfg_eval.yml

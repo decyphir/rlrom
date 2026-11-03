@@ -16,12 +16,12 @@ cfg_specs:
   specs: cartpole.stl
 
   env_reward_weight: 0.5  
-  reward_formulas:
+  monitor_formulas:
     go_right:
       online: True
       past_horizon: 0
-      weight: 0.5
-      lower_bound: 0      
+      reward_weight: 0.5
+      lower_bound: 0
       
   eval_formulas:
     go_right:

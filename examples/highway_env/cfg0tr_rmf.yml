@@ -29,7 +29,7 @@ cfg_test:
     - ax:
       - ego_vx
       - env_reward
-      - obs_formulas/danger
+      - monitor_formulas/danger
       - sat(danger)
       - reward
       live: True 

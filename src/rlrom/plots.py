@@ -94,7 +94,7 @@ def get_layout_from_string(signals_layout):
 
     # then strip and split wrt commas
     # A signal name is an identifier, optionally with a 'prefix/name' part and a
-    # ':option' suffix (e.g. 'label_formulas/go_left', 'rm_reward/left_right:weighted'),
+    # ':option' suffix (e.g. 'monitor_formulas/go_left', 'rm_reward/left_right:weighted'),
     # optionally followed by a '(...)' argument list (e.g. 'rho(phi, 50)').
     sig_re = r'[A-Za-z_][A-Za-z0-9_]*(?:/[A-Za-z_][A-Za-z0-9_]*)?(?::[A-Za-z_][A-Za-z0-9_]*)?(?:\([^)]*\))?'
     for line in signals_rows:        

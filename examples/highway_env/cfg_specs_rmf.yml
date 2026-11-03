@@ -27,56 +27,52 @@ obs_names:
 
 real_time_step: 1.0
 
-obs_formulas: 
+monitor_formulas:
   car_left:
     past_horizon: 0
     semantics: bool
-  
-  ego_right_lane:
-    past_horizon: 0
-    semantics: bool
-  
+    obs_weight: 1.0
+
   danger:
     past_horizon: 0
     semantics: bool
+    obs_weight: 1.0
 
-
-
-# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
+  # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
   fa_n_da: # faut aller vite qud ya personne
     past_horizon: 0
-    weight: .5
+    reward_weight: .5
     semantics: bool
 
   ego_right_lane: # faut rester à droite
     past_horizon: 0
-    weight: .1
+    reward_weight: .1
     semantics: bool
+    obs_weight: 1.0
 
   Gda:  # faut pas coller suikedvan
     past_horizon: 5
-    weight: -1
+    reward_weight: -1
     semantics: bool
-  
+
   fa_da: # faut pas foncer vers la mort
     past_horizon: 0
-    weight: -1
+    reward_weight: -1
     semantics: bool
 
   n_fa_n_da: # faut pas traîner derrière
     past_horizon: 0
-    weight: -1
+    reward_weight: -1
     semantics: bool
 
   Gn_fa_n_da: # faut vraiment pas traîner derrière
     past_horizon: 5
-    weight: -5
+    reward_weight: -5
     semantics: bool
 
   not_right_too_long: # faut pas rester à gauche trop longtemps
     past_horizon: 10
-    weight: -1
+    reward_weight: -1
     semantics: bool
   
 eval_formulas: cfg_eval.yml

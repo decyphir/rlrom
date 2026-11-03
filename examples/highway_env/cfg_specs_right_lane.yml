@@ -28,18 +28,18 @@ obs_names:
 real_time_step: 1.0
 
 # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
+monitor_formulas:
   ego_right_lane:
     past_horizon: 0
-    weight: .25
-    semantics: bool      
+    reward_weight: .25
+    semantics: bool
   ego_fast:
     past_horizon: 0
-    weight: .5
-    semantics: bool      
+    reward_weight: .5
+    semantics: bool
   ego_moves:
     past_horizon: 0
-    weight: .25
-    semantics: bool      
+    reward_weight: .25
+    semantics: bool
 
 eval_formulas: cfg_eval.yml

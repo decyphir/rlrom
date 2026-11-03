@@ -36,14 +36,16 @@ class RewardMachine:
       * if two or more activated transitions share the same (max) priority,
         a ``ValueError`` is raised (non-determinism guard).
 
-    Config contract (compatible with existing examples, e.g. minigrid):
+    Config contract:
       states:      list of dicts: ``id`` (str), optional ``initial`` (bool),
                    optional ``final`` (bool), optional ``reward`` (default 0),
-                   optional shield fields: ``blocked`` (list of raw action
-                   values forbidden in this state), ``forced`` (raw action
-                   value taken unconditionally while in this state) and
-                   ``fallback`` (raw action value used when the agent's action
-                   is blocked and the previous action is also blocked).
+                   optional ``actions`` dict with action-shielding fields:
+                   ``enable`` (bool, default True -- when False the state
+                   imposes no action constraints), ``blocked`` (list of raw
+                   action values forbidden in this state), ``forced`` (raw
+                   action value taken unconditionally while in this state)
+                   and ``fallback`` (raw action value used when the agent's
+                   action is blocked and the previous action is also blocked).
                    Exactly one state must be ``initial``.
       transitions: list of dicts: ``from``, ``to``, ``condition`` (all single
                    strings), optional ``reward`` (default 0), optional ``priority``
@@ -68,6 +70,7 @@ class RewardMachine:
         self.state_blocked = {}
         self.state_forced = {}
         self.state_fallback = {}
+        self.state_actions_enabled = {}
         initial_states = []
         for i, s in enumerate(states):
             sid = s['id']
@@ -79,19 +82,26 @@ class RewardMachine:
             self._is_initial[sid] = bool(s.get('initial', False))
             self._is_final[sid] = bool(s.get('final', False))
             self.state_rewards[sid] = s.get('reward', 0)
-            blocked = s.get('blocked', [])
+            actions = s.get('actions', {})
+            if not isinstance(actions, dict):
+                raise ValueError(
+                    f"RewardMachine: state '{sid}' field 'actions' must be a "
+                    f"dict (enable/blocked/forced/fallback), got {actions!r}"
+                )
+            self.state_actions_enabled[sid] = bool(actions.get('enable', True))
+            blocked = actions.get('blocked', [])
             if not isinstance(blocked, (list, tuple)):
                 raise ValueError(
-                    f"RewardMachine: state '{sid}' field 'blocked' must be a list "
-                    f"of raw action values, got {blocked!r}"
+                    f"RewardMachine: state '{sid}' field 'actions.blocked' "
+                    f"must be a list of raw action values, got {blocked!r}"
                 )
             self.state_blocked[sid] = [
-                _validate_action_value(v, 'blocked', sid) for v in blocked
+                _validate_action_value(v, 'actions.blocked', sid) for v in blocked
             ]
             self.state_forced[sid] = _validate_action_value(
-                s.get('forced'), 'forced', sid)
+                actions.get('forced'), 'actions.forced', sid)
             self.state_fallback[sid] = _validate_action_value(
-                s.get('fallback'), 'fallback', sid)
+                actions.get('fallback'), 'actions.fallback', sid)
             if self._is_initial[sid]:
                 initial_states.append(sid)
 
@@ -125,7 +135,6 @@ class RewardMachine:
                 self.outgoing[entry['from']] = []
             self.outgoing[entry['from']].append(entry)
 
-        self.shield_active = cfg_rm.get('shield_active',True)
         self.reset()
 
     # ------------------------------------------------------------------ state
@@ -150,23 +159,29 @@ class RewardMachine:
     def is_final_state(self, state_id):
         return self._is_final.get(state_id, False)
 
-    # ------------------------------------------------------------- shields
-    def blocked_actions(self, state_id=None):
-        """Shield: raw action values blocked in the state (default: current).
+    # ------------------------------------------------------------- actions
+    def actions_enabled(self, state_id=None):
+        """Actions: whether the state imposes action constraints (default True,
+        set per state with ``actions.enable``)."""
+        sid = state_id if state_id is not None else self.u_in
+        return self.state_actions_enabled.get(sid, True)
+
+    def blocked(self, state_id=None):
+        """Actions: raw action values blocked in the state (default: current).
 
         The action itself is not known to this FSM; the caller (wrapper) is
-        responsible for enforcing the shield on the agent's action.
+        responsible for enforcing the constraints on the agent's action.
         """
         sid = state_id if state_id is not None else self.u_in
         return list(self.state_blocked.get(sid, ()))
 
-    def forced_action(self, state_id=None):
-        """Shield: raw action value forced in the state, or None."""
+    def forced(self, state_id=None):
+        """Actions: raw action value forced in the state, or None."""
         sid = state_id if state_id is not None else self.u_in
         return self.state_forced.get(sid)
 
-    def fallback_action(self, state_id=None):
-        """Shield: fallback raw action value for the state, or None."""
+    def fallback(self, state_id=None):
+        """Actions: fallback raw action value for the state, or None."""
         sid = state_id if state_id is not None else self.u_in
         return self.state_fallback.get(sid)
 

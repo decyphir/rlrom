@@ -21,13 +21,14 @@ cfg_specs:
     find_key_and_door:
       t0: 0
       eval_all_steps: False
-  # obs_formulas:
+  # monitor_formulas:
   #   key_is_visible:
-  #     past_horizon: 0  
-  # end_formulas:
-  #   drop_key:
-  #     past_horizon: 0  
+  #     past_horizon: 0
+  #     obs_weight: 1.0 
+  #   drop_key: # terminates the episode when true
+  #     past_horizon: 0
   #     eval_all_steps: True
+  #     terminal: True
   cfg_rm: cfg_rm.yml
 
 cfg_train:

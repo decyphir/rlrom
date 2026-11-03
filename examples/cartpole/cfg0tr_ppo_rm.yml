@@ -15,13 +15,16 @@ cfg_specs:
     theta_dot: "obs[3]"
   specs: cartpole.stl
 
-  # Label formulas: monitored each step; a label is *true* when lower_rob > 0.
-  # The set of true labels is fed to the reward machines at every step.
-  # Formula names must exist in the STL specs (cartpole.stl).
-  label_formulas:
+  # Monitor formulas: evaluated once per step. They always produce labels
+  # (a label is *true* when lower_rob > 0) which are fed to the reward
+  # machines at every step; a non-zero 'reward_weight' additionally shapes
+  # the reward. Formula names must exist in the STL specs (cartpole.stl).
+  monitor_formulas:
     cart_on_left:
       online: True
       past_horizon: 0
+      lower_bound: 0
+      reward_weight: 10
     cart_on_right:
       online: True
       past_horizon: 0
@@ -45,14 +48,7 @@ cfg_specs:
             reward: 1
             priority: 1
 
-  reward_formulas:
-    cart_on_left:
-      online: True
-      past_horizon: 0
-      weight: 10
-      lower_bound: 0
-
-  eval_formulas:
+eval_formulas:
     cart_on_left:
       online: true
       past_horizon: 0

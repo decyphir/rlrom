@@ -18,8 +18,8 @@ STL_CFG = {
         # e.g. `x[t] < -0.2` fails to parse).
         "specs": "signal x, theta, env_reward\ncart_left := x[t] < 0.5 and x[t] > 0.1",
         "obs_names": {"x": "obs[0]", "theta": "obs[2]"},
-        "reward_formulas": {
-            "cart_left": {"online": True, "past_horizon": 0, "weight": 5.0},
+        "monitor_formulas": {
+            "cart_left": {"online": True, "past_horizon": 0, "reward_weight": 5.0},
         },
         "flatten_obs": False,
     },
@@ -41,7 +41,7 @@ def test_get_signal_from_str_returns_signal(tester):
     g = T.env.get_wrapper_attr('get_signal_from_str')
     import stlrom
     for name in ('x', 'theta', 'reward', 'env_reward', 'cart_left',
-                 'sat(cart_left)', 'reward_formulas/cart_left:weighted'):
+                 'sat(cart_left)', 'monitor_formulas/cart_left:weighted'):
         S = g(name)
         assert isinstance(S, stlrom.Signal), name
         assert len(S.get_samples_list()) > 0, name

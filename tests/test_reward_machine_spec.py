@@ -18,7 +18,7 @@ RM_CFG = {
             "on_right := x[t] > 0.2\n"
         ),
         "obs_names": {"x": "obs[0]", "theta": "obs[2]"},
-        "label_formulas": {
+        "monitor_formulas": {
             "on_left": {"online": True, "past_horizon": 0},
             "on_right": {"online": True, "past_horizon": 0},
         },
@@ -58,7 +58,7 @@ def test_parses_reward_machines(rm_env):
     assert rm["weight"] == 2.0
     assert rm["machine"].state_id == "go_left"
     assert rm["machine"].is_final is False
-    assert list(env.label_formulas.keys()) == ["on_left", "on_right"]
+    assert list(env.monitor_formulas.keys()) == ["on_left", "on_right"]
 
 
 def test_reset_initializes_episode_tracking(rm_env):
@@ -68,8 +68,8 @@ def test_reset_initializes_episode_tracking(rm_env):
     assert env.episode["rm_states"] == []
     assert env.episode["rm_rewards"] == []
     # label formulas appear in res_f (namespaced by group)
-    assert "label_formulas/on_left" in env.episode["res_f"]
-    assert "label_formulas/on_right" in env.episode["res_f"]
+    assert "monitor_formulas/on_left" in env.episode["res_f"]
+    assert "monitor_formulas/on_right" in env.episode["res_f"]
 
 
 def test_step_records_labels_and_rm(rm_env):
@@ -81,7 +81,7 @@ def test_step_records_labels_and_rm(rm_env):
     assert len(env.episode["rm_rewards"]) == 1
     # labels are subsets of the declared label formulas
     for lbl in env.episode["labels"][0]:
-        assert lbl in env.label_formulas
+        assert lbl in env.monitor_formulas
     # state index is a valid state index (0 or 1)
     assert env.episode["rm_states"][0][0] in (0, 1)
 
@@ -113,7 +113,7 @@ def test_multiple_reward_machines():
         "cfg_specs": {
             "specs": "signal x, env_reward\non_left := x[t] < -0.2\n",
             "obs_names": {"x": "obs[0]"},
-            "label_formulas": {"on_left": {"online": True, "past_horizon": 0}},
+            "monitor_formulas": {"on_left": {"online": True, "past_horizon": 0}},
             "reward_machines": [
                 {"reward_machine": {"states": [{"id": "a", "initial": True}]}},
                 {"name": "second", "reward_machine": {"states": [{"id": "b", "initial": True}]}},
@@ -137,7 +137,7 @@ def test_show_reward_machines_prints(capsys, rm_env):
     out = capsys.readouterr().out
     assert "left_then_right" in out
     assert "go_left -> on_right_target if 'on_right'" in out
-    assert "Label formulas" in out
+    assert "Monitor formulas" in out
 
 
 def test_no_reward_machines_is_fine():
@@ -162,7 +162,7 @@ REWARDS_CFG = {
         "specs": "signal x, env_reward\non_left := x[t] < -0.2\non_right := x[t] > 0.2\n",
         "obs_names": {"x": "obs[0]"},
         "env_reward_weight": 1.0,
-        "label_formulas": {
+        "monitor_formulas": {
             "on_left": {"online": True, "past_horizon": 0},
             "on_right": {"online": True, "past_horizon": 0},
         },

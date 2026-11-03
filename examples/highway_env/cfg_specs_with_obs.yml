@@ -29,21 +29,21 @@ BigM: 10
 real_time_step: 1.0
 
 debug_formulas: False
-obs_formulas: 
+monitor_formulas:
   danger:
     past_horizon: 0
     semantics: bool
+    obs_weight: 1.0
 
-# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
+  # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
   ego_moves:
     past_horizon: 0
-    weight: .25
+    reward_weight: .25
     semantics: bool
 
   ego_fast:
     past_horizon: 0
-    weight: .75
+    reward_weight: .75
     semantics: bool
 
 eval_formulas: cfg_eval.yml

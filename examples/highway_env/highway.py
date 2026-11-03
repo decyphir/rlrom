@@ -29,5 +29,4 @@ def make_env_test(cfg):
         render_mode='human'
     env = gym.make("highway-v0", render_mode=render_mode)    
     env.unwrapped.configure(cfg_env)
-                    
     return env

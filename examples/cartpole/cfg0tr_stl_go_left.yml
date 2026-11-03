@@ -17,13 +17,13 @@ cfg_specs:
 
   # Reward structure
   env_reward_weight: 0.5  
-  reward_formulas:
+  monitor_formulas:
     go_left:
       online: True
       past_horizon: 0
-      weight: 0.5
+      reward_weight: 0.5
       lower_bound: 0
-      semantics: 'bool'      
+      semantics: 'bool'
  
   # Eval formulas    
   eval_formulas:

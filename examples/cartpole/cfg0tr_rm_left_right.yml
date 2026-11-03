@@ -19,7 +19,7 @@ cfg_specs:
   # Reward machines driven by the labels above.
   env_reward_weight: 0.5
   
-  label_formulas:
+  monitor_formulas:
     go_left:
       online: True
       past_horizon: 0  

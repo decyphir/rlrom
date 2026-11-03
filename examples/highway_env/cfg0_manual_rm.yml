@@ -12,9 +12,9 @@ cfg_test:
   plot:
     - title: Observations 
       ax: 
-        - ego_y
-        - rm_states/check_right
-        - rm_states/check_left
+        - car1_same_lane
+        - car2_same_lane
+        - car3_same_lane
       live: True
       live_window: 100
   

@@ -30,27 +30,25 @@ specs: hw-env_specs.stl
 #BigM: 10
 real_time_step: 1.0
 
-obs_formulas: # will add parameters for normalization in particular
+# will add parameters for normalization in particular
+monitor_formulas:
   danger:
     semantics: bool
     past_horizon: 0
-    semantics: bool      
+    obs_weight: 1.0
 
-# linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
-reward_formulas:
+  # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
   ego_right_lane:
     semantics: bool
     past_horizon: 0
-    weight: .25
-    semantics: bool      
+    reward_weight: .25
   ego_fast:
     semantics: bool
     past_horizon: 0
-    weight: .5
-    semantics: bool      
+    reward_weight: .5
   ego_moves:
     past_horizon: 0
-    weight: .25
-    semantics: bool      
+    reward_weight: .25
+    semantics: bool
   
 eval_formulas: cfg_eval.yml

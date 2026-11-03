@@ -1,10 +1,13 @@
-"""Tests for the reward-machine action shield.
+"""Tests for the reward-machine action constraints.
 
-Shield fields per state: ``blocked`` (list of raw action values forbidden in
-the state), ``forced`` (raw action value taken unconditionally in the state)
-and ``fallback`` (raw action value used when the agent's action is blocked
-and the previous action is also blocked). Between machines, ``shield_priority``
-(default 0) decides precedence; a tie on the max priority is an error.
+Per-state ``actions`` fields: ``blocked`` (list of raw action values
+forbidden in the state), ``forced`` (raw action value taken unconditionally
+in the state), ``fallback`` (raw action value used when the agent's action
+is blocked and the previous action is also blocked) and ``enable`` (default
+True; when False the state imposes no action constraints). Between sources,
+``action_priority`` (machine-level, for reward machines) and
+``actions.priority`` (for monitor formulas) -- both defaulting to 0 --
+decide precedence; a tie on the max priority is an error.
 """
 import gymnasium as gym
 import pytest
@@ -17,11 +20,12 @@ from rlrom.wrappers.spec_wrapper import SpecWrapper
 def _machine(name, state_fields=None, priority=0):
     return {
         "name": name,
-        "shield_priority": priority,
+        "action_priority": priority,
         "reward_machine": {
             # Shield lives in the INITIAL state so no labels are needed to
             # reach it (wrapper tests do not drive the FSM transitions).
-            "states": [dict({"id": "s0", "initial": True}, **(state_fields or {}))],
+            "states": [dict({"id": "s0", "initial": True,
+                             "actions": (state_fields or {})},)],
             "transitions": [],
         },
     }
@@ -40,43 +44,73 @@ def _make_env(machines):
 # ------------------------------------------------------- RewardMachine parsing
 def test_shield_fields_parsed():
     m = RewardMachine({"states": [
-        {"id": "a", "initial": True, "blocked": [1, 2], "forced": 3, "fallback": 0},
-        {"id": "b", "blocked": [1]},
+        {"id": "a", "initial": True,
+         "actions": {"blocked": [1, 2], "forced": 3, "fallback": 0}},
+        {"id": "b", "actions": {"blocked": [1]}},
     ]})
-    assert m.blocked_actions("a") == [1, 2]
-    assert m.forced_action("a") == 3
-    assert m.fallback_action("a") == 0
-    assert m.blocked_actions("b") == [1]
-    assert m.forced_action("b") is None
-    assert m.fallback_action("b") is None
+    assert m.blocked("a") == [1, 2]
+    assert m.forced("a") == 3
+    assert m.fallback("a") == 0
+    assert m.blocked("b") == [1]
+    assert m.forced("b") is None
+    assert m.fallback("b") is None
     # default to the current state
-    assert m.blocked_actions() == [1, 2]
-    assert m.forced_action() == 3
+    assert m.blocked() == [1, 2]
+    assert m.forced() == 3
 
 
 def test_shield_fields_default_absent():
     m = RewardMachine({"states": [{"id": "a", "initial": True}]})
-    assert m.blocked_actions() == []
-    assert m.forced_action() is None
-    assert m.fallback_action() is None
+    assert m.blocked() == []
+    assert m.forced() is None
+    assert m.fallback() is None
+    # actions are enabled by default
+    assert m.actions_enabled() is True
+
+
+def test_actions_enable_flag():
+    m = RewardMachine({"states": [
+        {"id": "a", "initial": True,
+         "actions": {"blocked": [1], "enable": False}},
+        {"id": "b", "actions": {"blocked": [1]}},
+    ]})
+    assert m.actions_enabled("a") is False
+    assert m.actions_enabled("b") is True
 
 
 def test_shield_field_validation():
     with pytest.raises(ValueError):
-        RewardMachine({"states": [{"id": "a", "initial": True, "forced": "left"}]})
-    with pytest.raises(ValueError):
-        RewardMachine({"states": [{"id": "a", "initial": True, "blocked": "1"}]})
+        RewardMachine({"states": [{"id": "a", "initial": True,
+                                   "actions": {"forced": "left"}}]})
     with pytest.raises(ValueError):
         RewardMachine({"states": [{"id": "a", "initial": True,
-                                   "blocked": [1, "x"]}]})
+                                   "actions": {"blocked": "1"}}]})
     with pytest.raises(ValueError):
         RewardMachine({"states": [{"id": "a", "initial": True,
-                                   "fallback": 1.5}]})
+                                   "actions": {"blocked": [1, "x"]}}]})
+    with pytest.raises(ValueError):
+        RewardMachine({"states": [{"id": "a", "initial": True,
+                                   "actions": {"fallback": 1.5}}]})
+    with pytest.raises(ValueError):
+        RewardMachine({"states": [{"id": "a", "initial": True,
+                                   "actions": [1, 2]}]})
 
 
 # ------------------------------------------------------------- shield behavior
 def test_no_shield_passthrough():
     env = _make_env([_machine("m")])
+    env.reset()
+    obs, r, term, trunc, info = env.step(1)
+    assert "shield" not in info
+
+
+def test_actions_disabled_is_passthrough():
+    env = _make_env([_machine("m", {"blocked": [0, 1], "enable": False})])
+    env.reset()
+    obs, r, term, trunc, info = env.step(1)
+    assert "shield" not in info
+    # and without a fallback, which would raise if the block were active
+    env = _make_env([_machine("m", {"blocked": [1], "enable": False})])
     env.reset()
     obs, r, term, trunc, info = env.step(1)
     assert "shield" not in info
@@ -260,3 +294,140 @@ def test_shielded_action_recorded_in_episode():
     env.reset()
     env.step(0)
     assert env.episode["actions"] == [1]
+
+
+# ------------------------------------------- monitor formula 'actions' field
+def _monitor_env(formula_name, formula_opt):
+    """Env with one monitor formula; truth only known after each env step, so
+    its actions apply from the *next* step on (like RM states)."""
+    env = gym.make("CartPole-v1")  # Discrete(2): actions 0 and 1
+    cfg = {"cfg_specs": {
+        "specs": f"signal x, env_reward\n{formula_name} := x[t] < 100.0",
+        "obs_names": {"x": "obs[0]"},
+        "monitor_formulas": {formula_name: formula_opt},
+        "flatten_obs": False,
+    }}
+    return SpecWrapper(env, cfg)
+
+
+def test_monitor_actions_parsed():
+    env = _monitor_env("hit", {"online": True,
+                               "actions": {"blocked": [1], "fallback": 0,
+                                           "priority": 3}})
+    assert env.monitor_actions == {
+        "hit": {"enable": True, "blocked": [1], "forced": None,
+                "fallback": 0, "action_priority": 3},
+    }
+    env.close()
+
+
+def test_monitor_actions_validation():
+    with pytest.raises(ValueError, match="actions"):
+        _monitor_env("hit", {"actions": [1]})
+    with pytest.raises(ValueError, match="actions.blocked"):
+        _monitor_env("hit", {"actions": {"blocked": "1"}})
+    with pytest.raises(ValueError, match="actions.forced"):
+        _monitor_env("hit", {"actions": {"forced": "left"}})
+    with pytest.raises(ValueError, match="actions.fallback"):
+        _monitor_env("hit", {"actions": {"fallback": 1.5}})
+
+
+def test_monitor_actions_forced_from_next_step():
+    env = _monitor_env("hit", {"online": True, "actions": {"forced": 1}})
+    env.reset()
+    obs, r, term, trunc, info = env.step(0)
+    assert "shield" not in info  # truth only known after this step
+    obs, r, term, trunc, info = env.step(0)
+    assert info["shield"] == {
+        "machine": "hit", "reason": "forced",
+        "original": 0, "shielded": 1,
+    }
+    env.close()
+
+
+def test_monitor_actions_blocked_uses_fallback():
+    # previous action (0) is blocked too -> the fallback must be used
+    env = _monitor_env("hit", {"online": True,
+                               "actions": {"blocked": [0, 1], "fallback": 0}})
+    env.reset()
+    env.step(0)
+    obs, r, term, trunc, info = env.step(1)
+    assert info["shield"]["reason"] == "blocked->fallback"
+    assert info["shield"]["machine"] == "hit"
+    assert info["shield"]["shielded"] == 0
+    env.close()
+
+
+def test_monitor_actions_blocked_uses_previous_action():
+    env = _monitor_env("hit", {"online": True,
+                               "actions": {"blocked": [1], "fallback": 0}})
+    env.reset()
+    env.step(0)          # previous action 0 is allowed
+    obs, r, term, trunc, info = env.step(1)
+    assert info["shield"]["reason"] == "blocked->previous"
+    assert info["shield"]["shielded"] == 0
+    env.close()
+
+
+def test_monitor_actions_no_fallback_raises():
+    # candidate and previous action are both blocked, no fallback -> error
+    env = _monitor_env("hit", {"online": True, "actions": {"blocked": [0, 1]}})
+    env.reset()
+    env.step(0)
+    with pytest.raises(ValueError, match="no 'fallback'"):
+        env.step(1)
+    env.close()
+
+
+def test_monitor_actions_enable_false_is_inactive():
+    env = _monitor_env("hit", {"online": True,
+                               "actions": {"blocked": [0, 1], "enable": False}})
+    env.reset()
+    env.step(0)
+    obs, r, term, trunc, info = env.step(1)  # would raise if active
+    assert "shield" not in info
+    env.close()
+
+
+def test_monitor_actions_off_while_formula_false():
+    # formula never true -> its actions never apply
+    env = gym.make("CartPole-v1")
+    cfg = {"cfg_specs": {
+        "specs": "signal x, env_reward\nnever := x[t] > 100.0",
+        "obs_names": {"x": "obs[0]"},
+        "monitor_formulas": {"never": {"online": True,
+                                       "actions": {"forced": 1}}},
+        "flatten_obs": False,
+    }}
+    env = SpecWrapper(env, cfg)
+    env.reset()
+    env.step(0)
+    obs, r, term, trunc, info = env.step(1)
+    assert "shield" not in info
+    assert env._active_formula_actions == []
+    env.close()
+
+
+def test_monitor_actions_combine_with_machines():
+    # formula blocks 0 (fallback 1); machine m blocks 1 (fallback 0).
+    # agent action 1: blocked by m, previous (0) blocked by formula -> m's
+    # fallback 0 is used... but 0 is blocked by the formula; fallbacks are
+    # trusted even if another source blocks them.
+    env = gym.make("CartPole-v1")
+    cfg = {"cfg_specs": {
+        "specs": "signal x, env_reward\nhit := x[t] < 100.0",
+        "obs_names": {"x": "obs[0]"},
+        "monitor_formulas": {"hit": {"online": True,
+                                     "actions": {"blocked": [0], "fallback": 1}}},
+        "reward_machines": [_machine("m", {"blocked": [1], "fallback": 0})],
+        "flatten_obs": False,
+    }}
+    env = SpecWrapper(env, cfg)
+    env.reset()
+    env.step(1)
+    obs, r, term, trunc, info = env.step(1)
+    # candidate 1 blocked by m; previous 1 blocked by m; m's fallback 0
+    assert info["shield"]["reason"] == "blocked->fallback"
+    assert info["shield"]["machine"] == "m"
+    assert info["shield"]["shielded"] == 0
+    env.close()

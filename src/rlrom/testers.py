@@ -62,10 +62,14 @@ class RLTester:
         if self.has_spec_wrapper:
             self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment            
             cfg_specs = cfg.get('cfg_specs')
-            if 'obs_formulas' in cfg_specs.keys():
-                num_obs_formulas = len(cfg_specs.get('obs_formulas'))
-            else:
-                num_obs_formulas = 0
+            # number of formulas exposed in the observation: legacy
+            # 'obs_formulas' + 'monitor_formulas' entries with a non-zero
+            # 'obs_weight'
+            num_obs_formulas = len(cfg_specs.get('obs_formulas', {}))
+            for _f_opt in cfg_specs.get('monitor_formulas',
+                                        cfg_specs.get('label_formulas', {})).values():
+                if isinstance(_f_opt, dict) and _f_opt.get('obs_weight', 0):
+                    num_obs_formulas += 1
             if num_obs_formulas==0: 
                 self.model_use_specs = True
         self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
