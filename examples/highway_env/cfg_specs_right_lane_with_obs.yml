@@ -1,5 +1,4 @@
 env_name: "highway-v0"
-specs: hw-env_specs.stl
 
 action_names:
   action: "action"
@@ -32,23 +31,23 @@ real_time_step: 1.0
 
 # will add parameters for normalization in particular
 monitor_formulas:
+
   danger:
-    semantics: bool
-    past_horizon: 0
+  #  semantics: bool
+    past_horizon: 5
     obs_weight: 1.0
 
-  # linear combination .. new_reward = reward + w1 rho1 + w2 rho2 etc
   ego_right_lane:
     semantics: bool
     past_horizon: 0
-    reward_weight: .25
+    reward_weight: .1
   ego_fast:
     semantics: bool
     past_horizon: 0
-    reward_weight: .5
+    reward_weight: .7
   ego_moves:
     past_horizon: 0
-    reward_weight: .25
+    reward_weight: .2
     semantics: bool
   
 eval_formulas: cfg_eval.yml
