@@ -7,7 +7,10 @@ is blocked and the previous action is also blocked) and ``enable`` (default
 True; when False the state imposes no action constraints). Between sources,
 ``action_priority`` (machine-level, for reward machines) and
 ``actions.priority`` (for monitor formulas) -- both defaulting to 0 --
-decide precedence; a tie on the max priority is an error.
+resolve conflicts; sources that agree (same forced action, identical
+fallbacks) never conflict at equal priority, but equal priorities that
+cannot be resolved (different forced actions, different fallbacks, or a
+force tied by a block) raise an error.
 """
 import gymnasium as gym
 import pytest
@@ -190,13 +193,27 @@ def test_forced_takes_precedence_over_blocked_at_same_machine():
 
 
 def test_shield_tie_on_max_priority_raises():
+    # same max priority, *different* forced actions -> conflict
     env = _make_env([
         _machine("a", {"forced": 0}, priority=1),
         _machine("b", {"forced": 1}, priority=1),
     ])
     env.reset()
-    with pytest.raises(ValueError, match="shield tie"):
+    with pytest.raises(ValueError, match="shield conflict"):
         env.step(0)
+
+
+def test_forced_tie_on_same_action_is_no_conflict():
+    # same max priority, *same* forced action -> no conflict
+    env = _make_env([
+        _machine("a", {"forced": 1}, priority=1),
+        _machine("b", {"forced": 1}, priority=1),
+    ])
+    env.reset()
+    obs, r, term, trunc, info = env.step(0)
+    assert info["shield"]["reason"] == "forced"
+    assert info["shield"]["shielded"] == 1
+    assert info["shield"]["machine"] == "a, b"
 
 
 # ------------------------------------------- cumulative blocking (multi-RM)
@@ -238,13 +255,39 @@ def test_fallback_conflict_resolved_by_priority():
 
 
 def test_fallback_tie_raises():
+    # same max priority, *different* fallbacks -> conflict
     env = _make_env([
         _machine("a", {"blocked": [1], "fallback": 0}, priority=2),
         _machine("b", {"blocked": [1], "fallback": 2}, priority=2),
     ])
     env.reset()
-    with pytest.raises(ValueError, match="shield tie"):
+    with pytest.raises(ValueError, match="shield conflict"):
         env.step(1)
+
+
+def test_fallback_tie_on_same_fallback_is_no_conflict():
+    # same max priority, identical fallbacks -> no conflict
+    env = _make_env([
+        _machine("a", {"blocked": [1], "fallback": 0}, priority=2),
+        _machine("b", {"blocked": [1], "fallback": 0}, priority=2),
+    ])
+    env.reset()
+    obs, r, term, trunc, info = env.step(1)
+    assert info["shield"]["reason"] == "blocked->fallback"
+    assert info["shield"]["shielded"] == 0
+    assert info["shield"]["machine"] == "a, b"
+
+
+def test_fallback_tie_none_defers_to_set():
+    # same max priority, one fallback unset: the set one is used
+    env = _make_env([
+        _machine("a", {"blocked": [1]}, priority=2),
+        _machine("b", {"blocked": [1], "fallback": 0}, priority=2),
+    ])
+    env.reset()
+    obs, r, term, trunc, info = env.step(1)
+    assert info["shield"]["reason"] == "blocked->fallback"
+    assert info["shield"]["shielded"] == 0
 
 
 def test_forced_exempt_from_lower_priority_blocker():
@@ -275,6 +318,31 @@ def test_higher_priority_blocker_overrides_forced():
         "machine": "m", "reason": "blocked->fallback",
         "original": 1, "shielded": 0,
     }
+
+
+def test_equal_priority_blocker_on_forced_raises():
+    # a forces 1 (priority 5); m blocks 1 at the *same* priority: a
+    # force/block conflict that cannot be resolved by priority
+    env = _make_env([
+        _machine("a", {"forced": 1}, priority=5),
+        _machine("m", {"blocked": [1], "fallback": 0}, priority=5),
+    ])
+    env.reset()
+    with pytest.raises(ValueError, match="shield conflict"):
+        env.step(1)
+
+
+def test_equal_priority_blocker_not_blocking_forced_is_ignored():
+    # a forces 1 (priority 5); m blocks 0 (not the forced action) at the
+    # same priority: no conflict, the force stands
+    env = _make_env([
+        _machine("a", {"forced": 1}, priority=5),
+        _machine("m", {"blocked": [0], "fallback": 0}, priority=5),
+    ])
+    env.reset()
+    obs, r, term, trunc, info = env.step(0)
+    assert info["shield"]["reason"] == "forced"
+    assert info["shield"]["shielded"] == 1
 
 
 def test_reset_clears_previous_action():
@@ -430,4 +498,42 @@ def test_monitor_actions_combine_with_machines():
     assert info["shield"]["reason"] == "blocked->fallback"
     assert info["shield"]["machine"] == "m"
     assert info["shield"]["shielded"] == 0
+    env.close()
+
+
+def test_disable_actions_disables_all_sources():
+    # machine forces 1; monitor formula forces 0 from the next step on.
+    # with disable_actions, the agent's action always passes through.
+    env = gym.make("CartPole-v1")
+    cfg = {"cfg_specs": {
+        "specs": "signal x, env_reward\nhit := x[t] < 100.0",
+        "obs_names": {"x": "obs[0]"},
+        "monitor_formulas": {"hit": {"online": True,
+                                     "actions": {"forced": 0}}},
+        "reward_machines": [_machine("m", {"forced": 1})],
+        "disable_actions": True,
+        "flatten_obs": False,
+    }}
+    env = SpecWrapper(env, cfg)
+    env.reset()
+    env.step(0)  # 'hit' becomes true; its forced action would be active now
+    obs, r, term, trunc, info = env.step(1)
+    assert "shield" not in info
+    assert env.episode["actions"][-1] == 1  # agent action, unmodified
+    env.close()
+
+
+def test_disable_actions_absent_keeps_shield():
+    # regression: without the flag, the same setup shields
+    env = gym.make("CartPole-v1")
+    cfg = {"cfg_specs": {
+        "specs": "signal env_reward",
+        "reward_machines": [_machine("m", {"forced": 1})],
+        "flatten_obs": False,
+    }}
+    env = SpecWrapper(env, cfg)
+    env.reset()
+    obs, r, term, trunc, info = env.step(0)
+    assert info["shield"]["reason"] == "forced"
+    assert info["shield"]["shielded"] == 1
     env.close()
