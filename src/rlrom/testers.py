@@ -332,6 +332,9 @@ class RLTester:
             res_all_ep = dict({'basics':{}, 'reward_formulas':dict(), 'eval_formulas':dict()})            
             res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
             res_all_ep['basics']['mean_ep_rew'] = res['ep_rew'].mean()
+            # fraction of episodes that ran the full num_steps (not terminated early)
+            num_steps = int((self.cfg.get('cfg_test') or {}).get('num_steps', 100))
+            res_all_ep['basics']['completed'] = (np.double(res['ep_len']) == num_steps).mean()
             test_result['res'] = res
                 
         test_result['res_all_ep'] = res_all_ep
@@ -360,7 +363,8 @@ class RLTester:
     def print_res_all_ep(self, test_result):
         res_all_ep = test_result['res_all_ep']
         print('mean_ep_len:', f"{res_all_ep['basics']['mean_ep_len']:.4g}", end=' | ')
-        print('mean_ep_rew:', f"{res_all_ep['basics']['mean_ep_rew']:.4g}")
+        print('mean_ep_rew:', f"{res_all_ep['basics']['mean_ep_rew']:.4g}", end=' | ')
+        print('completed:', f"{res_all_ep['basics'].get('completed', 0.0):.0%}")
         #for f_name,_ in self.env.reward_formulas.items():
         #    print(f_name+':',f"{res_all_ep['reward_formulas'][f_name]['mean_sum']:.4g}",end=' | ')      
         if self.has_spec_wrapper:

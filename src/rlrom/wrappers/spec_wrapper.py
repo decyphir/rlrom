@@ -27,6 +27,7 @@ class SpecWrapper(gym.Wrapper):
         
         gym.Wrapper.__init__(self, env)        
         self.env = env        
+        self.cfg = cfg
         
         # Parsing and adding STL formulas
         stl_driver= stlrom.STLDriver()        
@@ -149,6 +150,7 @@ class SpecWrapper(gym.Wrapper):
         self.debug_formulas= cfg_specs.get('debug_formulas',False)
         self.debug_rm= cfg_specs.get('debug_rm',False)
         self.debug_actions= cfg_specs.get('debug_actions',False)
+        self.disable_actions= cfg_specs.get('disable_actions',False)
         self.BigM = cfg_specs.get('BigM')
         self.semantics= 'Boolean'  # TODO option to change. For now Boolean is simpler to interpret rewards
         self.stl_driver = stl_driver                        
@@ -298,13 +300,17 @@ class SpecWrapper(gym.Wrapper):
         fallback) must not be blocked by any source. The priority --
         ``action_priority`` for reward machines (machine-level),
         ``actions.priority`` for monitor formulas (default 0) -- is only
-        used to resolve conflicts, and a tie on the max priority raises a
-        ValueError:
-          * two sources force different actions -> highest priority wins;
-          * a forced action is blocked by another source -> the higher
-            priority side wins (the blocker may tie the forcer);
-          * several sources block the candidate and a fallback is needed
-            -> the highest-priority blocker's ``fallback`` is used.
+        consulted when sources conflict. Sources that *agree* never
+        conflict, even at equal priority. A ValueError is raised when equal
+        priorities cannot be resolved:
+          * two sources force *different* actions at the same max priority
+            (forcing the *same* action at a tie is fine);
+          * a forced action is blocked by a source of *equal* priority
+            (a blocker of strictly higher priority wins and provides the
+            replacement; a lower-priority blocker is ignored);
+          * several equal-max-priority blockers require a fallback and
+            their ``fallback`` values differ (identical fallbacks are fine;
+            a None fallback defers to the one that is set).
         When the candidate is blocked it is replaced by the previously
         executed action (when that one is not blocked by any source), else
         by the fallback. A fallback is trusted even if another source would
@@ -314,7 +320,13 @@ class SpecWrapper(gym.Wrapper):
         through unchanged, else a dict describing the override (also surfaced
         as ``info['shield']`` in the env step info; ``info['shield']['machine']
         is the name of the machine or monitor formula that triggered it).
+
+        ``cfg_specs.disable_actions: True`` disables every action constraint
+        (machine and monitor-formula) at once: the agent's action is always
+        returned unchanged.
         """
+        if self.disable_actions:
+            return action, None
         forcers = []
         blockers = []   # (priority, name, fallback, blocked list)
         for rm in self.reward_machines:
@@ -341,48 +353,68 @@ class SpecWrapper(gym.Wrapper):
                 blockers.append(
                     (a['action_priority'], f_name, a['fallback'], a['blocked']))
 
+        def tie_hint():
+            return ("set distinct priorities ('action_priority' for "
+                    "machines, 'actions.priority' for monitor formulas)")
+
         candidate = action
         forcer = None
+        forcer_names = []
         if forcers:
             max_priority = max(f[0] for f in forcers)
             winners = [f for f in forcers if f[0] == max_priority]
-            if len(winners) > 1:
+            forced_actions = {w[2] for w in winners}
+            if len(forced_actions) > 1:
+                # a tie only conflicts when the forced actions differ
                 raise ValueError(
-                    "SpecWrapper: shield tie -- sources "
+                    "SpecWrapper: shield conflict -- sources "
                     f"{[w[1] for w in winners]} share max action priority "
-                    f"{max_priority} for a forced action; set distinct "
-                    "priorities ('action_priority' for machines, "
-                    "'actions.priority' for monitor formulas)")
+                    f"{max_priority} but force different actions "
+                    f"{sorted(forced_actions)}; {tie_hint()}")
             forcer = winners[0]
+            forcer_names = [w[1] for w in winners]
             candidate = forcer[2]
 
-        # machines that object to a given action: their blocked list contains
-        # it and they outrank (or tie) the forcer, when there is one
+        # blockers that object to a given action: their blocked list contains
+        # it and (when a forcer is in play) they strictly outrank the forcer;
+        # a blocker *tying* the forcer is a conflict, checked below
         def objectors(a):
             return [b for b in blockers
-                    if a in b[3] and (forcer is None or b[0] >= forcer[0])]
+                    if a in b[3] and (forcer is None or b[0] > forcer[0])]
 
-        reason = None
-        name = forcer[1] if forcer is not None else None
+        if forcer is not None:
+            tied = [b for b in blockers
+                    if candidate in b[3] and b[0] == forcer[0]]
+            if tied:
+                raise ValueError(
+                    "SpecWrapper: shield conflict -- forced action "
+                    f"{candidate} by {forcer_names} (priority "
+                    f"{forcer[0]}) is blocked at the same priority by "
+                    f"{[t[1] for t in tied]}; {tie_hint()}")
+
+        reason = 'forced' if forcer is not None else None
+        name = ', '.join(forcer_names) if forcer is not None else None
         obj = objectors(candidate)
         if obj:
+            max_priority = max(b[0] for b in obj)
+            winners = [b for b in obj if b[0] == max_priority]
+            name = ', '.join(w[1] for w in winners)
             prev = self._last_action
             if prev is not None and not objectors(prev):
                 candidate = prev
                 reason = 'blocked->previous'
-                name = max(obj, key=lambda b: b[0])[1]
             else:
-                max_priority = max(b[0] for b in obj)
-                winners = [b for b in obj if b[0] == max_priority]
-                if len(winners) > 1:
+                # all max-priority blockers block the candidate: their
+                # fallbacks must agree (identical or None) to not conflict
+                fallbacks = {w[2] for w in winners if w[2] is not None}
+                if len(fallbacks) > 1:
                     raise ValueError(
-                        "SpecWrapper: shield tie -- sources "
-                        f"{[w[1] for w in winners]} share max "
-                        f"action priority {max_priority} and all block "
-                        f"action {candidate}; set distinct priorities "
-                        "('action_priority' for machines, 'actions.priority' "
-                        "for monitor formulas)")
-                _p, name, fb, _bl = winners[0]
+                        "SpecWrapper: shield conflict -- sources "
+                        f"{[w[1] for w in winners]} share max action "
+                        f"priority {max_priority} and all block action "
+                        f"{candidate}, but their 'fallback' actions "
+                        f"differ {sorted(fallbacks)}; {tie_hint()}")
+                fb = fallbacks.pop() if fallbacks else None
                 if fb is None:
                     raise ValueError(
                         f"SpecWrapper: '{name}' blocks action {candidate}, but "
@@ -391,8 +423,6 @@ class SpecWrapper(gym.Wrapper):
                 candidate = fb
                 reason = 'blocked->fallback'
 
-        if reason == 'forced' or (forcer is not None and reason is None):
-            reason = 'forced'
         if candidate == action:
             return action, None
         return candidate, {
@@ -1019,8 +1049,6 @@ class SpecWrapper(gym.Wrapper):
         #  - explicit 't0' (without 'online') or 'online: False': fixed t0
         #    (default 0) -- e.g. whole-episode formulas tracked from the start.
         online = f_opt.get('online', f_opt.get('eval_all_steps'))
-        if isinstance(online, str):  # --set-params passes strings
-            online = online.lower() in ('1', 'true', 'yes')
         if online is None:
             online = t0_cfg is None
         if online:
@@ -1106,6 +1134,9 @@ class SpecWrapper(gym.Wrapper):
         res_all_ep = dict({'basics':{}, 'reward_formulas':dict(), 'eval_formulas':dict()})            
         res_all_ep['basics']['mean_ep_len'] = np.double(res['ep_len']).mean()
         res_all_ep['basics']['mean_ep_rew'] = np.double(res['ep_rew']).mean()
+        # fraction of episodes that ran the full num_steps (not terminated early)
+        num_steps = int((self.cfg.get('cfg_test') or {}).get('num_steps', 100))
+        res_all_ep['basics']['completed'] = (np.double(res['ep_len']) == num_steps).mean()
         # maybe a mean mean reward ?
         
         stl_data = episode['stl_data']            

@@ -51,6 +51,18 @@ def test_unwrapped_episode():
     assert len(ep["actions"]) == len(ep["rewards"])
     assert "basics" in Tres["res_all_ep"]
     assert Tres["res_all_ep"]["basics"]["mean_ep_len"] > 0
+    assert 0.0 <= Tres["res_all_ep"]["basics"]["completed"] <= 1.0
+
+
+def test_completed_metric():
+    """'completed' = fraction of episodes that ran the full cfg_test.num_steps
+    (here 50), i.e. did not terminate early."""
+    T = RLTester(dict(CARTPOLE_CFG))
+    tr = T.eval_episode({"rewards": [1.0] * 50}, {"cfg": {}, "episodes": []})
+    assert tr["res_all_ep"]["basics"]["completed"] == 1.0
+    # an early-terminated episode lowers the fraction
+    tr = T.eval_episode({"rewards": [1.0] * 10}, tr)
+    assert tr["res_all_ep"]["basics"]["completed"] == 0.5
 
 
 def test_spec_wrapper_step(stl_env):
@@ -74,6 +86,7 @@ def test_spec_wrapper_metrics(stl_env):
             break
     res, res_all_ep, res_rew_f, res_eval_f = env.eval_specs_episode()
     assert res["ep_len"][0] > 0
+    assert 0.0 <= res_all_ep["basics"]["completed"] <= 1.0
     assert res["ep_rew"][0] != 0  # reward shaping is active
     # per-episode per-formula metrics
     for key in ("mean", "sum", "num_sat"):

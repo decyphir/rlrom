@@ -27,29 +27,32 @@ car_same_lane := car1_same_lane or car2_same_lane or car3_same_lane
 car_too_close := car1_too_close or car2_too_close or car3_too_close
 
 mu_danger := car1_danger or car2_danger or car3_danger
-danger := ev_[0,5] (mu_danger)
+danger := ev_[0,2] (mu_danger)
 no_danger:= not danger
-
 
 # Right lane formulas
 ego_right_lane := ego_y[t] > 0.6
 not_right := not ego_right_lane
 not_right_too_long := alw_[0,10] (not_right)
-
 ego_left_lane := ego_y[t] < 0.1
+
+danger_and_right_lane := danger and ego_right_lane
+danger_and_left_lane := danger and ego_left_lane
+
 
 # There is a car on the left 
 car1_left := car1_y[t] > -.35 and car1_y[t] < -.15 and  abs(car1_x[t])  < .075 
 car2_left := car2_y[t] > -.35 and car2_y[t] < -.15 and  abs(car2_x[t]) < .075 
 car3_left := car3_y[t] > -.35 and car3_y[t] < -.15 and  abs(car3_x[t]) < .075 
-car_left := car1_left or car2_left or car3_left or ego_left_lane
+car_left := car1_left or car2_left or car3_left
+
 no_car_left := not car_left
 
 # There is a car on the left 
 car1_right := car1_y[t] > .15 and car1_y[t] < .35 and abs(car1_x[t])  < .075
 car2_right := car2_y[t] > .15 and car2_y[t] < .35 and abs(car2_x[t])  < .075
 car3_right := car3_y[t] > .15 and car3_y[t] < .35 and abs(car3_x[t])  < .075
-car_right := car1_right or car2_right or car3_right or ego_right_lane
+car_right := car1_right or car2_right or car3_right
 no_car_right := not car_right
 
 # Full episode formulas
