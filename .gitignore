@@ -1,10 +1,24 @@
+# Python
 *.pyc
+__pycache__/
+.venv/
+.pytest_cache/
 rlrom_env/
-events.out.*
-.vscode/settings.json
 *.whl
 *.tar.gz
-.ipynb*
+events.out.*
+
+# editors / tooling
+.vscode/
+
+# experiment artifacts: training checkpoints, tensorboard logs, model
+# binaries and plot outputs (data stays on disk, just not in git)
 *_training*
-examples/minigrid/test.py
-examples/minigrid/models/
+tb_logs/
+examples/*/models/*.zip
+examples/*/models/*.yml
+rlr_plot.png
+examples/*/trainings_*.png
+
+# nested dev checkout of the stlrom library (its own git repository)
+stlrom/

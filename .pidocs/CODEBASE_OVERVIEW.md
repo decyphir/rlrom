@@ -45,9 +45,11 @@ rlrom/
 └── .pidocs/              # this folder — reference docs
 ```
 
-**Ignore when exploring:** `examples/*/models/*__training*`, `examples/*/tb_logs`,
-`.venv`, `uv.lock`, `stlrom/.venv`, `stlrom/build` (huge). Trained checkpoints
-are experiment artifacts, not code.
+**Ignore when exploring:** the whole `stlrom/` checkout and `latex/*.pdf`
+(build outputs), `.venv`, `uv.lock`, and everything under
+`examples/*/models/` except sources — i.e. `*__training*/` folders,
+`*.zip`/`*.yml` model files — plus `examples/*/tb_logs`. These are experiment
+artifacts, not code, and `.gitignore` keeps new ones out of git.
 
 **Sub-projects:**
 - `stlrom/` — the STL monitoring library (C++ + pybind11). rlrom uses the
@@ -360,13 +362,14 @@ one `step()` per env step, closed at episode end):
 
 - `examples/cartpole/cfg0tr_ppo_specs.yml` + `cartpole.stl` — simplest full
   train-with-STL-reward example (CartPole, PPO, one reward formula, one eval
-  formula). Also the smoke-test config for `AGENTS.md` (`uv run rlr test ...`).
+  formula). No model is bundled, so `rlr train` it before `rlr test`.
 - `examples/cartpole/cfg0tr_rm_AB.yml` + `rm_AB.yml` — **label-formula +
   reward-machine** example (2-state FSM on CartPole left/right, drives
   `cfg_specs.reward_machines`; covered by
   `tests/test_reward_machine_spec.py`). Related: `cfg0tr_rm_left_right*.yml`,
   `cfg0tr_rm_stay_left_right.yml` (two-figure plotting example),
-  `cfg0tr_stl_go_left.yml`, `rm_stuck_left.yml`.
+  `cfg0tr_stl_go_left.yml`, `rm_stuck_left.yml`. Its model
+  (`models/rm_AB.zip`) is the one the `AGENTS.md` smoke test uses.
 - `examples/highway_env/cfg0tr.yml` + `cfg_specs.yml` (+ `cfg_env.yml`,
   `hw-env_specs.stl`, `highway.py` with custom `make_env_*`) — the single
   maintained highway config. It is the
@@ -374,7 +377,8 @@ one `step()` per env step, closed at episode end):
   (`reward_weight`), `danger` with `obs_weight` + shielding, and four
   lane/danger-conditioned constraints (three of them at `actions.priority: 1`,
   the rest defaulting to 0). `cfg0_manual.yml` + `cfg_env_manual.yml` stay for
-  keyboard control.
+  keyboard control. Model binaries are **not tracked in git** (`.gitignore`);
+  this example expects `models/right_lane.zip`, so train or fetch one.
 - `examples/minigrid/` and `minigrid/blocked_unlock_pickup/` — FSM/RM case
   study with multi-state RM, negative rewards, `TabularQLearning`.
 - `examples/simglucose/` — simglucose experiment thread (not a dependency;

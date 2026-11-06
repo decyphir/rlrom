@@ -1,4 +1,4 @@
-# LaTeX build artifacts (keep sources + PDF only)
+# LaTeX build artifacts (sources only)
 *.aux
 *.log
 *.fls
@@ -8,3 +8,4 @@
 *.blg
 *.synctex.gz
 *.toc
+*.pdf
