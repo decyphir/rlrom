@@ -1,12 +1,10 @@
 # RLRom — Code Base Overview
 
-*Generated: 2026-07 (initial analysis). Last updated: 2026-10-26 (res_f
-per-group namespacing fix, `formula`/`formula_name` alias + `formula_params`
-support, end_formulas recording fix, vestigial `obs_name` option removed).
-Previous: 2026-10-25 (STLData / stlrom 0.4.0 data-API migration + plotting
-fixes review). Update this file incrementally as the project evolves. The
-stlrom library itself is documented
-in [`STLROM_OVERVIEW.md`](STLROM_OVERVIEW.md) — read both.*
+*Reference map of the repository as it currently stands: package structure,
+wrapper pipeline, config system, canonical examples, known issues. Keep it
+current when a change alters structure, APIs or config keys — it describes
+the present state, not the history (that is what git is for). The stlrom
+library is documented in [`STLROM_OVERVIEW.md`](STLROM_OVERVIEW.md).*
 
 ## What is RLRom
 
@@ -20,6 +18,8 @@ external `stlrom` package, C++ core) to:
    enter the observation and/or reward (robustness-based reward shaping),
    and/or through a **reward machine** (a finite-state machine whose
    transition conditions are STL label formulas).
+3. **Constrain** agents: reward-machine states and monitor formulas can
+   force/block raw actions (a shield applied inside the wrapper).
 
 Language: Python ≥ 3.12, managed with `uv` (`.venv` in repo root). Package in
 `src/rlrom`, installed as `rlrom`.
@@ -40,8 +40,8 @@ rlrom/
 │   └── simglucose/       #   simglucose experiment thread (separate package, not a dep)
 ├── tests/                # maintained pytest suite (see "Test suite")
 ├── stlrom/               # SEPARATE checkout of the stlrom library (own git repo,
-│                         #   own .venv/build) — ahead of the PyPI 0.4.0 wheel
-├── stlclash/             # standalone benchmark repo (own pyproject, not a dep)
+│                         #   own .venv/build); untracked here, not a submodule
+├── latex/                # paper chapter (LaTeX sources + build artifacts)
 └── .pidocs/              # this folder — reference docs
 ```
 
@@ -50,11 +50,9 @@ rlrom/
 are experiment artifacts, not code.
 
 **Sub-projects:**
-- `stlclash/` — standalone benchmark repository (multi-objective RL + STL specs),
-  its own `pyproject.toml`, not a dependency of rlrom.
 - `stlrom/` — the STL monitoring library (C++ + pybind11). rlrom uses the
-  **PyPI 0.4.0 wheel** (via `uv.lock`), while `stlrom/` is a dev checkout of
-  the same repo that is **ahead** of that release. See
+  **PyPI 0.4.0 wheel** (via `uv.lock`); the checkout is a local dev tree whose
+  development branches are **not** used by rlrom. See
   [`STLROM_OVERVIEW.md`](STLROM_OVERVIEW.md).
 
 ## Package structure (`src/rlrom`)
@@ -67,11 +65,12 @@ are experiment artifacts, not code.
 | `rlrom_test.py` | 58 | Thin wrapper: CLI → `RLTester(cfg).run_cfg_test()`. |
 | `rlrom_plot.py` | 236 | `rlr plot` / `rlrom_plot`: plot training metrics from checkpoint `res_step_*.yml` files (`--trainings last|all|0,2,-5:-1`, repeatable `--metric/-m`, `--envelope`, `-o out`, `--log-y`, `--list-metrics`). Headless backends save `rlr_plot.png`. |
 | `rlrom_select_model.py` | 209 | `rlr select-model` / `rlrom_select_model`: pick a checkpoint by metric (`--min`, `--step`, `--show-top`, `--show-selected`), used to set the active model. |
-| `trainers.py` | 304 | `RLTrainer`: env creation (`make_env_train`, `make_vec_envs`), algorithm instantiation, SB3 `model.learn()`, checkpoints, periodic eval via `RlromCallback` (saves `model_step_*.zip` + `res_step_*.yml` per eval, tensorboard logging). |
-| `testers.py` | 440 | `RLTester`: runs episodes with a trained model (or `random`/keyboard), collects episodes, computes metrics (`eval_episode`), matplotlib episode figures via `stlrom.Signal.plot` (`get_fig`), static + live `cfg_test.plot` figures, `retest_checkpoints_models`. |
-| `wrappers/spec_wrapper.py` | 799 | **Core of the project.** `SpecWrapper(gym.Wrapper)` + `wrap_env_specs(env, cfg)` — see below. |
-| `wrappers/reward_machine.py` | 153 | `RewardMachine` (pure FSM, no gym/STL). The legacy `RewardMachineWrapper` was removed (2026-10). |
-| `utils.py` | 723 | Algorithm registry `ALGO_NAMES_CLASSES` (SB3, sbx/jax, sb3-contrib, morl-baselines, tabular Q), HuggingFace model loading, training-results polars dataframes (`get_training_folders`, `get_training_res`, `get_df_all_trainings`, `get_metric_series`, `get_selection_df`, ...), `append_to_field_array`, misc. Re-exports config helpers from `cfg_utils`. |
+| `trainers.py` | 311 | `RLTrainer`: env creation (`make_env_train`, `make_vec_envs`), algorithm instantiation, SB3 `model.learn()`, checkpoints, periodic eval via `RlromCallback` (saves `model_step_*.zip` + `res_step_*.yml` per eval, tensorboard logging). |
+| `testers.py` | 444 | `RLTester`: runs episodes with a trained model (or `random`/keyboard), collects episodes, computes metrics (`eval_episode`), matplotlib episode figures via `stlrom.Signal.plot` (`get_fig`), static + live `cfg_test.plot` figures, `retest_checkoints_models` (sic). |
+| `wrappers/spec_wrapper.py` | 1203 | **Core of the project.** `SpecWrapper(gym.Wrapper)` + `wrap_env_specs(env, cfg)` — see below. |
+| `wrappers/reward_machine.py` | 222 | `RewardMachine` (pure FSM, no gym/STL): transitions + state `actions` (shielding accessors). |
+| `wrappers/stl_wrapper.py` | 751 | **Dead code** (untracked, imported by nothing): an unused `STLWrapper` duplicating `SpecWrapper`. Candidate for deletion before it ships in the wheel. |
+| `utils.py` | 743 | Algorithm registry `ALGO_NAMES_CLASSES` (SB3, sbx/jax, sb3-contrib, morl-baselines, tabular Q), HuggingFace model loading, training-results polars dataframes (`get_training_folders`, `get_training_res`, `get_df_all_trainings`, `get_metric_series`, `get_selection_df`, ...), `append_to_field_array`, misc. Re-exports config helpers from `cfg_utils`. |
 | `plots.py` | 333 | matplotlib helpers: `LivePlot` (live-updating figures for `cfg_test.plot` items with `live: True`), legacy `RLFig`/`live_line`, `get_layout_from_string` signal-layout tokenizer, training-results plotting (`plot_training_results`, envelopes, `plot_df_*`). |
 | `extra_algos/tabular_q_learning.py` | 102 | `TabularQLearning`, tabular Q for discrete envs (MiniGrid). |
 | `cfgs/*.yml` | — | Per-gym-env default config templates (CartPole, MountainCar, highway-env, ...). |
@@ -103,25 +102,70 @@ Driven by `cfg['cfg_specs']`:
 - **`env_reward`**: the raw environment reward is sampled into the STL driver
   under the signal name `env_reward` (expression `'reward'`). The
   agent-visible/shaped reward is exposed separately as `reward` in the
-  plotting namespace only. (Renamed from `reward` in 2026-10 to disambiguate.)
-- `reward_formulas`: STL formulas added to the reward
-  (`new_reward = env_reward*env_reward_weight + Σ w_f·ρ_f(t)`).
-- `label_formulas`: STL formulas monitored each step; a label is *true* when
-  its monitored robustness lower bound > 0. True labels drive reward machines.
-- `reward_machines`: list of RM configs (`name`, `weight`, `in_observation`,
-  and `reward_machine:` sub-dict = the FSM `cfg_rm` parsed by `RewardMachine`).
-  In single-objective mode RM rewards are weighted and **summed into the
-  overall agent reward**; reaching a `final` RM state sets `terminated=True`.
-- `obs_formulas`: formulas appended to the observation (obs becomes
-  DictSpace `{unwrapped, obs_formulas, rm_states?}`).
+  plotting namespace only — `reward` is the token for the shaped value.
+- **`monitor_formulas`** — the single formula section. Each entry is evaluated
+  **once per step** and always produces a *label* for the reward machines
+  (true when its monitored lower robustness bound > 0). Extra fields turn it
+  into more than a label:
+  - `obs_weight: w` — also appended to the observation, scaled by `w`
+  - `reward_weight: w` — also added to the reward (`w·ρ`); a bare `weight`
+    is honoured too
+  - `terminal: true` — terminate the episode when the formula becomes true
+  - `actions: {enable, blocked, forced, fallback, priority}` — shielding (see
+    below)
+  - evaluation options: `online`, `t0`, `past_horizon`, `tend`, `semantics`,
+    `lower_bound`/`upper_bound`, `formula` (alias `formula_name`),
+    `formula_params`
+  Reward: `new_reward = env_reward*env_reward_weight + Σ w_f·ρ_f(t)`
+  (+ weighted RM rewards). `obs_formulas`/`reward_formulas` are still accepted
+  (deprecated, `DeprecationWarning`); declaring the same
+  formula both ways with a non-zero weight raises `ValueError`.
+  `label_formulas` is accepted as an alias of `monitor_formulas` (error if
+  both are present).
+- **`reward_machines`**: list of RM configs (`name`, `weight`,
+  `in_observation`, `action_priority`, and a `reward_machine:` — or `fsm:` —
+  sub-dict = the FSM `cfg_rm` parsed by `RewardMachine`). In single-objective
+  mode RM rewards are weighted and **summed into the overall agent reward**;
+  reaching a `final` RM state sets `terminated=True`.
 - `eval_formulas`: formulas evaluated (re)after episodes for metrics only.
-- `end_formulas`: formulas that can force `terminated=True` (`lower_rob > 0`).
 - `real_time_step` (default 1), `BigM` (default `stlrom.Signal.get_BigM()`),
-  `multi_objective` (mo-gymnasium vector reward for MORL), `env_reward_weight`
-  (default 1.0), `debug_signals`, `debug_formulas`, `flatten_obs`.
+  `multi_objective` (mo-gymnasium vector reward for MORL), `keep_old_reward`,
+  `env_reward_weight` (default 1.0), `debug_signals`, `debug_formulas`,
+  `debug_rm`, `debug_actions`, `disable_actions` (turns all shielding off),
+  `flatten_obs` (default True).
 
-**STLData integration (stlrom 0.4.0, 2026-10 migration — see
-`STLROM_OVERVIEW.md`):**
+### Shielding / action constraints
+
+Two config sites can constrain the action before it reaches the env, resolved
+by `SpecWrapper._apply_shield(action) -> (action, info)`:
+
+- a reward-machine **state**: `actions: {enable, blocked, forced, fallback}`,
+  active while the machine is in that state, with the machine-level
+  `action_priority` as its priority;
+- a **monitor formula**: the same `actions` dict, active from the **next**
+  step after the formula became true (its truth only known post-step), with
+  `actions.priority` (default 0).
+
+`forced` wins; `blocked` is cumulative across sources; a blocked action is
+replaced by the previous action (if unblocked) else by the highest-priority
+blocker's `fallback`. Priority (default 0) is only consulted on conflict, and
+*sources that agree never conflict*:
+
+- forcing the same action at a tie is fine; forcing different actions at the
+  max priority raises `ValueError`;
+- a strictly higher-priority blocker beats a forcer (and supplies the
+  replacement); a lower-priority blocker is ignored; a blocker **tying** the
+  forcer on the blocked action is an error;
+- equal-max-priority blockers must agree on `fallback` (identical, or `None`
+  deferring to the one that is set).
+
+`cfg_specs.disable_actions: True` turns every constraint off (agent action
+always passes through) — handy when comparing shielded vs. unshielded runs.
+The override is reported in `info['shield']` (`machine`/`reason`/`original`/
+`shielded`) and printed with `debug_actions`. Raw action values only (ints).
+Tests: `tests/test_shield.py` (38 cases), `tests/test_debug_rm.py`.
+
+**STLData integration (stlrom 0.4.0 — see `STLROM_OVERVIEW.md`):**
 
 - One `stlrom.STLDriver` per wrapper; `reset()` **recreates the driver**
   (stlrom has no reset API; `reset_monitor`) and sets
@@ -132,15 +176,16 @@ Driven by `cfg['cfg_specs']`:
 - `episode` dict: `observations`, `actions`, `rewards` (shaped),
   `env_rewards` (raw), `dones`, `last_obs`, `stl_data` (STLData handle),
   `labels` (true label names per step), `rm_states` (state idx per machine per
-  step), `rm_rewards` (per-machine rewards per step), `res_f` (per-step
-  robustness for obs/reward/label/end formulas; **namespaced keys** since
-  2026-10-26 — `'obs_formulas/<f>'`, `'reward_formulas/<f>'`, ... — so a
-  formula used in several groups is recorded once per step per group).
+  step), `rm_rewards` (per-machine rewards per step), `res_f` (per-step values
+  of every monitored formula, **namespaced by the section that declared it**
+  (`'monitor_formulas/<f>'`, `'obs_formulas/<f>'`, `'reward_formulas/<f>'`),
+  so a formula declared in several of the deprecated sections is recorded
+  once per group.
 - `get_ep_len()` / `get_time()` / `get_sig(name)` read `episode['stl_data']`
   via `get_signal(idx_or_name)` / `get_samples_list()`.
 - `eval_formula_cfg(f_name, f_opt)` — per-step evaluation via
   `stl_driver.get_online_rob(f, t0)` → `[estimate, lower, upper]`.
-  **Time anchoring** (changed 2026-10-25): by default the formula is
+  **Time anchoring**: by default the formula is
   evaluated at the *current time* (minus `past_horizon`) — the formula's
   value "now" — so the recorded per-step values (`res_f`: reward shaping,
   labels, obs formulas) are consistent with `rho(f)`/`rob(f)` plots (exact
@@ -149,7 +194,7 @@ Driven by `cfg['cfg_specs']`:
   / `eval_all_steps: True` state that anchoring explicitly; an explicit
   `t0` (without `online`) or `online: False` pins the evaluation to a fixed
   time (default 0) — e.g. whole-episode formulas tracked from the start
-  (`init_sat`/`init_rob` metrics). Other options: `formula` (legacy alias
+  (`init_sat`/`init_rob` metrics). Other options: `formula` (alias
   `formula_name`) — the actual STL formula to evaluate, defaulting to the
   config key, so the same formula can be configured several times with
   different options (e.g. `past_horizon` 0 vs 1 = value now vs one step
@@ -158,20 +203,21 @@ Driven by `cfg['cfg_specs']`:
   config only (applied and restored around each evaluation, since the
   driver's param map is global); `past_horizon`, `tend`, `semantics`
   (`rob`/`lower_rob`/`upper_rob`/`bool`), `lower_bound`/`upper_bound`.
-  (Before the change the default was
-  fixed `t0=0`, which made recorded values flat for state formulas and
-  inconsistent with `rho(f)` — e.g. `danger` in the highway specs.)
   Note `self.semantics = 'Boolean'` in `__init__` is a **dead string** —
   `stlrom.Signal.set_semantics` is never called, so stlrom runs in its
   default `SPACE` semantics (TODO in code).
 - `eval_specs_episode(episode, res, ...)` — per-episode metrics: `ep_len`,
   `ep_rew`, per-formula `mean`/`sum`/`num_sat` (reward formulas from `res_f`),
   eval formulas re-played step by step (offline or `eval_all_steps`),
-  aggregates in `res_all_ep` (`basics`, `reward_formulas`, `eval_formulas`
-  with `mean_rob`/`mean_sum`/`mean_num_sat`/`ratio_init_sat`/`mean_init_rob`).
+  aggregates in `res_all_ep` (`basics` — including `completed`, the fraction
+  of episodes that reached `cfg_test.num_steps` instead of terminating early;
+  `reward_formulas`; `eval_formulas` with
+  `mean_rob`/`mean_sum`/`mean_num_sat`/`ratio_init_sat`/`mean_init_rob`).
+  Caveat: the reward-formula aggregates are computed inside the
+  `if self.eval_formulas` branch, so they stay empty when no `eval_formulas`
+  is configured.
 
-**Plotting / signal access (rewritten 2026-10, STLData-compatible since
-2026-10-25):**
+**Plotting / signal access:**
 
 - `get_signal_from_str(name)` → `stlrom.Signal` for a plot token. Raw mapped
   signals (obs/actions/aux, `env_reward`) are returned **directly as the
@@ -189,8 +235,9 @@ Driven by `cfg['cfg_specs']`:
   - bare mapped signal names (`action_names`/`obs_names`/`aux_sig_names`,
     plus `env_reward`) — via `get_sig`
   - `reward` — the shaped (agent-visible) reward
-  - `obs_formulas/<f>`, `reward_formulas/<f>`, `label_formulas/<f>` — per-step
-    values from `res_f` (labels render as discrete steps)
+  - `monitor_formulas/<f>`, `obs_formulas/<f>`, `reward_formulas/<f>`,
+    `label_formulas/<f>` (alias of `monitor_formulas`) — per-step values from `res_f`
+    (labels render as discrete steps)
   - `eval_formulas/<f>` — offline robustness over the trace (`get_rob`)
   - `rm_states/<machine>` — per-step state index (discrete)
   - `rm_reward/<machine>` or bare `<machine>` — per-step RM reward
@@ -198,7 +245,8 @@ Driven by `cfg['cfg_specs']`:
     `get_rob` (offline) / satisfaction
   - bare `<f>` — recorded `res_f` values if present, else offline robustness
   - `:weighted` suffix — multiply by the configured formula or RM weight
-    (or `env_reward_weight` for the `env_reward` raw signal, which then
+    (`reward_weight` → `obs_weight` → `weight` for monitor formulas; or
+    `env_reward_weight` for the `env_reward` raw signal, which then
     returns a re-encoded scaled copy instead of the driver's Signal)
   - (`set_ep_idx(<n>)` is handled in `RLTester.get_fig`, not in the resolver.)
 
@@ -221,9 +269,14 @@ formula names raise `ValueError` (stlrom itself only prints and returns
   (default 0). Two enabled transitions sharing the max priority raise
   `ValueError`. Exposes `reset()`, `state_id`, `state_idx`, `is_final`,
   `states`, `states_idx_map`, `state_rewards`, `transitions`, `_is_initial`.
-- Config: `states` (`id`, optional `initial`/`final`/`reward`; exactly one
-  initial), `transitions` (`from`/`to`/`condition` required; `reward=0`,
-  `priority=0`, `id` default `{from}__to__{to}__if__{condition}`).
+- Config: `states` (`id`, optional `initial`/`final`/`reward`, and an
+  optional `actions` dict for shielding — `enable` (default True), `blocked`
+  (list of raw action values), `forced`, `fallback`; exactly one initial),
+  `transitions` (`from`/`to`/`condition` required; `reward=0`, `priority=0`,
+  `id` default `{from}__to__{to}__if__{condition}`).
+- Action accessors (used by the wrapper's shield): `actions_enabled()`,
+  `blocked()`, `forced()`, `fallback()` (each with an optional `state_id`).
+  Values are validated as ints by `_validate_action_value`.
 - `conditions:`/`debug_rm`/`in_observation`/`rm_id` keys in `cfg_rm` are *not*
   part of the FSM — they belong to the wrapping/STL layer.
 
@@ -266,8 +319,8 @@ cfg_test:
         - x_dot
     - title: Formulas
       ax:
-        - label_formulas/go_left
-        - [label_formulas/cart_in_A, label_formulas/stay_A]   # list form works
+        - monitor_formulas/go_left
+        - [monitor_formulas/cart_in_A, monitor_formulas/stay_A]   # list form works
 ```
 
 Signal names follow the `get_signal_from_str` grammar above (resolved by
@@ -307,22 +360,21 @@ one `step()` per env step, closed at episode end):
 
 - `examples/cartpole/cfg0tr_ppo_specs.yml` + `cartpole.stl` — simplest full
   train-with-STL-reward example (CartPole, PPO, one reward formula, one eval
-  formula). Also the smoke-test config for `.pi/AGENTS.md`
-  (`uv run rlr test ...`).
+  formula). Also the smoke-test config for `AGENTS.md` (`uv run rlr test ...`).
 - `examples/cartpole/cfg0tr_rm_AB.yml` + `rm_AB.yml` — **label-formula +
   reward-machine** example (2-state FSM on CartPole left/right, drives
   `cfg_specs.reward_machines`; covered by
   `tests/test_reward_machine_spec.py`). Related: `cfg0tr_rm_left_right*.yml`,
   `cfg0tr_rm_stay_left_right.yml` (two-figure plotting example),
   `cfg0tr_stl_go_left.yml`, `rm_stuck_left.yml`.
-- `examples/highway_env/cfg0tr.yml` (+ `cfg_specs.yml`, `hw-env_specs.stl`,
-  `highway.py` with custom `make_env_*`) — richer: obs_names expressions,
-  eval + reward formulas, custom module. `cfg_specs_multi_objective.yml`
-  exercises the (currently broken) multi-objective branch.
-- `examples/highway_env/cfg0tr_rmf.yml` + `cfg_specs_rmf.yml` — legacy
-  reward-machine example (old `cfg_rm` path). **Currently non-functional:**
-  the `RewardMachineWrapper` it relied on was removed in 2026-10; use
-  `cfg_specs.reward_machines` instead.
+- `examples/highway_env/cfg0tr.yml` + `cfg_specs.yml` (+ `cfg_env.yml`,
+  `hw-env_specs.stl`, `highway.py` with custom `make_env_*`) — the single
+  maintained highway config. It is the
+  reference for a full `monitor_formulas` setup: three reward-shaped formulas
+  (`reward_weight`), `danger` with `obs_weight` + shielding, and four
+  lane/danger-conditioned constraints (three of them at `actions.priority: 1`,
+  the rest defaulting to 0). `cfg0_manual.yml` + `cfg_env_manual.yml` stay for
+  keyboard control.
 - `examples/minigrid/` and `minigrid/blocked_unlock_pickup/` — FSM/RM case
   study with multi-state RM, negative rewards, `TabularQLearning`.
 - `examples/simglucose/` — simglucose experiment thread (not a dependency;
@@ -330,16 +382,21 @@ one `step()` per env step, closed at episode end):
 
 ## Test suite
 
-Run: `uv run pytest tests/` (fast, no models/downloads). **Status
-2026-10-25: all 116 tests pass** (the 3 `test_episode_fig.py` failures from
-the mid-migration state were fixed the same day — see Known issues A).
+Run: `uv run pytest tests/` (fast, no models/downloads). **Current status:
+all 167 tests pass (~15 s).**
 
 - `tests/test_utils.py` — `parse_signal_spec`, `get_formulas`,
   `set_rec_cfg_field`, `load_cfg` expansion on a real example cfg.
 - `tests/test_smoke.py` — fast end-to-end on CartPole with a random policy:
   unwrapped `RLTester` run, `SpecWrapper` step/metrics (asserts
-  `episode["stl_data"].get_signal(0)` sample counts — the STLData API),
-  reset/data-reuse, reward-shaping bounds.
+  `episode["stl_data"].get_signal(0)` sample counts and
+  `episode["res_f"]["monitor_formulas/<f>"]` traces), reset/data-reuse,
+  reward-shaping bounds, deprecation/conflict errors on the deprecated
+  formula sections.
+- `tests/test_shield.py` — action constraints: RM-state and monitor-formula
+  `actions`, forced/blocked/fallback, priority conflicts and ties,
+  `info['shield']`.
+- `tests/test_debug_rm.py` — `debug_rm`/`debug_actions` per-step prints.
 - `tests/test_reward_machine.py` — unit tests of the pure `RewardMachine` FSM
   (parsing, state validation, priority transitions, tie guard, state rewards).
 - `tests/test_reward_machine_spec.py` — `cfg_specs.reward_machines`
@@ -358,95 +415,54 @@ the mid-migration state were fixed the same day — see Known issues A).
 
 No CI. `load_cfg` chdir's to the cfg file's folder before running.
 
-## Known issues / caveats (2026-10-25 review)
+## Known issues / caveats
 
-**A. STLData (stlrom 0.4.0) migration — completed 2026-10-25:**
+None of these are covered by the test suite, so they can regress silently.
 
-1. ~~`get_sig` returned a `stlrom.Signal` while the resolver expected values~~
-   — **fixed**: `_resolve_signal_str` now returns a 4-tuple
-   `(values, sig_type, discrete, sig)`; raw mapped signals pass the driver's
-   `Signal` through to `get_signal_from_str` (values are extracted from the
-   samples for value-based consumers such as live plots).
-2. ~~`get_rob` used the pre-0.4.0 array API~~ — **fixed**: offline mode
-   evaluates `stl_driver.get_rob(formula, t0)` per step; online mode replays
-   the trace into a fresh `STLDriver` (one `add_sample` + `get_online_rob`
-   per step); unknown formulas raise `ValueError` (checked via
-   `get_monitor(f).formula is None`).
-3. ~~`data == []` / `stl_data == []` empty-checks never fired~~ — **fixed**:
-   `get_ep_len`/`get_time` now use `isinstance(stl_data, stlrom.STLData)`.
-4. ~~`res_f` shared one key per formula name across groups~~ — **fixed
-   2026-10-26**: `reset()`/`step()` now use namespaced keys
-   (`'obs_formulas/<f>'`, `'reward_formulas/<f>'`, ...). Before, a formula
-   present in both `obs_formulas` and `reward_formulas` (e.g. `danger` in
-   the highway specs) was appended **twice per step** to one shared list
-   — the plot of `obs_formulas/<f>` / `reward_formulas/<f>` alternated
-   between the two evaluations (with a `lower_bound` on the reward side
-   this looked like "0 every second step"). Bare plot tokens resolve via
-   `_res_f_trace` (reward group first, then obs/label/end); prefer the
-   explicit `prefix/<f>` token. `eval_specs_episode` reward metrics read
-   the namespaced key.
-5. ~~`end_formulas` recorded the last `obs_formulas` value in `res_f`~~
-   — **fixed 2026-10-26**: the end-formula loop now appends its own
-   `eval_res['lower_rob']` (the value driving the termination check),
-   like the label loop.
-6. ~~Vestigial `obs_name` option (in `obs_formulas` configs)~~ — **removed
-   2026-10-26** (code + example cfgs). It only wrote the config dict into
-   `signals_map`, which (a) hijacked bare plot tokens of obs-formula names
-   into the raw-signal branch (empty signal instead of the recorded
-   `res_f` trace) and (b) was a crash landmine: a config key/`obs_name`
-   colliding with a declared signal made `get_sample` `eval(<dict>)` →
-   `TypeError`. Obs formulas still reach the agent as the positional
-   `obs['obs_formulas']` vector; `cfg_specs.obs_names` (the signal→env
-   expression map) is unchanged.
-
-**B. Latent bugs (not exercised by the suite):**
-
-4. **`multi_objective: True` crashes in `SpecWrapper.__init__`**: it reads
-   `self.keep_old_reward`, which is never set (the cfg key `keep_old_reward`
-   is not read anywhere in the wrapper). Also, `keep_old_reward` is a
-   *documented* cfg key (used in `tests/test_smoke.py` and
-   `examples/highway_env/cfg_specs_multi_objective.yml`) but the wrapper
-   ignores it entirely — `env_reward_weight` (default 1.0) always applies.
-   The vector-reward branch also does **not** include reward-machine rewards.
-5. **Semantics are not actually Boolean**: `self.semantics = 'Boolean'` is a
+1. **`multi_objective` is inconsistent**: `reward_dim` is sized from
+   `keep_old_reward` while the returned vector includes the raw env reward iff
+   `env_reward_weight` is truthy, so the vector can differ in length from
+   `reward_space`. The vector branch also does not include reward-machine
+   rewards. No example config exercises the branch (`multi_objective` only
+   appears set to `False` in `examples/highway_env/cfg_specs.yml`).
+2. **Semantics are not actually Boolean**: `self.semantics = 'Boolean'` is a
    dead string; `stlrom.Signal.set_semantics` is never called, so stlrom runs
-   in default `SPACE` semantics (test comments claiming "Boolean semantics"
-   are stale; rewards are continuous robustness values, not ±1).
-6. **Replay "online" robustness can see the future**: `eval_specs_episode`
-   re-plays eval formulas through `eval_formula_cfg` →
-   `stl_driver.get_online_rob(f, t0)`, but the driver already holds the
-   *whole* trace, so `online`/`eval_all_steps` values at step t are computed
-   with data from after t. (The old `get_rob(online=True)` replayed samples
-   one-by-one into a fresh monitor; that path is currently broken — issue 2.)
-7. ~~**`end_formulas` records the wrong value in `res_f`**~~ — **fixed
-   2026-10-26**, see A.5 (the step loop appended the last `obs_formulas`
-   robustness `robs_f`; it now appends the end-formula's own
-   `lower_rob`).
-8. **`RLTester.eval_all_episodes` is dead/broken**: it calls
+   in its default `SPACE` semantics. Rewards are continuous robustness values,
+   not ±1, and some test comments claiming otherwise are misleading.
+3. **Replayed "online" robustness can see the future**:
+   `eval_specs_episode` re-plays eval formulas through `eval_formula_cfg` →
+   `stl_driver.get_online_rob(f, t0)`, but the driver already holds the whole
+   trace, so `online`/`eval_all_steps` values at step t use data from after t.
+   (`SpecWrapper.get_rob(online=True)` is the correct path: it replays
+   sample-by-sample into a fresh driver.)
+4. **`RLTester.eval_all_episodes` is dead/broken**: it calls
    `self.env.get_wrapper_attr('eval_episode')`, but no wrapper exposes
    `eval_episode` (SpecWrapper has `eval_specs_episode`).
-9. **`wrap_env_specs` flattens dict obs when RMs/obs formulas are present**
-   (default `flatten_obs: True`), flattening the `rm_states`/`obs_formulas`
-   dict fields away unless the user sets `flatten_obs: False`.
-10. **`episode['stl_data']` liveness relies on an undocumented pybind11
-    object-registry behavior** (same Python object returned for the driver's
-    internal STLData; shared with monitors). Works today, but a stlrom
-    rebuild/change could silently turn it into a stale snapshot.
-
-**C. Staleness / environment:**
-
-11. **Installed stlrom (PyPI 0.4.0, 2026-09-18) lags the `stlrom/` checkout**
-    (tubes refactor, `draw_tube` plotting, `STLData.inflate_signal`,
-    `samples_to_points`, new tests). Rebuild/reinstall from `stlrom/` to
-    pick those up; note the checkout's pybind also still does not expose
-    `STLData.reset_signal_data`/`is_empty`/`get_size`/`set_data_vector`.
-12. **`load_cfg` mutates cwd** (chdir to cfg dir) — global side effect.
-    `rlr show` without `--expand` bypasses `load_cfg` (raw top-level YAML,
-    nested refs shown as paths); `--subcfg KEY` selects a sub-configuration.
-13. **`testers.make_env_test`** does `sys.modules[cfg['import_module']]` —
-    assumes the module was already imported (training path imports it; pure
-    test runs may not).
-14. `SpecWrapper.seed()` is legacy gym v0 style (calls `reset(seed=...)`).
+5. **`wrap_env_specs` flattens dict observations** (`flatten_obs: True` by
+   default), which removes the `rm_states`/`obs_formulas` fields unless the
+   user sets `flatten_obs: False`.
+6. **`episode['stl_data']` liveness relies on an undocumented pybind11
+   object-registry behavior** (same Python object returned for the driver's
+   internal STLData, shared with monitors). A stlrom rebuild could silently
+   turn it into a stale snapshot.
+7. **The `stlrom/` checkout is not what rlrom runs** (that is the PyPI 0.4.0
+   wheel). Its branches carry extra APIs (tubes, `plot_tube`, ...) that rlrom
+   does not use. The pybind layer does not expose
+   `STLData.reset_signal_data`/`is_empty`/`get_size`/`set_data_vector`.
+8. **`load_cfg` mutates cwd** (chdir to the cfg's directory) — a global side
+   effect. `rlr show` without `--expand` bypasses `load_cfg` (raw top-level
+   YAML, nested refs shown as paths); `--subcfg KEY` selects a
+   sub-configuration.
+9. **`testers.make_env_test`** does `sys.modules[cfg['import_module']]` —
+   assumes the module was already imported (the training path imports it, a
+   pure test run may not).
+10. `SpecWrapper.seed()` is gym v0 style (calls `reset(seed=...)`).
+11. `--set-params k=v` stores **strings** (`ParseKwargs`), so numeric overrides
+    arrive as text; only `render_mode` has an explicit `'None'` string
+    special-case in `make_env_test`.
+12. `eval_specs_episode` computes the `res_all_ep['reward_formulas']`
+    aggregates *inside* the `if self.eval_formulas` branch — with monitor
+    formulas as rewards and no `eval_formulas`, reward aggregates are empty.
 
 ## Conventions
 
@@ -456,6 +472,6 @@ No CI. `load_cfg` chdir's to the cfg file's folder before running.
   `*_names`/`*_formulas` blocks.
 - Metric naming: `res` (per-episode, arrays) → `res_all_ep` (aggregates:
   `basics`, `reward_formulas`, `eval_formulas`).
-- Keep `.pidocs/` current: after any change that alters structure, APIs,
-  config keys, or the known-issues list, update the corresponding section in
-  the same change (see `.pi/AGENTS.md`).
+- Keep `.pidocs/` describing the current state: after any change that alters
+  structure, APIs, config keys or the known-issues list, update the
+  corresponding section in the same change (see `AGENTS.md`).

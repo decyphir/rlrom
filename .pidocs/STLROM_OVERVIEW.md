@@ -1,8 +1,9 @@
 # STLRom — Library Overview
 
-*Generated: 2026-10 (review of the `stlrom/` checkout + the stlrom 0.4.0 wheel
-installed in rlrom's `.venv`). Companion to `CODEBASE_OVERVIEW.md` — read that
-first for the rlrom side.*
+*How the `stlrom` library looks from rlrom's side. Companion to
+[`CODEBASE_OVERVIEW.md`](CODEBASE_OVERVIEW.md) — read that first for the rlrom
+side. Describes the 0.4.0 wheel installed in `.venv` (what rlrom actually
+runs).*
 
 ## What it is
 
@@ -11,23 +12,31 @@ monitoring of Signal Temporal Logic (STL)**. It parses STL specifications,
 stores sampled signals, and computes (interval) robustness — loosely following
 Deshmukh et al., "Robust online monitoring of signal temporal logic".
 
-- **Version in use: 0.4.0** (rlrom depends on `stlrom >= 0.4.0`, resolved from
-  **PyPI** in `uv.lock`, uploaded 2026-09-18; installed in `.venv`).
+- **Version in use: 0.4.0** — rlrom depends on `stlrom >= 0.4.0`, resolved
+  from **PyPI** in `uv.lock`, installed in `.venv`. This interface is treated
+  as stable and is what rlrom codes against.
 - `stlrom/` in this repo is a **separate git checkout** of the same library
-  (not a submodule, untracked by rlrom's git). It is **ahead of the PyPI
-  0.4.0 release** (post-release commits: tubes refactor, `draw_tube` plotting,
-  `inflate_signal` binding, `samples_to_points` helper, new tests). The
-  installed wheel does **not** include those newer bits (e.g. no `draw_tube`
-  kwarg in `Signal.plot`, no `STLData.inflate_signal`).
+  (not a submodule, untracked by rlrom's git), currently on branch `main` at
+  the 0.4.0 lineage. Other branches in that checkout (`rc`, `tubes`, ...) hold
+  work in progress — a `Tube` robustness-tube API, `get_rob_tube`,
+  `plot_tube`, ~15 commits ahead of `main`. **None of it is used by rlrom**;
+  do not document or rely on branch-only APIs here.
 - `stlrom/` has its own `.venv`, `uv.lock`, CMake build (`build/`).
+
+**The rlrom-critical surface** (keep these stable in mind when upgrading):
+`STLDriver.parse_string`, `add_sample`, `get_signals_names`, `get_monitor`,
+`get_online_rob`, `get_rob`, `get_rob_signal`, `get_param`/`set_param`, and the
+`STLData`/`Signal`/`Sample` accessors listed below. `get_online_rob` is the
+central one: every per-step reward/label/observation value in rlrom comes from
+it.
 
 ## Repository layout (`stlrom/`)
 
 ```
 stlrom/
 ├── include/            # C++ headers
-│   ├── stl_data.h      #   STLData (the 0.4.0 data container — see below)
-│   ├── signal.h        #   Point, Sample, Signal (piecewise-linear signal + tube)
+│   ├── stl_data.h      #   STLData (the data container — see below)
+│   ├── signal.h        #   Point, Sample, Signal (piecewise-linear signal)
 │   ├── stl_driver.h    #   STLDriver (parser + data + formula registry)
 │   ├── stl_monitor.h   #   STLMonitor (per-formula monitor)
 │   ├── transducer.h    #   transducer (compiled formula tree, holds robustness signal z)
@@ -37,15 +46,14 @@ stlrom/
 │   └── stlrom/           # Python glue package: __init__.py, signal.py,
 │                         #   stl_driver.py, signal_gen.py
 ├── test/               # C++ tests (test_driver.cpp, test_stl_data.cpp,
-│                       #   test_tubes.cpp, test_monitor.cpp, test_until.cpp,
-│                       #   test_stress.cpp, test_signal_addition.cpp),
-│                       #   Python tests (test_driver.py, test_monitor.py,
-│                       #   test_eval_rob.py, test_online_rob_t0.py, test_U.py,
-│                       #   test_until.py, test_gt/lt/abs/alw/ev/or/implies.py,
-│                       #   test_memory.py, test_resize.py, ...) and many
+│                       #   test_monitor.cpp, test_until.cpp, test_stress.cpp,
+│                       #   test_prog.cpp), Python tests (test_driver.py,
+│                       #   test_monitor.py, test_eval_rob.py, test_online_rob_t0.py,
+│                       #   test_U.py, test_until.py, test_gt/lt/abs/alw/ev/or/implies.py,
+│                       #   test_memory.py, test_SetBigM.py, ...) and many
 │                       #   exploratory notebooks (tutorial_notebook1/2.ipynb,
 │                       #   test_data_vector.ipynb, test_stl_monitor*.ipynb,
-│                       #   test_time_rob.ipynb, test_past_horizon.ipynb, ...)
+│                       #   test_time_rob.ipynb, ...)
 ├── docs/stl_grammar.md # full grammar reference for the STL dialect
 └── CMakeLists.txt      # scikit-build-core + pybind11 build
 ```
@@ -54,17 +62,16 @@ Build/install (inside `stlrom/`): needs `bison`, `flex`, a C++ toolchain;
 `uv venv && uv pip install -e .` (or `pip install -e .`). Tests: `make
 test-cpp` / `make test-python` in `build/`.
 
-## The 0.4.0 data model: `STLData` (the big change)
+## The data model: `STLData`
 
-Before 0.4.0, a driver/monitor carried a **flat array of samples** (each
-sample a `[t, v1, v2, ...]` row) that code iterated over directly. 0.4.0
-introduced the **`STLData`** class, which owns:
+A driver/monitor does not hold a flat sample array; it owns an **`STLData`**,
+which holds:
 
 - `data_vector` — `std::vector<Signal>`, one `Signal` per declared signal
   (time is *not* a signal; each `Sample` carries its own `time`);
 - `signal_map` — `dict[str, int]` signal name → index.
 
-Python-visible `STLData` API (installed 0.4.0):
+Python-visible `STLData` API:
 
 | member | meaning |
 |---|---|
@@ -74,7 +81,6 @@ Python-visible `STLData` API (installed 0.4.0):
 | `add_signal_sample(name, t, v[, d[, interp]])` | append to one signal |
 | `get_signal(idx_or_name)` | returns a `Signal` (by copy) |
 | `get_signal_idx(name)` / `get_signame_from_idx(idx)` | name ↔ index |
-| `inflate_signal(name, r)` | (newer source only, not in installed wheel) widen tube by radius r |
 
 **`STLData` is NOT iterable, has no `len()`, no `__eq__`, and no reset method
 bound.** `for s in data`, `len(data)` and `data == []` all fail or silently
@@ -107,18 +113,18 @@ driver (copy-assignment), and `stl_driver.data = []` raises `TypeError`.
 ## `Signal`
 
 Piecewise-linear, right-continuous signal = `std::deque<Sample>` where
-`Sample = (time, value, derivative)`. Plus a **tube**: `lower_signal` /
-`upper_signal` deques (interval bounds, initialized to `[-BigM, BigM]`).
+`Sample = (time, value, derivative)`. (Robustness *tubes* are a separate
+`Tube` class available only on the development branches — not in 0.4.0, not
+used by rlrom.)
 
-Python API (installed 0.4.0):
+Python API:
 
 - construction: `Signal()` only — the 2-arg `Signal(t, v)` binding is a
   placeholder that **raises**; build with `append_*` instead.
 - `append_sample(t, v[, d[, interp]])`, `append_constant_sample(t, v)`
-  (derivative 0 → step function), `append_linear_sample(t, v[, d])`,
-  `append_lower_sample(...)` / `append_upper_sample(...)` (tube).
-- `get_samples_list()` / `get_lower_list()` / `get_upper_list()` → list of
-  `Sample` (each with `.time`, `.value`, `.derivative`).
+  (derivative 0 → step function), `append_linear_sample(t, v[, d])`.
+- `get_samples_list()` → list of `Sample` (each with `.time`, `.value`,
+  `.derivative`).
 - `value_at(t)`, `resize(t0, tf)`, `empty()`, `begin_time` / `end_time`
   (read/write).
 - arithmetic: `+ - * /` between signals; `compute_not/and/or/boolean`,
@@ -170,15 +176,15 @@ Per-formula monitor: `formula` (transducer), `data` (shared `STLData`),
 `__init__.py` re-exports the C++ module and **monkey-patches** helpers onto the
 C++ classes:
 
-- `Signal.plot(label, ax, draw_samples, draw_tube*, plot_sat, legend, title,
-  draw_canvas)` — matplotlib; samples interpolated between sample times via
-  `value_at`; `plot_sat=True` overlays the Boolean satisfaction on a twin axis.
-  (`draw_tube` exists only in the newer source tree.)
+- `Signal.plot(label, ax, **kwargs)` — matplotlib (Python side); kwargs
+  `draw_samples`, `plot_sat`, `plot_rob`, `legend`, `title`, `draw_canvas`;
+  samples interpolated between sample times via `value_at`; `plot_sat=True`
+  overlays the Boolean satisfaction on a twin axis.
 - `STLDriver` / `STLMonitor` gain: `get_signal_idx`, `get_signal`,
   `get_signame_from_idx`, `plot_signal(sig, ...)`, `plot_signals(names,
   same_ax, ...)`, `plot_rob(phi, t0, tf, ...)`, `plot_sat(phi, t0, tf, ...)`.
-- `signal.py`: `samples_to_points`, `plot_rob_map(rob_map, max_depth,
-  to_plot='robustness'|'lower'|'upper', same_figure)`,
+- `signal.py`: `plot`, `plot_rob_map(rob_map, max_depth,
+  to_plot='robustness'|'lower'|'upper', ax, same_figure, title)`,
   `plot_rob_map_widget` (ipywidgets).
 - `signal_gen.py`: `SignalGen` (samples a python function into a `Signal`),
   `OscillSignalGen`, `PWCSignalGen` (piecewise-constant), `PWLSignalGen`
@@ -208,11 +214,11 @@ All in `src/rlrom/wrappers/spec_wrapper.py` (see `CODEBASE_OVERVIEW.md`):
   samples for discrete signals, linear for continuous) and uses `Signal.plot`.
 - `stlrom.Signal.get_BigM()` seeds the default `BigM` for obs-formula spaces.
 
-## Gotchas checklist (verified at runtime, installed 0.4.0)
+## Gotchas checklist (verified at runtime against the installed wheel)
 
-1. `STLData`: no iteration, no `len()`, no `==`, no bound reset → any
-   pre-0.4.0 code pattern (`for s in driver.data`, `len(driver.data)`,
-   `driver.data == []`, `monitor.data = []`) is broken.
+1. `STLData`: no iteration, no `len()`, no `==`, no bound reset — so
+   `for s in driver.data`, `len(driver.data)`, `driver.data == []` and
+   `monitor.data = []` all fail.
 2. `driver.data` / `monitor.data` are live shared handles (same Python
    object); assigning a new `STLData` into `driver.data` deep-copies.
 3. `add_sample` expects `[time, v1, ..., vn]` (time first, `n+1` elements).
@@ -224,8 +230,10 @@ All in `src/rlrom/wrappers/spec_wrapper.py` (see `CODEBASE_OVERVIEW.md`):
    if you loaded a whole trace, evaluating at an early `t0` can see the
    future. True online replay requires re-adding samples one by one to a
    fresh driver/monitor (what `SpecWrapper.get_rob(online=True)` does).
-8. Installed wheel (PyPI 0.4.0) lags the `stlrom/` checkout: no `draw_tube`,
-   no `STLData.inflate_signal`, older `signal.py`/`stl_driver.py` glue.
+8. The `stlrom/` checkout may sit on a development branch with extra APIs
+   (tubes, `plot_tube`, ...). rlrom only uses the 0.4.0 wheel surface; check
+   `git branch --show-current` in `stlrom/` before drawing conclusions from
+   that tree.
 9. **Unknown formulas do not raise**: `get_monitor(name)` prints a warning
    and returns a monitor with `formula is None`; `get_rob(name, t0)` returns
    `0.0`; `get_online_rob(name, t0)` returns `[]`. Validate with
