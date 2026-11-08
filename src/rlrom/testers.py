@@ -4,9 +4,8 @@ import itertools
 import os,sys,copy
 import time
 
+# Plotting
 import matplotlib.pyplot as plt
-
-# Plotting (?)
 
 # Gym and co
 import gymnasium as gym
@@ -62,9 +61,6 @@ class RLTester:
         if self.has_spec_wrapper:
             self.model_use_specs = cfg.get('model_use_specs', False)  # if False, model will use observation from the wrapped environment            
             cfg_specs = cfg.get('cfg_specs')
-            # number of formulas exposed in the observation: legacy
-            # 'obs_formulas' + 'monitor_formulas' entries with a non-zero
-            # 'obs_weight'
             num_obs_formulas = len(cfg_specs.get('obs_formulas', {}))
             for _f_opt in cfg_specs.get('monitor_formulas',
                                         cfg_specs.get('label_formulas', {})).values():
@@ -74,7 +70,6 @@ class RLTester:
                 self.model_use_specs = True
         self.has_rm_wrapper = cfg.get('cfg_rm', None) is not None
         
-
         self.model_action_function = None # if None, model.predict() is used; otherwise, model_action_function(model, obs) is called
         
     def load_model(self, model_file=None):
@@ -133,8 +128,7 @@ class RLTester:
         self.env = make_env_test(cfg)
 
     def run_episode(self, seed=None, num_steps=100, 
-                    init_env = True, load_model=True,
-                    step_pause=0, 
+                    init_env = True, load_model=True
                     ):
 
         if init_env:
@@ -360,7 +354,10 @@ class RLTester:
         test_result['res_eval_f_list']= res_eval_f_list
         return test_result
 
-    def print_res_all_ep(self, test_result):
+    def print_res_all_ep(self, test_result=None):
+        if test_result is None:
+            test_result=self.test_results[-1] # latest results by default
+        
         res_all_ep = test_result['res_all_ep']
         print('mean_ep_len:', f"{res_all_ep['basics']['mean_ep_len']:.4g}", end=' | ')
         print('mean_ep_rew:', f"{res_all_ep['basics']['mean_ep_rew']:.4g}", end=' | ')
