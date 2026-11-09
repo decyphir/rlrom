@@ -1,0 +1,39 @@
+# Same fetched policy as cfg0_hug.yml, now monitored against hopper.stl.
+#
+# The three action components index the raw action vector, which for Hopper is
+# normalised torque on the thigh, leg and foot joints.
+
+env_name: Hopper-v3
+model_path: huggingface
+model_name: sb3/td3-Hopper-v3
+
+import_module: rlrom.envs.mujoco
+make_env_test: make_env_test
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  action_names:
+    tau_thigh: "action[0]"
+    tau_leg: "action[1]"
+    tau_foot: "action[2]"
+  obs_names:
+    z: "obs[0]"
+    angle: "obs[1]"
+    thigh: "obs[2]"
+    leg: "obs[3]"
+    foot: "obs[4]"
+    v_x: "obs[5]"
+    v_z: "obs[6]"
+  specs: hopper.stl
+
+  eval_formulas:
+    phi_stay_alive:
+    phi_progress:
+    phi_not_saturated:
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 5
+  num_steps: 1000
+  render_mode: 'None'

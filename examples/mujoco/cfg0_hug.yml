@@ -1,0 +1,22 @@
+# Direct interface to a policy published on the Hugging Face Hub.
+#
+# `env_name` is the id the policy was published under (Gym-era -v3); the
+# rlrom.envs.mujoco factories instantiate its gymnasium port. See
+# src/rlrom/envs/mujoco.py for why the two differ.
+#
+# The TD3 checkpoint ships without observation normalisation, so it can be run
+# as-is; the PPO policies in the same org need a VecNormalize wrapper and will
+# score near zero without one.
+
+env_name: Hopper-v3
+model_path: huggingface
+model_name: sb3/td3-Hopper-v3
+
+import_module: rlrom.envs.mujoco
+make_env_test: make_env_test
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 5
+  num_steps: 1000
+  render_mode: 'None'

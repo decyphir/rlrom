@@ -1,0 +1,28 @@
+signal tau_thigh,tau_leg,tau_foot,z,angle,v_x,v_z,env_reward
+
+# Hopper locomotion. The torso is "alive" while it is upright and off the floor.
+# The environment terminates exactly when that stops holding, so phi_stay_alive
+# is the monitor's view of the same event as episode end, and its robustness
+# margin says how close the policy came to it.
+#
+# thresholds follow the environment's own termination conditions:
+# healthy_z_range = (0.7, inf), healthy_angle_range = (-0.2, 0.2)
+
+param h_min = 0.8
+param ang_max = 0.2
+
+above_floor := z[t] > h_min
+upright := abs(angle[t]) < ang_max
+alive := above_floor and upright
+phi_stay_alive := alw_[0,1000] alive
+
+# Forward progress: sustained forward velocity at some point.
+moving := v_x[t] > 1.0
+phi_progress := ev_[0,1000] moving
+
+# Torque is normalised to [-1,1] by the action space. Pinning a joint at the
+# limit for a whole episode is a coordination failure even while alive, so it
+# gets its own monitor.
+param t_force = 0.95
+saturated := abs(tau_thigh[t]) > t_force or abs(tau_leg[t]) > t_force or abs(tau_foot[t]) > t_force
+phi_not_saturated := alw_[0,1000] not saturated

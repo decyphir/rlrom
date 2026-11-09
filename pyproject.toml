@@ -49,6 +49,10 @@ morl = [
     "jax>=0.6.2 ; sys_platform == 'darwin'",
     "jax[cuda12]>=0.6.2 ; sys_platform != 'darwin'",
 ]
+mujoco = [
+    "gym>=0.26.2,<0.27.0",
+    "gymnasium[mujoco]>=1.2.0,<2.0.0",
+]
 
 [project.scripts]
 rlr = "rlrom.rlrom_run:main"
