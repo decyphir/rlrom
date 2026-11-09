@@ -4,11 +4,9 @@
 # normalised torque on the thigh, leg and foot joints.
 
 env_name: Hopper-v3
+env_id: Hopper-v4
 model_path: huggingface
 model_name: sb3/td3-Hopper-v3
-
-import_module: rlrom.envs.mujoco
-make_env_test: make_env_test
 
 cfg_specs:
   debug_formulas: False

@@ -1,12 +1,12 @@
-# Observed (random policy) run: no model, no specs. Validates the environment
-# factories alone, without touching the network or the Hub.
+# Random policy, no model and no specs: checks that the environment builds.
+# With no checkpoint to name there is nothing for env_name to label, so the
+# registered id goes there and env_id stays unset -- in which case it defaults
+# to env_name. See cfg0_hug.yml for the two-id case.
 
-env_name: Hopper-v3
-import_module: rlrom.envs.mujoco
-make_env_test: make_env_test
+env_name: Hopper-v4
 
 cfg_test:
   init_seeds: 1
   num_ep: 2
   num_steps: 50
-  render_mode: 'None'
+  render_mode: 'human'

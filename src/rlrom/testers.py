@@ -1,14 +1,13 @@
 # Generic stuff
 import numpy as np
 import itertools
-import os,sys,copy
+import os,copy
 import time
 
 # Plotting
 import matplotlib.pyplot as plt
 
 # Gym and co
-import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.wrappers import FlattenObservation
 
@@ -21,14 +20,12 @@ import rlrom.plots as rlp
 
 def make_env_test(cfg):
 
-    if 'make_env_test' in cfg:
+    custom_make_env = rlu.custom_env_factory(cfg, 'make_env_test')
+    if custom_make_env is not None:
       # recover and execute the make_env_test custom function
-      context = sys.modules[cfg['import_module']]
-      custom_make_env = getattr(context, cfg['make_env_test'])
       env = custom_make_env(cfg)      
     else:  
       # default
-      env_name = cfg.get('env_name','')                           
       cfg_test = cfg.get('cfg_test',{})
     
       if 'render_mode' in cfg_test:
@@ -37,8 +34,8 @@ def make_env_test(cfg):
             render_mode=None
       else: 
         render_mode=None
-      env = gym.make(env_name, render_mode=render_mode)
-      if env_name.lower().startswith("minigrid"):          
+      env = rlu.make_env_from_cfg(cfg, render_mode=render_mode)
+      if str(cfg.get('env_name','')).lower().startswith("minigrid"):          
         env = FlattenObservation(env) 
 
     env = wrap_env_specs(env, cfg)
@@ -87,7 +84,8 @@ class RLTester:
             if model_path=='huggingface':
                 repo_id = model_name
                 env_name = self.cfg.get('env_name')
-                model = rlu.load_model(env_name, repo_id)
+                model = rlu.load_model(env_name, repo_id,
+                                       hub_filename=self.cfg.get('model_checkpoint'))
             elif model_file is not None:
                 print("INFO: Loading model file ", model_file)
                 model= rlu.load_model(model_file)           

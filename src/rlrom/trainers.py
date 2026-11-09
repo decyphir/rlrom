@@ -1,14 +1,11 @@
 # Generic stuff
 import numpy as np
 import os
-import sys
-import importlib
 import copy #for deep copy of dicts (*not* default !)
 import datetime
 #import functools
 
 # Gym and sb3 stuff
-import gymnasium as gym
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecMonitor
@@ -24,20 +21,14 @@ from rlrom.utils import policy_cfg2kargs
 from rlrom.wrappers.spec_wrapper import wrap_env_specs
 
 def make_env_train(cfg):
-        
-    if 'make_env_train' in cfg:
+
+    custom_make_env = rlu.custom_env_factory(cfg, 'make_env_train')
+    if custom_make_env is not None:
       # recover and execute the make_env_train custom function      
-      to_import = cfg.get('import_module')                
-      sys.path.append('')
-      if to_import is not None: #TODO better exception handling ?
-        imported = importlib.import_module(to_import)
-        print(f'Imported module {to_import}')      
-        custom_make_env = getattr(imported, cfg['make_env_train'])        
-        env = custom_make_env(cfg)      
+      env = custom_make_env(cfg)      
     else:  
       # default
-      env_name = cfg.get('env_name','')                           
-      env = gym.make(env_name, render_mode=None)
+      env = rlu.make_env_from_cfg(cfg, render_mode=None)
               
     env = wrap_env_specs(env, cfg)
             

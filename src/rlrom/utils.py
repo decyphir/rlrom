@@ -7,6 +7,7 @@ from huggingface_sb3.naming_schemes import EnvironmentName, ModelName, ModelRepo
 import re
 import os, sys, glob, shutil
 import numpy as np
+import gymnasium as gym
 from tensorboard.backend.event_processing import event_accumulator
 import importlib
 from datetime import datetime, date
@@ -196,6 +197,75 @@ def get_model_fullpath(cfg):
     
     return full_path, cfg_full_path
 
+def _registered_ids_for(env_id):
+    """Best-effort list of registered ids in the same family as ``env_id``.
+
+    The registry only holds what has already been imported in this process, so
+    this is a hint for error messages, never a decision.
+    """
+    family = env_id.rsplit('-', 1)[0]
+    return sorted(i for i in gym.registry if i.rsplit('-', 1)[0] == family)
+
+
+def make_env_from_cfg(cfg, render_mode=None):
+    """Instantiate the environment a config describes.
+
+    Two keys name it, and they are allowed to disagree:
+
+    * ``env_id`` is what gymnasium builds, so it has to be an id gymnasium
+      registers (``Hopper-v4``);
+    * ``env_name`` is the name the policy was published under and is what
+      checkpoint lookup uses, so it may name a version gymnasium has dropped
+      (``Hopper-v3``). It doubles as the default for ``env_id``.
+
+    ``env_kwargs`` is forwarded to ``gym.make``.
+    """
+    env_id = cfg.get('env_id') or cfg.get('env_name') or ''
+    if not env_id:
+        raise ValueError("cfg has neither 'env_id' nor 'env_name': "
+                         "no environment to build")
+    kwargs = dict(cfg.get('env_kwargs') or {})
+    try:
+        return gym.make(env_id, render_mode=render_mode, **kwargs)
+    except (gym.error.Error, ImportError) as e:
+        # the informative case: a config that names a version gymnasium has
+        # moved or dropped, e.g. an old Hub checkpoint's env_name
+        same_family = _registered_ids_for(env_id)
+        hint = (f"registered ids of the same family: {', '.join(same_family)}"
+                if same_family else
+                f"no registered id looks like '{env_id}'")
+        raise ValueError(
+            f"gymnasium cannot build '{env_id}': {e}\n"
+            f"  {hint}. Set 'env_id' to the version to instantiate; "
+            f"'env_name' keeps the name the policy was published under.") from e
+
+
+def custom_env_factory(cfg, key):
+    """The env factory a config asks for, or None for rlrom's default.
+
+    ``key`` is ``make_env_train`` or ``make_env_test``. The function is named by
+    ``cfg[key]`` and lives in ``cfg['import_module']``; when only
+    ``import_module`` is given, the module's function of that same name is used,
+    so a config needs one line rather than two. A module imported purely for its
+    side effect -- registering an env class, say -- defines no factory and falls
+    back to the default.
+    """
+    module_name = cfg.get('import_module')
+    func_name = cfg.get(key)
+    if func_name is None and module_name is None:
+        return None
+    if module_name is None:
+        raise ValueError(f"cfg sets '{key}' but no 'import_module' to find it in")
+    module = sys.modules.get(module_name) or importlib.import_module(module_name)
+    if func_name is None:
+        return getattr(module, key, None)
+    func = getattr(module, func_name, None)
+    if func is None:
+        raise ValueError(f"module '{module_name}' has no attribute "
+                         f"'{func_name}' (named by cfg key '{key}')")
+    return func
+
+
 def find_model(env_name):
     return find_huggingface_models(env_name)
 
@@ -213,7 +283,7 @@ def find_huggingface_models(env_name, repo_contains='', algo=''):
    
     return models, [model.modelId for model in models]
 
-def load_model(env_name, repo_id=None, filename=None):
+def load_model(env_name, repo_id=None, filename=None, hub_filename=None):
 
     if repo_id is None and filename is None:
         filename=env_name
@@ -237,7 +307,9 @@ def load_model(env_name, repo_id=None, filename=None):
             print("File not found",filename)            
 
     if repo_id is not None:
-        model = load_rl_model(env_name, repo_id, filename=filename,
+        model = load_rl_model(env_name, repo_id,
+                              filename=hub_filename if hub_filename is not None
+                              else filename,
                               custom_objects={
                                 "learning_rate": 0.0,
                                 "lr_schedule": lambda _: 0.0,
