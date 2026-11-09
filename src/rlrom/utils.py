@@ -1,4 +1,5 @@
 from stable_baselines3 import PPO,A2C,SAC,TD3,DQN,DDPG
+from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from rlrom.extra_algos.tabular_q_learning import TabularQLearning
 from sb3_contrib import TRPO, QRDQN, CrossQ
 from huggingface_hub import HfApi
@@ -462,6 +463,29 @@ def policy_cfg2kargs(cfg_policy):
       cfg_policy['activation_fn']= act_fn[cfg_policy['activation_fn']]
   
   return cfg_policy
+
+def action_noise_from_cfg(cfg_noise, n_actions):
+  """Build an SB3 action-noise object from a config value.
+
+  ``None``/``False`` means no noise. A dict is
+  ``{type: normal|ornstein_uhlenbeck, mean: 0.0, sigma: 0.1}``, sized to the
+  action dimension here because the configs cannot know it. SB3 leaves
+  ``action_noise`` off by default while several published Hopper TD3/SAC
+  configurations rely on it, so it has to be reachable from YAML.
+  """
+  if cfg_noise is None or cfg_noise is False:
+    return None
+  if not isinstance(cfg_noise, dict):
+    raise ValueError(f"action_noise must be a dict or None, got {cfg_noise!r}")
+  kind = str(cfg_noise.get('type', 'normal')).lower()
+  mean = np.full(n_actions, float(cfg_noise.get('mean', 0.0)))
+  sigma = np.full(n_actions, float(cfg_noise.get('sigma', 0.1)))
+  if kind == 'normal':
+    return NormalActionNoise(mean=mean, sigma=sigma)
+  if kind in ('ornstein_uhlenbeck', 'ou'):
+    return OrnsteinUhlenbeckActionNoise(mean=mean, sigma=sigma)
+  raise ValueError(f"unknown action_noise type '{kind}': use 'normal' or "
+                   f"'ornstein_uhlenbeck'")
 
 def list_training_folders(cfg):
     cfg= load_cfg(cfg)

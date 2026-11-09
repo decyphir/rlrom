@@ -17,6 +17,6 @@ model_name: sb3/td3-Hopper-v3
 
 cfg_test:
   init_seeds: 0
-  num_ep: 5
+  num_ep: 1
   num_steps: 1000
   render_mode: 'human'

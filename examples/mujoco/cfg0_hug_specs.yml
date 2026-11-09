@@ -32,6 +32,12 @@ cfg_specs:
 
 cfg_test:
   init_seeds: 0
-  num_ep: 5
+  num_ep: 1
   num_steps: 1000
   render_mode: 'None'
+  plot: 
+    - ax:
+      - z 
+      - v_x
+      - v_z
+      - env_reward

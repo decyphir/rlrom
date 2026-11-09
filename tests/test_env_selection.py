@@ -102,3 +102,13 @@ def test_named_factory_must_exist():
 def test_named_factory_without_import_module_raises():
     with pytest.raises(ValueError, match="no 'import_module'"):
         rlu.custom_env_factory({'make_env_test': 'make_env_test'}, 'make_env_test')
+
+
+def test_action_noise_from_cfg():
+    from stable_baselines3.common.noise import NormalActionNoise
+    noise = rlu.action_noise_from_cfg({'type': 'normal', 'sigma': 0.2}, 3)
+    assert isinstance(noise, NormalActionNoise)
+    assert noise._sigma.shape == (3,)
+    assert rlu.action_noise_from_cfg(None, 3) is None  # SD3 default off
+    with pytest.raises(ValueError, match='unknown action_noise type'):
+        rlu.action_noise_from_cfg({'type': 'cauchy'}, 3)

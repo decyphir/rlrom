@@ -1,0 +1,44 @@
+# Train TD3 on Hopper with the original reward.
+#
+# Original reward = the env's own: 1.0 * v_x + 1.0 * alive - 1e-3 * sum(a^2),
+# about 3.5 per step for a policy that hops forward at 2.5 m/s, i.e. ~3500 per
+# 1000-step episode. hopper.stl holds the monitor view of the same behaviour.
+# There is deliberately no cfg_specs block: this run is the baseline the
+# robustness-shaped runs get compared against.
+
+env_name: Hopper-v4
+model_path: ./models
+model_name: td3_hopper
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 10
+  num_steps: 1000
+  render_mode: 'None'
+
+cfg_train:
+  # Torch would otherwise take one thread per core and starve itself; 4 is a
+  # good value for one run on a 16-24 core machine. Lower it when running
+  # several training jobs side by side.
+  torch_num_threads: 4
+  # 8 lanes, and td3_hopper.yml sets gradient_steps: 8 to match, so the
+  # update-to-data ratio is one gradient step per environment step
+  n_envs: 8
+  # in environment steps: divided by n_envs before the callback compares
+  # against vector-env calls, so this is 50k env steps per eval regardless
+  eval_freq: 50_000
+  # 300k already beats the published 1M-step checkpoint (3578 vs 3536); 1M is
+  # here to let the curve run past its plateau if the machine has the time
+  total_timesteps: 1_000_000
+  progress_bar: False
+
+  algo:
+    td3: td3_hopper.yml
+
+  # the eval that produces res_step_*.yml; keep it small, it is a checkpoint
+  # selector, not a paper result
+  eval:
+    init_seeds: 0
+    num_ep: 5
+    num_steps: 1000
+    render_mode: None

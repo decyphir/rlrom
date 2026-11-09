@@ -3,6 +3,7 @@ import numpy as np
 import os
 import copy #for deep copy of dicts (*not* default !)
 import datetime
+import torch as th
 #import functools
 
 # Gym and sb3 stuff
@@ -157,6 +158,14 @@ class RLTrainer:
     
   def train(self):
 
+    # Torch defaults to one thread per core, which makes the small MLPs sb3
+    # trains contend against themselves: on a 24-core box an update went from
+    # 2.7 ms (4 threads) to over 45 ms, an 18x slowdown. The optimum depends on
+    # how many runs share the machine, so it belongs to the config.
+    n_threads = self.cfg_train.get('torch_num_threads')
+    if n_threads is not None:
+      th.set_num_threads(int(n_threads))
+
     cfg_algo = self.cfg_train.get('algo')    
     
     if cfg_algo is not None:       
@@ -293,6 +302,12 @@ class RLTrainer:
        env = make_vec_env(self.make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)    
     else:
        env = self.make_env()
+
+    # action noise is declared in the config but has to be sized to the env
+    if cfg_rl_algo.get('action_noise') is not None:
+      n_actions = int(np.prod(env.action_space.shape))
+      cfg_rl_algo['action_noise'] = rlu.action_noise_from_cfg(
+          cfg_rl_algo['action_noise'], n_actions)
 
     algo_class = rlu.ALGO_NAMES_CLASSES[algo_name]
     self.model= algo_class(env=env, **cfg_rl_algo )

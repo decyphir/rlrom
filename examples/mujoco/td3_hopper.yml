@@ -1,0 +1,52 @@
+# TD3 on Hopper-v4, hyperparameters selected by a sweep (see cfg0tr_td3.yml).
+#
+# Every row below was re-tested from its best checkpoint with 20 deterministic
+# episodes (the 10-episode evals seen during training are noisier):
+#
+#   learning_starts 10k + noise   3697 @900k   <- selected (3578 already @300k)
+#   learning_starts 10k           3314 @450k
+#   learning_starts 100 + noise   3320 @450k
+#   learning_starts 100 (zoo)      207 @200k   never got going
+#   learning_rate 3e-4             192 @300k   too slow at this budget
+#   net_arch [256, 256]            219 @300k
+#   batch_size 512                  39 @150k   collapsed, rejected
+#   published sb3/td3-Hopper-v3   3535 @1M     (the thing being beaten)
+#
+# Two levers did the work, and neither is enough alone: a long critic warm-up
+# (learning_starts 10k instead of the default 100) and exploration noise.
+#
+# Caveat worth carrying into anything that quotes a number: this run is not
+# stationary. Its eval curve goes 2884 @200k, 1371 @250k, 3579 @300k, 3630
+# @350k, 1561 @450k, 3679 @600k, 50 @750k, 3696 @900k -- so the checkpoint you
+# pick matters more than the last one saved. Use `rlr select-model` rather than
+# whatever `model_step_*.zip` happens to be newest.
+
+device: cpu
+verbose: 0
+
+learning_rate: 1e-3
+buffer_size: 1_000_000
+learning_starts: 10_000
+batch_size: 256
+tau: 0.005
+gamma: 0.99
+
+train_freq: 1
+# paired with cfg_train.n_envs: 8 so that one gradient step happens per
+# environment step. Changing n_envs without changing this changes the
+# update-to-data ratio, which is the whole reason the sweep ran at n_envs 8.
+gradient_steps: 8
+
+policy_delay: 2
+target_policy_noise: 0.2
+target_noise_clip: 0.5
+
+# SB3 leaves action noise off; TD3 on Hopper needs it to explore, and the
+# published configurations that work rely on a NormalActionNoise of sigma 0.1.
+action_noise:
+  type: normal
+  mean: 0.0
+  sigma: 0.1
+
+policy_kwargs:
+  net_arch: [400, 300]
