@@ -357,6 +357,12 @@ class SpecWrapper(gym.Wrapper):
             return ("set distinct priorities ('action_priority' for "
                     "machines, 'actions.priority' for monitor formulas)")
 
+        # nothing enforces anything: the action goes through untouched. Bailing
+        # out here also keeps the identity check below off the common path for
+        # multi-dimensional action spaces, where it is an array comparison.
+        if not forcers and not blockers:
+            return action, None
+
         candidate = action
         forcer = None
         forcer_names = []
@@ -423,7 +429,7 @@ class SpecWrapper(gym.Wrapper):
                 candidate = fb
                 reason = 'blocked->fallback'
 
-        if candidate == action:
+        if np.array_equal(candidate, action):
             return action, None
         return candidate, {
             'machine': name, 'reason': reason,
