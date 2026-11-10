@@ -1,0 +1,28 @@
+signal z,angle,v_x,env_reward
+
+# Two behaviours on the same plant. The point of the file: the environment pays
+# for forward velocity, so no reward knob makes this plant jump upward in place
+# (forward_reward_weight can be zeroed or negated, but there is no height term).
+# The specification below supplies the missing objective, and
+# cfg0tr_td3_jump.yml turns it into the reward.
+#
+# Thresholds calibrated from the baseline policy (fin_starts10k_noise @900k):
+# standing height at reset is 1.248, its hopping z ranges 1.12-1.69 (p50 1.425),
+# and it satisfies |v_x| < 0.3 only 1% of the time while travelling at 2.71 m/s
+# on average. So z > 1.50 alone is not a different task -- the conjunction with
+# "not travelling" is.
+
+param h_min = 0.8
+param ang_max = 0.2
+param z_jump = 1.50
+param v_eps = 0.3
+
+# safety: the same thresholds the environment itself terminates on
+alive := (z[t] > h_min) and (abs(angle[t]) < ang_max)
+phi_alive := alw_[0,1000] alive
+
+# liveness: be above standing height while not moving forward
+jumping := z[t] > z_jump
+staying := abs(v_x[t]) < v_eps
+in_place_jump := jumping and staying
+phi_jump := ev_[0,50] in_place_jump

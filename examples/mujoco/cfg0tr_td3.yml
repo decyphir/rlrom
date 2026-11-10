@@ -39,6 +39,6 @@ cfg_train:
   # selector, not a paper result
   eval:
     init_seeds: 0
-    num_ep: 5
+    num_ep: 10
     num_steps: 1000
     render_mode: None

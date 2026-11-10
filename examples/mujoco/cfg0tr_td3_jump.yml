@@ -1,0 +1,66 @@
+# Jump in place: the specification defines the task and the environment reward is
+# switched off (env_reward_weight: 0), so nothing pays for forward velocity.
+# Reward per step = 20 * robustness(phi_alive) + 10 * robustness(phi_jump).
+#
+# The 20 is not cosmetic. Robustness is negative while a formula is violated, so
+# an unmet liveness term is a per-step *penalty* that grows with the distance to
+# the goal: standing still (z ~ 1.25, goal 1.50) costs -0.25/step, x10 = -2.5.
+# The safety term caps at +0.2 (the angle bound dominates), so with weight 1 it
+# paid +0.2 against a -2.5 cost -- and the optimal policy was to fall over and
+# end the episode early, which is exactly what the first attempt learned (6-step
+# episodes, -14.8 return). Weights 20/10 survive, 5/10 still choose suicide:
+# the survival bonus has to dominate the unmet-liveness penalty for the shaping
+# to be a reward rather than a reason to quit.
+#
+# Compare on task metrics (mean z, mean |v_x|, time above the jump height while
+# not travelling), not on return: these rewards are in robustness units.
+#
+# Compare this run against cfg0tr_td3.yml on task metrics (mean z, mean |v_x|,
+# time spent above the jump height without travelling), not on return: the two
+# rewards are in different units and their sums are not comparable.
+
+env_name: Hopper-v4
+model_path: ./models
+model_name: td3_hopper_jump
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  env_reward_weight: 0
+  obs_names:
+    z: "obs[0]"
+    angle: "obs[1]"
+    v_x: "obs[5]"
+  specs: hopper_jump.stl
+
+  monitor_formulas:
+    phi_alive:
+      reward_weight: 20
+    phi_jump:
+      reward_weight: 10
+
+  eval_formulas:
+    phi_alive:
+    phi_jump:
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 10
+  num_steps: 1000
+  render_mode: 'None'
+
+cfg_train:
+  torch_num_threads: 4
+  n_envs: 8
+  eval_freq: 50_000
+  total_timesteps: 300_000
+  progress_bar: False
+
+  algo:
+    td3: td3_hopper.yml
+
+  eval:
+    init_seeds: 0
+    num_ep: 5
+    num_steps: 1000
+    render_mode: None

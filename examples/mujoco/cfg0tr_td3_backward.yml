@@ -1,0 +1,38 @@
+# Same plant, reversed task: the environment's own reward with the forward term
+# negated, so it pays for travelling in -x.
+#
+#   reward = -1.0 * v_x + 1.0 * alive - 1e-3 * sum(a^2)
+#
+# Nothing else changes, which makes this the cleanest task variant in the set:
+# the specification-playing happens through env_kwargs, not through new code.
+# Expect a return of the same magnitude as the forward baseline (~3500) if the
+# policy is symmetric; the return alone does not prove the direction, so check
+# x displacement or mean v_x when reporting.
+
+env_name: Hopper-v4
+env_kwargs:
+  forward_reward_weight: -1.0
+model_path: ./models
+model_name: td3_hopper_backward
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 10
+  num_steps: 1000
+  render_mode: 'None'
+
+cfg_train:
+  torch_num_threads: 4
+  n_envs: 8
+  eval_freq: 50_000
+  total_timesteps: 300_000
+  progress_bar: False
+
+  algo:
+    td3: td3_hopper.yml
+
+  eval:
+    init_seeds: 0
+    num_ep: 5
+    num_steps: 1000
+    render_mode: None
