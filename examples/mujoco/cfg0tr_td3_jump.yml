@@ -34,13 +34,23 @@ cfg_specs:
   specs: hopper_jump.stl
 
   monitor_formulas:
-    phi_alive:
-      reward_weight: 20
-    phi_jump:
-      reward_weight: 10
-
-  eval_formulas:
-    phi_alive:
+    staying:
+      semantics: bool
+      past_horizon: 10
+      reward_weight: .2
+    alive: 
+      semantics: bool
+      reward_weight: .1
+    jumping:      
+      semantics: bool
+      reward_weight: .7
+  
+  eval_formulas:    
+    jumping: 
+      eval_all_steps: True    
+    staying: 
+      eval_all_steps: True
+      past_horizon: 10
     phi_jump:
 
 cfg_test:
@@ -48,19 +58,25 @@ cfg_test:
   num_ep: 10
   num_steps: 1000
   render_mode: 'None'
-
+  plot:
+    - ax: 
+      - z
+      - v_x
+      - reward_formulas/staying
+      - reward_formulas/jumping
+      - reward
 cfg_train:
   torch_num_threads: 4
   n_envs: 8
-  eval_freq: 50_000
+  eval_freq: 20_000
   total_timesteps: 300_000
-  progress_bar: False
+  progress_bar: True
 
   algo:
     td3: td3_hopper.yml
 
   eval:
     init_seeds: 0
-    num_ep: 5
+    num_ep: 10
     num_steps: 1000
     render_mode: None
