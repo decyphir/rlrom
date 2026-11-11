@@ -18,6 +18,7 @@ phi_stay_alive := alw_[0,1000] alive
 
 # Forward progress: sustained forward velocity at some point.
 moving := v_x[t] > 1.0
+moving_back := v_x[t] < 0.5
 phi_progress := ev_[0,1000] moving
 
 # Torque is normalised to [-1,1] by the action space. Pinning a joint at the

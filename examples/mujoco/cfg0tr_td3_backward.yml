@@ -1,19 +1,41 @@
-# Reversed task: the environment's own reward with the forward term
-# negated, so it pays for travelling in -x.
-#
-#   reward = -1.0 * v_x + 1.0 * alive - 1e-3 * sum(a^2)
-
 env_name: Hopper-v4
-env_kwargs:
-  forward_reward_weight: -1.0
 model_path: ./models
 model_name: td3_hopper_backward
+
+
+cfg_specs:
+  debug_formulas: False
+  debug_signals: False
+  env_reward_weight: 0
+  obs_names:
+    z: "obs[0]"
+    angle: "obs[1]"
+    v_x: "obs[5]"
+  specs: hopper_jump.stl
+
+  monitor_formulas:
+    alive: 
+      semantics: bool
+      reward_weight: .3
+    moving_back:      
+      semantics: bool
+      reward_weight: .7
+  
+  eval_formulas:    
+    moving_back:
+      eval_all_steps: True
+    phi_moving_back:
+
 
 cfg_test:
   init_seeds: 0
   num_ep: 10
   num_steps: 1000
   render_mode: 'None'
+  plot:
+    - ax:
+      - v_x
+      - reward
 
 cfg_train:
   torch_num_threads: 4

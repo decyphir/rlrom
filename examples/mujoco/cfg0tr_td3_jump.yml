@@ -47,8 +47,10 @@ cfg_specs:
   
   eval_formulas:    
     jumping: 
+      semantics: bool
       eval_all_steps: True    
     staying: 
+      semantics: bool
       eval_all_steps: True
       past_horizon: 10
     phi_jump:

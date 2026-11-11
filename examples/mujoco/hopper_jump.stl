@@ -15,14 +15,17 @@ signal z,angle,v_x,env_reward
 param h_min = 0.8
 param ang_max = 0.2
 param z_jump = 1.5
-param v_eps = 0.3
+param v_eps = 0.2
 
 # safety: the same thresholds the environment itself terminates on
 alive := (z[t] > h_min) and (abs(angle[t]) < ang_max)
 phi_alive := alw_[0,1000] alive
+moving_back := v_x[t] < -0.5
+
 
 # liveness: be above standing height while not moving forward
 jumping := z[t] > z_jump
-staying := alw_[0,10] abs(v_x[t]) < v_eps
+staying := ev_[0,10] abs(v_x[t]) < v_eps
 in_place_jump := jumping and staying
 phi_jump := alw_[0, 900] ev_[0,50] in_place_jump
+phi_moving_back := alw_[0, 900] ev_[0,50] moving_back
