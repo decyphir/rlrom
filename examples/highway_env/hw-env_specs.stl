@@ -48,7 +48,7 @@ car_left := car1_left or car2_left or car3_left
 
 no_car_left := not car_left
 
-# There is a car on the left 
+# There is a car on the right
 car1_right := car1_y[t] > .15 and car1_y[t] < .35 and abs(car1_x[t])  < .075
 car2_right := car2_y[t] > .15 and car2_y[t] < .35 and abs(car2_x[t])  < .075
 car3_right := car3_y[t] > .15 and car3_y[t] < .35 and abs(car3_x[t])  < .075
