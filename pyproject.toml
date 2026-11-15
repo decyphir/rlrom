@@ -53,6 +53,13 @@ mujoco = [
     "gym>=0.26.2,<0.27.0",
     "gymnasium[mujoco]>=1.2.0,<2.0.0",
 ]
+# MetaDrive driving simulator. From git, not PyPI: the 0.4.3 release pins
+# panda3d==1.10.13 and requires-python <3.12, while the same version on main
+# asks for panda3d>=1.10.14 (cp313 wheels exist) and has no upper bound.
+# Assets (~170 MB) are pulled separately on first use, see examples/metadrive/.
+metadrive = [
+    "metadrive-simulator>=0.4.3",
+]
 
 [project.scripts]
 rlr = "rlrom.rlrom_run:main"
@@ -84,3 +91,6 @@ source = "uv-dynamic-versioning"
 
 [tool.uv.sources]
 morl-baselines = { git = "https://github.com/LucasAlegre/morl-baselines.git" }
+# The PyPI release pins panda3d==1.10.13 and requires-python <3.12; main is the
+# same version with panda3d>=1.10.14 and no upper bound (cp313 wheels exist).
+metadrive-simulator = { git = "https://github.com/metadriverse/metadrive", rev = "fe54b03327b14bcfc17a9a04b60c8abbee4d7ab1" }

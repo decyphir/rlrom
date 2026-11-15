@@ -1,0 +1,9 @@
+# MetaDrive environment settings, keys from metadrive.envs.base_env.DEFAULT_CONFIG
+num_scenarios: 20
+start_seed: 0
+traffic_density: 0.1
+horizon: 1000
+use_render: False
+manual_control: False
+image_observation: False
+log_level: 50
