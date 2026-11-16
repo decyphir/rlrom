@@ -285,7 +285,13 @@ class RLTrainer:
     except:
       is_multiobjective = False # likely env is vanilla, not wrapped
 
-    
+    # Close the probe env before the real one is built. Some backends (MetaDrive)
+    # allow only one live engine per process, so leaking this one would make the
+    # training env / in-process eval fail with "engine already initialized".
+    try:
+      env.close()
+    except Exception:
+      pass
     del env
 
     # Policy     

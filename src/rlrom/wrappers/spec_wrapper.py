@@ -36,21 +36,14 @@ class SpecWrapper(gym.Wrapper):
         stl_specs_str = cfg_specs.get('stl_specs',stl_specs_str) 
         
         if stl_specs_str=='':    # default stl signals declaration. Not sure why it is here.
-            stl_specs_str = 'signal'
-            first = True
-            for a in cfg_specs.get('action_names',{}):
-                if first:
-                    stl_specs_str += ' '+ a
-                    first = False
-                else:
-                    stl_specs_str += ','+ a
-            for o in cfg_specs.get('obs_names',{}):
-                if first:
-                    stl_specs_str += ' '+ o
-                    first = False
-                else:
-                    stl_specs_str += ','+ o
-            stl_specs_str += ',env_reward'                                 
+            # Declare the mapped signals by name plus env_reward. With no
+            # action/obs names (a cfg_specs block that only carries options such
+            # as episode_info_keys) the declaration must still be valid STL:
+            # 'signal env_reward', not 'signal,env_reward'.
+            default_signals = list(cfg_specs.get('action_names', {}))
+            default_signals += list(cfg_specs.get('obs_names', {}))
+            default_signals.append('env_reward')
+            stl_specs_str = 'signal ' + ','.join(default_signals)
     
         stl_driver.parse_string(stl_specs_str)
         self.stl_specs_str = stl_specs_str
@@ -151,6 +144,11 @@ class SpecWrapper(gym.Wrapper):
         self.debug_rm= cfg_specs.get('debug_rm',False)
         self.debug_actions= cfg_specs.get('debug_actions',False)
         self.disable_actions= cfg_specs.get('disable_actions',False)
+        # Opt-in: info-dict keys to record every step and aggregate at episode end
+        # (see eval_specs_episode). Lets a case study surface env-specific outcome
+        # metrics (e.g. MetaDrive's arrive_dest / route_completion / crash) without
+        # any change for configs that do not set it. Empty -> no behaviour change.
+        self.episode_info_keys = list(cfg_specs.get('episode_info_keys', []) or [])
         self.BigM = cfg_specs.get('BigM')
         self.semantics= 'Boolean'  # TODO option to change. For now Boolean is simpler to interpret rewards
         self.stl_driver = stl_driver                        
@@ -166,7 +164,48 @@ class SpecWrapper(gym.Wrapper):
             import_module = None
 
         self.import_module= import_module
-        
+
+        # Optional continuous-action shield hook (cfg_specs.action_shield):
+        #   {activation: <monitor formula>, function: <attr of import_module>}
+        # When the activation formula was true at the previous step, the shield
+        # function (kept in the example module, so no big table lives in YAML)
+        # is called as fn(spec_wrapper, action) and may return a replacement
+        # action. It is a direct action replacement (like a pre-shield), applied
+        # before the scalar forced/blocked logic below. See metadrive_env.py.
+        self.action_shield = cfg_specs.get('action_shield')
+        self.action_shield_fn = None
+        self._action_shield_activation = None
+        self._action_shield_active = False
+        if self.action_shield is not None:
+            if not isinstance(self.action_shield, dict):
+                raise ValueError(
+                    "cfg_specs.action_shield must be a dict "
+                    "({activation: <monitor formula>, function: <name>})")
+            self._action_shield_activation = self.action_shield.get('activation')
+            if self._action_shield_activation is None:
+                raise ValueError(
+                    "cfg_specs.action_shield requires 'activation' "
+                    "(a monitor formula name)")
+            if self._action_shield_activation not in self.monitor_formulas:
+                raise ValueError(
+                    f"cfg_specs.action_shield.activation "
+                    f"'{self._action_shield_activation}' is not a "
+                    "'monitor_formulas' entry")
+            fn_name = self.action_shield.get('function')
+            if fn_name is None:
+                raise ValueError(
+                    "cfg_specs.action_shield requires 'function' "
+                    "(an attribute of cfg import_module)")
+            if import_module is None:
+                raise ValueError(
+                    "cfg_specs.action_shield needs the cfg 'import_module' "
+                    "to resolve 'function'")
+            self.action_shield_fn = getattr(import_module, fn_name, None)
+            if self.action_shield_fn is None:
+                raise ValueError(
+                    f"module '{to_import}' has no attribute '{fn_name}' "
+                    "(named by cfg_specs.action_shield.function)")
+
         # define signals_map: map signal names to their expressions given in cfg_specs
         cfg_specs= cfg.get('cfg_specs')
         self.signals_map={}
@@ -252,13 +291,16 @@ class SpecWrapper(gym.Wrapper):
         self.time_step = 0
         self.current_time = 0
         self.episode={'observations':[], 'actions':[],'rewards':[], 'env_rewards':[],'dones':[], 'last_obs':[], 
-                      'stl_data':[], 'labels':[], 'rm_states':[], 'rm_rewards':[]}        
+                      'stl_data':[], 'labels':[], 'rm_states':[], 'rm_rewards':[],
+                      'shield_active': [],
+                      'info_metrics': {k: [] for k in self.episode_info_keys}}        
         obs0, info = self.env.reset(**kwargs)
         self.wrapped_obs = obs0        
         robs0 = self.reset_monitor()
         self.reset_rm()
         self._last_action = None
         self._active_formula_actions = []
+        self._action_shield_active = False
         rm_states0 = self._rm_states_obs()
         obs = self._build_obs(obs0, robs0, rm_states0)
         self.last_obs = obs
@@ -291,6 +333,9 @@ class SpecWrapper(gym.Wrapper):
           ``actions.enable`` is False imposes nothing;
         * monitor formulas with an ``actions`` section that were *true* at
           the previous step (``self._active_formula_actions``).
+
+        Before either, a continuous-action ``cfg_specs.action_shield`` hook (if
+        configured and active) replaces the action outright and returns early.
 
         In both sources: ``actions.forced`` forces that raw action; 
         ``actions.blocked`` forbids the listed raw actions.
@@ -327,6 +372,19 @@ class SpecWrapper(gym.Wrapper):
         """
         if self.disable_actions:
             return action, None
+        # Continuous-action shield hook: when the activation formula was true
+        # at the previous step, the example-module function replaces the action
+        # (safety layer takes precedence over the scalar forced/blocked rules).
+        if self.action_shield_fn is not None and self._action_shield_active:
+            shielded = self.action_shield_fn(self, action)
+            if shielded is not None and not np.array_equal(
+                    np.asarray(shielded), np.asarray(action)):
+                return shielded, {
+                    'machine': 'action_shield',
+                    'reason': 'action_shield',
+                    'original': np.asarray(action).tolist(),
+                    'shielded': np.asarray(shielded).tolist(),
+                }
         forcers = []
         blockers = []   # (priority, name, fallback, blocked list)
         for rm in self.reward_machines:
@@ -529,6 +587,9 @@ class SpecWrapper(gym.Wrapper):
     def step(self, action):
         # shield: machines may replace the agent's action before it reaches the env
         action, shield_info = self._apply_shield(action)
+        if self.action_shield_fn is not None:
+            self.episode.setdefault('shield_active', []).append(
+                bool(self._action_shield_active))
         if self.debug_actions and shield_info is not None:
             print(f"t:{self.time_step} shield: {shield_info}")
         
@@ -540,6 +601,9 @@ class SpecWrapper(gym.Wrapper):
                 info = dict()
             info = dict(info)
             info['shield'] = shield_info
+        if self.episode_info_keys and isinstance(info, dict):
+            for k in self.episode_info_keys:
+                self.episode['info_metrics'][k].append(info.get(k))
         
         # collect the sample for monitoring 
         s = self.get_sample(obs, action, reward)
@@ -576,6 +640,9 @@ class SpecWrapper(gym.Wrapper):
         self._active_formula_actions = [
             f for f in self.monitor_actions if f in set(labels)
         ]
+        # continuous-action shield activation, also acted on from the next step
+        if self.action_shield_fn is not None:
+            self._action_shield_active = self._action_shield_activation in set(labels)
 
         idx_formula = 0
         num_obs_formulas= len(self._obs_entries)
@@ -1027,6 +1094,7 @@ class SpecWrapper(gym.Wrapper):
         self.episode = episode
         self.stl_driver.data = self.episode['stl_data']
         self._active_formula_actions = []
+        self._action_shield_active = False
         observations = self.episode['observations']
         
         self.time_step = self.get_ep_len()-1
@@ -1143,6 +1211,20 @@ class SpecWrapper(gym.Wrapper):
         # fraction of episodes that ran the full num_steps (not terminated early)
         num_steps = int((self.cfg.get('cfg_test') or {}).get('num_steps', 100))
         res_all_ep['basics']['completed'] = (np.double(res['ep_len']) == num_steps).mean()
+        # generic episode metrics from step info (opt-in cf. cfg_specs.episode_info_keys):
+        # the terminal step's value is the episode outcome (arrive_dest, crash,
+        # out_of_road, route_completion, ...); boolean flags average to a rate.
+        info_metrics = episode.get('info_metrics') or {}
+        for k in self.episode_info_keys:
+            last = None
+            for v in reversed(info_metrics.get(k, [])):
+                if v is not None:
+                    last = v
+                    break
+            if last is None:
+                continue
+            res = add_metric(res, k, float(last))
+            res_all_ep['basics'][f'mean_{k}'] = float(np.double(res[k]).mean())
         # maybe a mean mean reward ?
         
         stl_data = episode['stl_data']            

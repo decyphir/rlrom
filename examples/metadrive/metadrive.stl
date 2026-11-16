@@ -1,0 +1,25 @@
+# MetaDrive safety specs for the ICFEM26 shield case study.
+#
+# Signals come from cfg_specs.aux_sig_names (metadrive_env.py helpers):
+#   v           = speed / max_speed           (~[0,1])
+#   heading_err = heading_diff - 0.5          (~[-0.5,0.5], 0 = lane-aligned)
+#   lat_dev     = lateral offset / half-width  (~[-1,1] inside the lane)
+
+signal v, heading_err, lat_dev
+
+param e1 = 0.05, e2 = 0.8, eband = 0.9, ehead = 0.2, vfast = 0.85
+
+# Feature-space predicates (untimed, used both to classify regions and to
+# monitor them per step).
+phi1 := abs(heading_err[t]) < e1
+phi2 := abs(lat_dev[t] - heading_err[t]) < e2
+
+# R_center = phi1 and phi2 ; R_notcenter = (not phi1) and phi2 ; R_danger = not phi2
+center := phi1 and phi2
+notcenter := (not phi1) and phi2
+danger := not phi2
+
+# Activation: selective risk predicate -- the shield intervenes only when the
+# car is near the lane boundary, heading off-lane, or too fast; otherwise the
+# (now good) policy drives. Instantaneous (no past operator).
+shield_activate := (abs(lat_dev[t]) > eband) or (abs(heading_err[t]) > ehead) or (v[t] > vfast)

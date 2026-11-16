@@ -1,0 +1,14 @@
+# Smoke override for cfg0tr_ppo.yml (short run: verifies the training pipeline).
+# Use as: uv run rlr train examples/metadrive/cfg0tr_ppo.yml \
+#           --cfg-train cfg_smoke_ppo_train.yml --cfg-test cfg_smoke_ppo_test.yml
+n_envs: 2
+total_timesteps: 20_480
+torch_num_threads: 4
+eval_freq: 10_240
+algo:
+  ppo: metadrive_ppo.yml
+eval:
+  init_seeds: 0
+  num_ep: 2
+  num_steps: 200
+  render_mode: None

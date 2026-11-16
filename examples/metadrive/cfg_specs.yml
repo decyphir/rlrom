@@ -1,0 +1,39 @@
+# STL monitoring + continuous-action shield for the MetaDrive case study.
+# Kept out of cfg0tr_ppo.yml so the vanilla baseline stays spec-free; a run that
+# wants the shield points at this file (e.g. cfg0tr_ppo_shield.yml).
+
+specs: metadrive.stl
+
+# Driving features, sampled each step by evaluating these expressions against
+# the wrapper (see metadrive_env.py for the helper definitions).
+aux_sig_names:
+  v: "self.import_module.speed_norm(self.env)"
+  heading_err: "self.import_module.heading_err(self.env)"
+  lat_dev: "self.import_module.lat_dev(self.env)"
+
+# Per-step region labels (also recorded, so the regions can be plotted/analysed).
+# `shield_activate` is the selective risk predicate (see metadrive.stl).
+monitor_formulas:
+  center:
+    semantics: bool
+  notcenter:
+    semantics: bool
+  danger:
+    semantics: bool
+  shield_activate:
+    semantics: bool
+
+# Continuous-action shield: when `shield_activate` was true at the previous step,
+# `metadrive_shield(wrapper, action)` replaces the agent's action. See
+# metadrive_env.py for the default lane-keeping + speed-controller law; the
+# Phase-3 learned table (learn_shield.py -> shield_table.json, signed regions) is
+# opt-in via use_table. On the current strong baseline neither improves it.
+action_shield:
+  activation: shield_activate
+  function: metadrive_shield
+  # set true to use the Phase-3 learned table (shield_table.json) where the car
+  # is aligned; false = the provisional feedback law (see metadrive_env.py).
+  use_table: false
+
+# MetaDrive outcome metrics (mean_arrive_dest = success rate).
+episode_info_keys: [arrive_dest, route_completion, crash, out_of_road]

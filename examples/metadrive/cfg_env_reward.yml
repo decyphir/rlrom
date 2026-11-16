@@ -1,0 +1,22 @@
+# MetaDrive env with a reward tweak (a documented deviation from the paper's
+# default reward). Motivation: with the default reward, standing still is the
+# safe optimum of the policy mean (crash -5 vs ~0 for parking), and PPO collapses
+# to parking. Here driving is made attractive so the mean has to drive:
+#   speed_reward 0.1 -> 0.5   (dense reward for moving)
+#   crash/out-of-road penalty 5 -> 1  (less deterrence)
+#   success_reward 10 -> 20
+# Everything else matches cfg_env.yml (100 scenarios, traffic 0.1, SCS, horizon 1000).
+num_scenarios: 100
+start_seed: 0
+traffic_density: 0.1
+horizon: 1000
+map: "SCS"
+use_render: False
+manual_control: False
+image_observation: False
+log_level: 50
+speed_reward: 0.5
+crash_vehicle_penalty: 1.0
+crash_object_penalty: 1.0
+out_of_road_penalty: 1.0
+success_reward: 20.0

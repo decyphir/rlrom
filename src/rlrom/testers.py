@@ -360,6 +360,12 @@ class RLTester:
         print('mean_ep_len:', f"{res_all_ep['basics']['mean_ep_len']:.4g}", end=' | ')
         print('mean_ep_rew:', f"{res_all_ep['basics']['mean_ep_rew']:.4g}", end=' | ')
         print('completed:', f"{res_all_ep['basics'].get('completed', 0.0):.0%}")
+        # Opt-in per-episode info metrics (cfg_specs.episode_info_keys) surface as
+        # mean_<key>; print them without touching the fixed basics above.
+        extras = [(k, v) for k, v in res_all_ep['basics'].items()
+                  if k not in ('mean_ep_len', 'mean_ep_rew', 'completed')]
+        if extras:
+            print(' | '.join(f'{k}: {v:.4g}' for k, v in extras))
         #for f_name,_ in self.env.reward_formulas.items():
         #    print(f_name+':',f"{res_all_ep['reward_formulas'][f_name]['mean_sum']:.4g}",end=' | ')      
         if self.has_spec_wrapper:

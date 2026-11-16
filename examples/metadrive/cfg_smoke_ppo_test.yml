@@ -1,0 +1,5 @@
+# Smoke override for cfg0tr_ppo.yml (fast post-training check).
+init_seeds: 0
+num_ep: 3
+num_steps: 200
+render_mode: None

@@ -1,0 +1,17 @@
+# PPO with a small initial action std (log_std_init): exploration stays limited
+# so the deterministic mean has to carry performance.
+device: cpu
+verbose: 0
+policy_kwargs:
+  net_arch: [256, 256]
+  log_std_init: -1.5
+n_steps: 2048
+batch_size: 256
+learning_rate: 3e-4
+gamma: 0.99
+gae_lambda: 0.95
+clip_range: 0.2
+ent_coef: 0.0
+vf_coef: 0.5
+max_grad_norm: 0.5
+target_kl: 0.03

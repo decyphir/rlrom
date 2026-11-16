@@ -1,8 +1,17 @@
 # MetaDrive environment settings, keys from metadrive.envs.base_env.DEFAULT_CONFIG
-num_scenarios: 20
+# 100 distinct scenarios (start_seed 0..99) to match the ICFEM26 protocol; the
+# reward (driving 1.0 + speed 0.1, +10 success, -5 crash/out-of-road) is
+# MetaDrive's default and already matches the paper, so it is left alone.
+num_scenarios: 100
 start_seed: 0
 traffic_density: 0.1
 horizon: 1000
+# "SCS" = Straight-Curve-Straight block sequence, the paper's road: a three-lane
+# trajectory with a pronounced curve between two straight segments (curve
+# direction and obstacle placement vary per scenario seed). The default `map: 3`
+# (BLOCK_NUM) instead samples random block types (intersections, roundabouts,
+# T-junctions), a different and harder task. lane_num 3 is the map_config default.
+map: "SCS"
 use_render: False
 manual_control: False
 image_observation: False

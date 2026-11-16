@@ -1,0 +1,48 @@
+# Vanilla PPO baseline on MetaDrive (no STL specs, no reward shaping, no shield).
+# Trained through the SpecWrapper only to record MetaDrive's outcome metrics from
+# the step info: with no obs formulas the wrapper is a numeric passthrough (the
+# policy sees the 259-d raw observation, the reward is the env reward), so this
+# is the unconstrained baseline pi_0 of the ICFEM26 methodology.
+#
+# Reproduces the paper's protocol: 100 scenarios, traffic_density 0.1, horizon
+# 1000, PPO for 5M steps. Five independent runs (paper: vanilla 1..5); the seed
+# here is left to the logger, run it five times and keep the best on 100 seeds.
+#
+# Smoke run (short, then inspect with `rlr test`):
+#   uv run rlr train examples/metadrive/cfg0tr_ppo.yml \
+#     --set-params cfg_train.total_timesteps=20000 cfg_train.eval_freq=10000 \
+#                  cfg_train.eval.num_ep=2 cfg_test.num_ep=2
+
+env_name: metadrive
+model_path: ./models
+model_name: ppo_vanilla
+
+import_module: metadrive_env
+make_env_train: make_env_train
+make_env_test: make_env_test
+
+cfg_env: cfg_env.yml
+
+cfg_specs:
+  # generic, opt-in outcome metrics read from each step's info dict
+  # (wrappers/spec_wrapper.py). mean_arrive_dest = success rate.
+  episode_info_keys: [arrive_dest, route_completion, crash, out_of_road]
+
+cfg_train:
+  n_envs: 8
+  total_timesteps: 5_000_000
+  torch_num_threads: 2
+  eval_freq: 250_000
+  algo:
+    ppo: metadrive_ppo.yml
+  eval:
+    init_seeds: 0
+    num_ep: 10
+    num_steps: 1000
+    render_mode: None
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 100
+  num_steps: 1000
+  render_mode: None

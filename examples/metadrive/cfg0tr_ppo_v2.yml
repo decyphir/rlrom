@@ -1,0 +1,45 @@
+# Improved vanilla baseline (v2): the policy is one of the search runs
+# (cfg_search_ppo.yml, r1 @ 1.2M) promoted to an active model.
+#
+# 100-seed `rlr test` (stochastic, the tool/paper protocol):
+#   arrive 0.85, route 0.918, crash 0.05, out_of_road 0.10
+# Deterministic it is weak (arrive ~0.02, crash ~0.82, ~89 steps): the mean
+# action drives into obstacles and only sampled action noise keeps it safe, so
+# evaluate/compare stochastically as `rlr test` does.
+#
+# To reproduce the search: cfg_search_ppo.yml, several independent runs (the
+# run-to-run spread is large, as the paper also reports), then keep the best
+# checkpoint. Fine-grained checkpoints (eval every 60k) matter because the
+# policy degrades again with longer training.
+
+env_name: metadrive
+model_path: ./models
+model_name: ppo_vanilla_v2
+
+import_module: metadrive_env
+make_env_train: make_env_train
+make_env_test: make_env_test
+
+cfg_env: cfg_env.yml
+
+cfg_specs:
+  episode_info_keys: [arrive_dest, route_completion, crash, out_of_road]
+
+cfg_train:
+  n_envs: 6
+  total_timesteps: 1_200_000
+  torch_num_threads: 2
+  eval_freq: 60_000
+  algo:
+    ppo: metadrive_ppo.yml
+  eval:
+    init_seeds: 0
+    num_ep: 5
+    num_steps: 1000
+    render_mode: None
+
+cfg_test:
+  init_seeds: 0
+  num_ep: 100
+  num_steps: 1000
+  render_mode: None
