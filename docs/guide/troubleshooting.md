@@ -43,6 +43,17 @@ untracked `__training*` folders that may not exist on your machine. Check with
 `ls -l examples/<env>/models/`, then either train the config or run
 `rlr select-model`.
 
+## A reward machine never moves
+
+Its transitions test **labels**, and a label exists only for a formula declared
+in `cfg_specs.monitor_formulas`. A machine that references `has_key` while
+`monitor_formulas` does not declare it stays in its initial state forever, and
+nothing warns: the label is simply never true. Check with
+`cfg_specs.debug_rm: true`, which prints the labels received at every step.
+
+The same applies to the older `cfg_specs.cfg_rm` key: it is not read any more.
+Machines go under `cfg_specs.reward_machines`.
+
 ## Reward-metric aggregates are empty
 
 `res_all_ep['reward_formulas']` is only filled when the config also declares

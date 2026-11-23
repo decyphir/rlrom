@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Dependencies: `wandb` and `ir-sim` were removed from the base install (nothing
+  referenced them), and the notebook-only stack (`jupyter`, `ipympl`, `plotly`,
+  `kaleido`) moved to a `notebooks` extra. `pip install rlrom` now pulls 16
+  packages instead of 21.
+
+### Fixed
+
+- MiniGrid: the reward machine is declared under `cfg_specs.reward_machines`
+  with its label formulas in `monitor_formulas`; it was wired through the
+  retired `cfg_specs.cfg_rm` key and never ran.
+- `rlrom.wrappers` is a regular package (it had no `__init__.py`), so static
+  analysis and `mkdocstrings` can collect it.
+
 ## [0.3.0] - 2026-11-23
 
 Everything below the 0.2.0 entry: this release replaces the STL wrapper with a

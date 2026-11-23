@@ -1,26 +1,27 @@
 # MiniGrid
 
-Discrete grid worlds, custom environments, and a reward-machine task family.
-This example is the least current of the set — read the status note before
-relying on it.
+Discrete grid worlds, a custom environment, and a reward machine on a visible
+key.
 
-!!! warning "Partly stale"
+The two top-level configs are current: the machine is declared under
+`cfg_specs.reward_machines` and its labels are declared in `monitor_formulas`, so
+it actually runs.
 
-    The MiniGrid configs in this folder still wire their reward machine through
-    `cfg_specs.cfg_rm`, which the current wrapper no longer reads: machines are
-    declared under `cfg_specs.reward_machines` (see
-    [Reward machines](../guide/reward-machines.md)). The specifications and the
-    custom environment parts still apply; the machine does not. The maintenance
-    entry point `blocked_unlock_pickup/main.py` also imports `bokeh`, which is no
-    longer a dependency of `rlrom`.
+!!! note "`blocked_unlock_pickup/` is a research scratch area"
+
+    The sub-folder holds an older task family whose configs still use the
+    retired `cfg_specs.cfg_rm` key and whose entry point imports `bokeh` (no
+    longer a dependency). Treat it as work in progress, not as an example to
+    copy.
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `cfg0tr_ppo.yml` | PPO on the custom unlock environment |
-| `cfg0tr_ppo_specs.yml` | the same with specifications and the (legacy) `cfg_rm` reference |
-| `cfg_rm.yml`, `minigrid.stl` | machine and label definitions |
+| `cfg0tr_ppo.yml` | PPO on the custom unlock environment, no specification |
+| `cfg0tr_ppo_specs.yml` | the same with the specification, the label formulas and the machine |
+| `cfg_rm.yml` | the reward machine: find the key, then reach the door |
+| `minigrid.stl` | the formulas: `has_key`, `not_has_key`, `door_in_front`, `key_is_visible`, `drop_key` |
 | `unlock_custom.py` | the custom environment, registered through `import_module` |
 | `blocked_unlock_pickup/` | the task family: `task3.stl`, `cfg_rm_task1/2/3.yml`, `env_task2.py`, `env_task3.py`, `main.py` |
 | `minigrid_notebook.ipynb`, `plot_*.ipynb` | narrative notebook and training plots |
@@ -53,19 +54,25 @@ environment gymnasium does not register.
 - **Whole-episode formulas.** `find_key` and `find_key_door` are evaluated in
   `eval_formulas` with `eval_all_steps: false`, i.e. once over the episode, which
   is the right shape for "did it eventually do X".
-- **Sequenced tasks.** The `blocked_unlock_pickup` machines encode stages
-  (find key → open door → pick up → deliver) with negative rewards for reverting
-  — the task-3 machine has `reward: -1` states and transitions. That is the
-  reward-machine concept without a weighted-sum approximation.
+- **Sequenced reward.** `cfg_rm.yml` is a three-state machine: get the key
+  (`u0 → u1`), then face the door (`u1 → u2`, final, reward 1), and fall back to
+  `u0` if the key is dropped. The reward depends on the stage reached, not on a
+  weighted sum of formula robustnesses — that is what a reward machine buys.
 
-To use the machines here today, move the machine file under `reward_machines`:
+The wiring is worth reading once, because both halves are required:
 
 ```yaml
 cfg_specs:
+  monitor_formulas:          # the labels the machine's transitions test
+    has_key:          {online: True, past_horizon: 0}
+    not_has_key:      {online: True, past_horizon: 0}
+    door_in_front:    {online: True, past_horizon: 0}
   reward_machines:
     - name: unlock
       weight: 1.0
       in_observation: True
-      reward_machine:
-        # content of cfg_rm.yml
+      reward_machine: cfg_rm.yml
 ```
+
+A machine whose conditions are not declared as monitor formulas never leaves its
+initial state, and nothing complains: the labels simply are never true.

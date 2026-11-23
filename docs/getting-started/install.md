@@ -36,6 +36,7 @@ dependency. Install the matching extra:
 
 | Extra | Adds | Used by |
 |---|---|---|
+| `notebooks` | `jupyter`, `plotly`, `kaleido`, `ipympl` | the `.ipynb` examples |
 | `highway-env` | [highway-env](https://github.com/Farama-Foundation/HighwayEnv) | [Highway-env example](../examples/highway-env.md) |
 | `mujoco` | MuJoCo and the Gymnasium MuJoCo environments | [MuJoCo example](../examples/mujoco.md) |
 | `metadrive` | [MetaDrive](https://metadrive-simulator.readthedocs.io/) driving simulator | [MetaDrive example](../examples/metadrive.md) |

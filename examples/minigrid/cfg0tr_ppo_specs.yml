@@ -21,15 +21,24 @@ cfg_specs:
     find_key_and_door:
       t0: 0
       eval_all_steps: False
-  # monitor_formulas:
-  #   key_is_visible:
-  #     past_horizon: 0
-  #     obs_weight: 1.0 
-  #   drop_key: # terminates the episode when true
-  #     past_horizon: 0
-  #     eval_all_steps: True
-  #     terminal: True
-  cfg_rm: cfg_rm.yml
+  # Labels consumed by the machine below: one monitor entry per transition
+  # condition, so the FSM actually sees them.
+  monitor_formulas:
+    has_key:
+      online: True
+      past_horizon: 0
+    not_has_key:
+      online: True
+      past_horizon: 0
+    door_in_front:
+      online: True
+      past_horizon: 0
+
+  reward_machines:
+    - name: unlock
+      weight: 1.0
+      in_observation: True
+      reward_machine: cfg_rm.yml
 
 cfg_train:
   total_timesteps: 1_000_000

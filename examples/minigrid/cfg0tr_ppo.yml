@@ -19,8 +19,6 @@ cfg_specs:
       t0: 0
       eval_all_steps: False
 
-  cfg_rm: cfg_rm.yml
-
 cfg_train:
   total_timesteps: 200_000
   n_envs: 1

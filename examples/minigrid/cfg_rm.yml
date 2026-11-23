@@ -1,4 +1,3 @@
-in_observation: True
 states:
   - id: "u0"
     initial: True
