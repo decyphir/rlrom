@@ -3,16 +3,9 @@
 Discrete grid worlds, a custom environment, and a reward machine on a visible
 key.
 
-The two top-level configs are current: the machine is declared under
+Both configs are current: the machine is declared under
 `cfg_specs.reward_machines` and its labels are declared in `monitor_formulas`, so
 it actually runs.
-
-!!! note "`blocked_unlock_pickup/` is a research scratch area"
-
-    The sub-folder holds an older task family whose configs still use the
-    retired `cfg_specs.cfg_rm` key and whose entry point imports `bokeh` (no
-    longer a dependency). Treat it as work in progress, not as an example to
-    copy.
 
 ## Files
 
@@ -23,7 +16,6 @@ it actually runs.
 | `cfg_rm.yml` | the reward machine: find the key, then reach the door |
 | `minigrid.stl` | the formulas: `has_key`, `not_has_key`, `door_in_front`, `key_is_visible`, `drop_key` |
 | `unlock_custom.py` | the custom environment, registered through `import_module` |
-| `blocked_unlock_pickup/` | the task family: `task3.stl`, `cfg_rm_task1/2/3.yml`, `env_task2.py`, `env_task3.py`, `main.py` |
 | `minigrid_notebook.ipynb`, `plot_*.ipynb` | narrative notebook and training plots |
 
 ## Running it

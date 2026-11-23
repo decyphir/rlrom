@@ -10,7 +10,6 @@ A machine is configured in its own file and referenced from `cfg_specs`:
 ```yaml
 # cfg_specs of the run
 reward_machines:
-  - rm_stuck_left.yml
   - rm_AB.yml
 ```
 

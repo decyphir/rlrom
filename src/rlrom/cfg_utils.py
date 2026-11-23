@@ -76,6 +76,16 @@ def find_subcfg(cfg, key):
 
 
 def load_cfg(cfg, verbose=1):
+    """Load a configuration file, expanding its references recursively.
+
+    Values ending in ``.yml`` are replaced by that file's content, values ending
+    in ``.stl`` by its text, and ``import_module`` is imported. The process then
+    ``chdir()``s to the configuration's folder (``this_cfg_pathdir``), so every
+    relative path in the config resolves from there.
+
+    ``verbose`` only controls what is printed while loading: expansion always
+    happens.
+    """
     exclude_load_file = ['res_file']
 
     def load_yml_file(field, path):
@@ -84,7 +94,8 @@ def load_cfg(cfg, verbose=1):
         Shared by dict values (subsections) and list items (e.g. the
         ``reward_machines`` section) so that both are imported the same way.
         """
-        print('loading field [', field, '] from YAML file [', path, ']')
+        if verbose >= 1:
+            print('loading field [', field, '] from YAML file [', path, ']')
         with open(path, 'r') as f:
             content = yaml.load(f)
         if content is None:
@@ -100,9 +111,9 @@ def load_cfg(cfg, verbose=1):
         """
         for i, item in enumerate(items):
             if isinstance(item, str) and item.endswith('.yml'):
-                if verbose >= 1 and os.path.exists(item):
+                if os.path.exists(item):
                     items[i] = load_yml_file(f'{key}[{i}]', item)
-                elif verbose >= 1:
+                else:
                     print('WARNING: field [', f'{key}[{i}]',
                           '] points to YAML file [', item, '] which does not exist!')
             elif isinstance(item, dict):
@@ -117,15 +128,15 @@ def load_cfg(cfg, verbose=1):
         if isinstance(cfg, list):
             return load_list('', cfg)
         for key, value in cfg.items():
-            #print('reading', key, 'with value', value)
+            # Expansion happens whatever `verbose` says: `verbose` only decides
+            # whether the loads are narrated (it used to double as the switch
+            # that turned expansion off, which left `.yml` values as strings).
             if isinstance(value, str) and value.endswith('.yml'):
-                if verbose >= 1:
-                    if key not in exclude_load_file:
-                        cfg[key] = load_yml_file(key, value)
-                    else:
-                        cfg[key] = value
-                else:
+                if key in exclude_load_file:
                     cfg[key] = value
+                elif os.path.exists(value):
+                    cfg[key] = load_yml_file(key, value)
+                else:
                     print('WARNING: file', value, 'not found!')
             elif isinstance(value, str) and value.endswith('.stl'):
                 if verbose >= 1:
@@ -136,7 +147,8 @@ def load_cfg(cfg, verbose=1):
                 to_import = cfg.get('import_module')
                 if to_import is not None:
                     imported = importlib.import_module(to_import)
-                    print(f'Imported module {to_import}')
+                    if verbose >= 1:
+                        print(f'Imported module {to_import}')
 
             elif isinstance(value, dict):
                 cfg[key] = recursive_load(value)

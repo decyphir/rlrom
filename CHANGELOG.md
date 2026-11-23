@@ -12,14 +12,38 @@ All notable changes to this project are documented here. The format follows
   referenced them), and the notebook-only stack (`jupyter`, `ipympl`, `plotly`,
   `kaleido`) moved to a `notebooks` extra. `pip install rlrom` now pulls 16
   packages instead of 21.
+- Example notebooks carry no stored outputs any more (they are reproducible by
+  running them): the three heaviest shrink by ~2.5 MB in total.
 
 ### Fixed
 
 - MiniGrid: the reward machine is declared under `cfg_specs.reward_machines`
   with its label formulas in `monitor_formulas`; it was wired through the
   retired `cfg_specs.cfg_rm` key and never ran.
+- `load_cfg(verbose=0)` expanded no `.yml`/`.stl` reference at all — the
+  verbosity flag doubled as the switch that turns expansion off, so a
+  `reward_machine: fsm.yml` reference stayed a string. `verbose` now only
+  controls what is printed.
 - `rlrom.wrappers` is a regular package (it had no `__init__.py`), so static
   analysis and `mkdocstrings` can collect it.
+- Notebooks no longer import `bokeh`.
+
+### Removed
+
+- `examples/minigrid/blocked_unlock_pickup/` — an older task family whose configs
+  used the retired `cfg_specs.cfg_rm` key, whose entry point imported `bokeh`,
+  and whose machine conditions were not labels of the specification it loaded.
+- `examples/cartpole/rm_stuck_left.yml` — an inert machine (`weight: 0`, and its
+  condition `stuck_left` was never declared as a monitor formula).
+- `examples/simglucose/` — needs the `simglucose` package, which is not a
+  dependency; the notebook was not even valid JSON.
+- `examples/sandbox.ipynb`, `examples/sandbox_analysis.ipynb` — scratch.
+
+### Added
+
+- `tests/test_example_configs.py`: guards that no example uses the retired
+  `cfg_specs.cfg_rm` key and that every reward-machine transition condition is
+  declared as a monitor formula.
 
 ## [0.3.0] - 2026-11-23
 

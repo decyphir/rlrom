@@ -12,7 +12,7 @@ feature once.
 | `cfg0_hug.yml` | a policy downloaded from the Hugging Face Hub, monitored |
 | `cfg0tr_ppo_specs.yml` | PPO with one `reward_weight` formula — the simplest training with a specification |
 | `cfg0tr_ppo.yml` | the same plant, plain environment reward |
-| `cfg0tr_rm_AB.yml`, `rm_AB.yml`, `rm_stuck_left.yml` | reward-machine setup |
+| `cfg0tr_rm_AB.yml`, `rm_AB.yml` | reward-machine setup |
 | `cfg0tr_rm_stay_left_right.yml` | two-figure plotting example |
 | `cartpole_ppo.yml` | PPO hyper-parameters for this plant |
 
@@ -53,11 +53,10 @@ rlr train examples/cartpole/cfg0tr_rm_AB.yml
 rlr test  examples/cartpole/cfg0tr_rm_AB.yml
 ```
 
-`cfg_specs` declares the eight label formulas and references two machines:
+`cfg_specs` declares the eight label formulas and references the machine:
 
 ```yaml
   reward_machines:
-    - rm_stuck_left.yml
     - rm_AB.yml
 ```
 

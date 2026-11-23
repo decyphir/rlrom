@@ -45,11 +45,7 @@ cfg_specs:
       online: True
       past_horizon: 50
 
-    phi_stuck_left:
-      t0: 0
-
   reward_machines:
-    - rm_stuck_left.yml
     - rm_AB.yml
 
   eval_formulas:
