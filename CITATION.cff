@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use RLRom in your work, please cite the OVERLAY 2025 paper referenced below."
+title: "RLRom"
+abstract: >-
+  RLRom is a Python library that tests reinforcement learning agents against
+  Signal Temporal Logic specifications, trains agents with monitors in the loop
+  (robustness-based reward shaping, observation augmentation, reward machines),
+  and constrains their actions with monitor- and reward-machine-derived
+  shields.
+type: software
+authors:
+  - given-names: Alexandre
+    family-names: Donzé
+    email: alexandre.donze@univ-grenoble-alpes.fr
+    affiliation: "Univ. Grenoble Alpes"
+repository-code: "https://github.com/decyphir/rlrom"
+url: "https://github.com/decyphir/rlrom"
+license: BSD-3-Clause
+keywords:
+  - reinforcement learning
+  - signal temporal logic
+  - runtime verification
+  - monitoring
+  - reward shaping
+  - shielding
+version: 0.3.0
+# date-released: set when the v0.3.0 tag is created
+
+preferred-citation:
+  type: conference-paper
+  title: "RLRom: Monitoring and Training Reinforcement Learning Agents using Signal Temporal Logic"
+  authors:
+    - given-names: Ana María
+      family-names: Gómez-Ruiz
+    - given-names: Alexandre
+      family-names: Donzé
+    - given-names: Thao
+      family-names: Dang
+  year: 2025
+  collection-title: "Short Paper Proceedings of the 7th International Workshop on Artificial Intelligence and Formal Verification, Logic, Automata, and Synthesis (OVERLAY 2025)"
+  volume: 4142
+  start: 167
+  end: 172
+  publisher:
+    name: "CEUR-WS.org"
+  url: "https://ceur-ws.org/Vol-4142/paper18.pdf"

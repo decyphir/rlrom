@@ -1,11 +1,33 @@
 [project]
 name = "rlrom"
 dynamic = ["version"]
-description = "RLROM is a library for testing and training reinforcement learning agent using online monitoring of signal temporal logics formulas, and more."
+description = "Test and train reinforcement learning agents with online monitoring of Signal Temporal Logic specifications."
 authors = [{ name = "Alexandre Donze", email = "alexandre.donze@univ-grenoble-alpes.fr" }]
 requires-python = ">=3.12"
 readme = "README.md"
 license = "BSD-3-Clause"
+keywords = [
+    "reinforcement-learning",
+    "signal-temporal-logic",
+    "runtime-verification",
+    "runtime-monitoring",
+    "reward-shaping",
+    "shielding",
+    "reward-machines",
+    "gymnasium",
+    "stable-baselines3",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
 dependencies = [
     "stlrom (>=0.4.0)",
     "gymnasium[classic_control] (>=1.2.0,<2.0.0)",
@@ -61,6 +83,13 @@ metadrive = [
     "metadrive-simulator>=0.4.3",
 ]
 
+[project.urls]
+Homepage = "https://github.com/decyphir/rlrom"
+Repository = "https://github.com/decyphir/rlrom"
+Issues = "https://github.com/decyphir/rlrom/issues"
+Changelog = "https://github.com/decyphir/rlrom/blob/main/CHANGELOG.md"
+# Documentation: add the GitLab Pages URL once the docs site is live
+
 [project.scripts]
 rlr = "rlrom.rlrom_run:main"
 rlrom_test = "rlrom.rlrom_test:main"
@@ -74,7 +103,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/rlrom"]
+include = ["src/rlrom", "CHANGELOG.md", "CITATION.cff"]
 
 [tool.hatch.build.targets.wheel]
 include = ["src/rlrom"]
