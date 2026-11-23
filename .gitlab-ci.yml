@@ -60,3 +60,22 @@ pages:
     url: $CI_PAGES_URL
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ---------------------------------------------------------------------------
+# Runner/network probe. Not part of a normal pipeline: start one from
+# CI/CD > Pipelines > "Run pipeline" (source: web) to check that a runner picks
+# jobs up, that the image can be pulled, and that PyPI is reachable from it.
+runner-smoke:
+  image: python:3.12-slim
+  stage: docs
+  allow_failure: true
+  script:
+    - uname -a
+    - python --version
+    - pip --version
+    - 'echo "CI_RUNNER_DESCRIPTION=$CI_RUNNER_DESCRIPTION"'
+    - 'pip download --no-deps --dest /tmp/wheels ruamel.yaml && ls -l /tmp/wheels'
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - when: manual
+      allow_failure: true
