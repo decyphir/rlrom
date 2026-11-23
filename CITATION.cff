@@ -24,7 +24,7 @@ keywords:
   - reward shaping
   - shielding
 version: 0.3.0
-# date-released: set when the v0.3.0 tag is created
+date-released: 2026-11-23
 
 preferred-citation:
   type: conference-paper

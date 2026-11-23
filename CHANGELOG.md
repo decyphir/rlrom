@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.3.0]
+## [0.3.0] - 2026-11-23
 
 Everything below the 0.2.0 entry: this release replaces the STL wrapper with a
 unified `SpecWrapper`, adds reward machines and action constraints as
