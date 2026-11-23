@@ -1,0 +1,62 @@
+# Documentation site build for GitLab Pages.
+#
+# The site is built with MkDocs and published at
+#   https://donzeal.gricad-pages.univ-grenoble-alpes.fr/rlrom/
+# The build installs only requirements-docs.txt: mkdocstrings reads src/ in
+# static mode, so the training stack (torch, stable-baselines3, simulators) is
+# not installed here.
+
+stages:
+  - docs
+  - deploy
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  # MkDocs Material prints an end-of-life notice on every build
+  NO_MKDOCS_2_WARNING: "1"
+
+docs:
+  image: python:3.12-slim
+  stage: docs
+  interruptible: true
+  cache:
+    key:
+      files:
+        - requirements-docs.txt
+    paths:
+      - .cache/pip
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements-docs.txt
+  script:
+    - mkdocs build --strict
+  rules:
+    # Validate the site on every merge request and on side branches, but only
+    # publish from the default branch.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+pages:
+  image: python:3.12-slim
+  stage: deploy
+  interruptible: true
+  cache:
+    key:
+      files:
+        - requirements-docs.txt
+    paths:
+      - .cache/pip
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements-docs.txt
+  script:
+    - mkdocs build --strict --site-dir public
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: pages
+    url: $CI_PAGES_URL
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

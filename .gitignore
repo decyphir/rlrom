@@ -22,3 +22,8 @@ examples/*/trainings_*.png
 
 # nested dev checkout of the stlrom library (its own git repository)
 stlrom/
+
+# documentation build output
+site/
+public/
+.cache/

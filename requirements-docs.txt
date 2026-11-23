@@ -1,0 +1,9 @@
+# Documentation build dependencies.
+# Deliberately separate from pyproject.toml: building the site must not install
+# the training stack (torch, stable-baselines3, the simulators). mkdocstrings
+# runs in static mode against src/ instead of importing rlrom.
+#
+# mkdocstrings 1.x is required: the 0.30.x line fails at build time with
+# mkdocs 1.6 (TypeError in the HTML rendering handler).
+mkdocs-material>=9.5,<10
+mkdocstrings[python]>=1.0,<2
