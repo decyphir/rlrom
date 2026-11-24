@@ -150,7 +150,7 @@ environment, robustness-based reward shaping and observation augmentation,
 testing through `rlr test` and training through `rlr train`. Earlier versions
 on PyPI: 0.1.0, 0.1.1, 0.1.2.
 
-[Unreleased]: https://github.com/decyphir/rlrom/compare/v0.3.1...HEAD
-[0.3.1]: https://github.com/decyphir/rlrom/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/decyphir/rlrom/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/decyphir/rlrom/releases/tag/v0.2.0
+[Unreleased]: https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom/-/compare/v0.3.1...main
+[0.3.1]: https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom/-/compare/v0.3.0...v0.3.1
+[0.3.0]: https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom/-/compare/v0.2.0...v0.3.0
+[0.2.0]: https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom/-/tags/v0.2.0

@@ -13,8 +13,8 @@ authors:
     family-names: Donzé
     email: alexandre.donze@univ-grenoble-alpes.fr
     affiliation: "Univ. Grenoble Alpes"
-repository-code: "https://github.com/decyphir/rlrom"
-url: "https://github.com/decyphir/rlrom"
+repository-code: "https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom"
+url: "https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom"
 license: BSD-3-Clause
 keywords:
   - reinforcement learning
