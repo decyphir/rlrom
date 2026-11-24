@@ -156,12 +156,15 @@ Programmatic use is demonstrated in the notebooks:
 
 ## Documentation
 
-Configuration keys, the wrapper pipeline, STL specification files, reward
-machines, shielding, the CLI reference and per-example walkthroughs are being
-consolidated into a browsable documentation site; this README is the current
-entry point. In the meantime, each example folder carries the configs and STL
-files it is described by, and `rlr show --expand cfg.yml` prints a configuration
-with every nested reference resolved.
+The full documentation — install and quickstart, concepts and the wrapper
+pipeline, specifications, reward shaping, reward machines, shielding, the
+configuration and command line references, plotting, troubleshooting and a page
+per example — is at
+
+**<https://rlrom-adf24a.gricad-pages.univ-grenoble-alpes.fr/>**
+
+`rlr show --expand cfg.yml` prints a configuration with every nested reference
+resolved, which is often the fastest way to check what a run actually receives.
 
 ## Citation
 

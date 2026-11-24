@@ -1,7 +1,7 @@
 site_name: RLRom
 site_description: Test and train reinforcement learning agents with online monitoring of Signal Temporal Logic specifications
 site_author: Alexandre Donzé
-site_url: https://donzeal.gricad-pages.univ-grenoble-alpes.fr/rlrom/
+site_url: https://rlrom-adf24a.gricad-pages.univ-grenoble-alpes.fr/
 repo_url: https://gricad-gitlab.univ-grenoble-alpes.fr/donzeal/rlrom
 repo_name: donzeal/rlrom
 edit_uri: edit/main/docs/
