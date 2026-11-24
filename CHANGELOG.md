@@ -6,27 +6,41 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-23
+
+### Added
+
+- **Documentation site** (`docs/`, `mkdocs.yml`, MkDocs Material +
+  `mkdocstrings`): install, quickstart, concepts, specifications, reward shaping,
+  reward machines, shielding, configuration and command-line references,
+  plotting, troubleshooting, one page per example, and generated API pages.
+  Built by `.gitlab-ci.yml` with `--strict` on every push and published to GitLab
+  Pages from the default branch.
+- `tests/test_example_configs.py`: guards that no example uses the retired
+  `cfg_specs.cfg_rm` key and that every reward-machine transition condition is
+  declared as a monitor formula — the failure mode that made MiniGrid's machine
+  inert.
+
 ### Changed
 
 - Dependencies: `wandb` and `ir-sim` were removed from the base install (nothing
   referenced them), and the notebook-only stack (`jupyter`, `ipympl`, `plotly`,
-  `kaleido`) moved to a `notebooks` extra. `pip install rlrom` now pulls 16
-  packages instead of 21.
-- Example notebooks carry no stored outputs any more (they are reproducible by
-  running them): the three heaviest shrink by ~2.5 MB in total.
+  `kaleido`) moved to a `notebooks` extra. `pip install rlrom` pulls 16 packages
+  instead of 21.
+- Example notebooks carry no stored outputs any more, and no longer import
+  `bokeh`: the three heaviest shrink by ~2.5 MB in total.
+- `rlrom.wrappers` is a regular package (it had no `__init__.py`), so static
+  analysis — `mkdocstrings` among others — can collect it.
 
 ### Fixed
 
-- MiniGrid: the reward machine is declared under `cfg_specs.reward_machines`
-  with its label formulas in `monitor_formulas`; it was wired through the
-  retired `cfg_specs.cfg_rm` key and never ran.
-- `load_cfg(verbose=0)` expanded no `.yml`/`.stl` reference at all — the
-  verbosity flag doubled as the switch that turns expansion off, so a
-  `reward_machine: fsm.yml` reference stayed a string. `verbose` now only
-  controls what is printed.
-- `rlrom.wrappers` is a regular package (it had no `__init__.py`), so static
-  analysis and `mkdocstrings` can collect it.
-- Notebooks no longer import `bokeh`.
+- `load_cfg(verbose=0)` expanded no `.yml`/`.stl` reference at all: the verbosity
+  flag doubled as the switch that turns expansion off, so a
+  `reward_machine: fsm.yml` reference stayed a string and reached the wrapper
+  unresolved. `verbose` now only controls what is printed.
+- MiniGrid: the reward machine is declared under `cfg_specs.reward_machines` with
+  its label formulas in `monitor_formulas`; it was wired through the retired
+  `cfg_specs.cfg_rm` key and never ran.
 
 ### Removed
 
@@ -36,14 +50,8 @@ All notable changes to this project are documented here. The format follows
 - `examples/cartpole/rm_stuck_left.yml` — an inert machine (`weight: 0`, and its
   condition `stuck_left` was never declared as a monitor formula).
 - `examples/simglucose/` — needs the `simglucose` package, which is not a
-  dependency; the notebook was not even valid JSON.
-- `examples/sandbox.ipynb`, `examples/sandbox_analysis.ipynb` — scratch.
-
-### Added
-
-- `tests/test_example_configs.py`: guards that no example uses the retired
-  `cfg_specs.cfg_rm` key and that every reward-machine transition condition is
-  declared as a monitor formula.
+  dependency; its notebook was not valid JSON either.
+- `examples/sandbox.ipynb`, `examples/sandbox_analysis.ipynb` — scratch notebooks.
 
 ## [0.3.0] - 2026-11-23
 
@@ -142,6 +150,7 @@ environment, robustness-based reward shaping and observation augmentation,
 testing through `rlr test` and training through `rlr train`. Earlier versions
 on PyPI: 0.1.0, 0.1.1, 0.1.2.
 
-[Unreleased]: https://github.com/decyphir/rlrom/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/decyphir/rlrom/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/decyphir/rlrom/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/decyphir/rlrom/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/decyphir/rlrom/releases/tag/v0.2.0
