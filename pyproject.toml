@@ -102,6 +102,7 @@ rlrom_select_model = "rlrom.rlrom_select_model:main"
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1,<2",
+    "pytest>=8.0,<10",
 ]
 
 [tool.hatch.build.targets.sdist]

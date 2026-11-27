@@ -65,7 +65,7 @@ cd rlrom
 uv sync                      # base install, or:
 uv sync --extra mujoco       # with an extra
 uv run rlr --help
-uv run pytest tests/         # 188 tests, no downloads needed
+uv run pytest tests/         # 192 tests, no downloads needed
 ```
 
 !!! tip
